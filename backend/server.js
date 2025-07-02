@@ -1,0 +1,105 @@
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+const dotenv = require("dotenv");
+const path = require("path");
+
+// Load environment variables
+dotenv.config();
+
+const app = express();
+
+// Database connection
+const connectDB = require("./config/database");
+connectDB();
+
+// Middleware
+app.use(
+  cors({
+    origin: true, // Allow all origins for development
+    credentials: true,
+  })
+);
+
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true }));
+
+// Routes
+app.use("/api/auth", require("./routes/auth"));
+app.use("/api/users", require("./routes/users"));
+app.use("/api/classes", require("./routes/classes"));
+app.use("/api/assignments", require("./routes/assignments"));
+app.use("/api/attendance", require("./routes/attendance"));
+app.use("/api/fees", require("./routes/fees"));
+
+// Serve static files from React app build
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "../frontend/dist")));
+
+  // Handle React routing - return all requests to React app
+  app.get("*", (req, res) => {
+    // Skip API routes
+    if (req.path.startsWith("/api/")) {
+      return res.status(404).json({
+        success: false,
+        message: "API route not found",
+      });
+    }
+    res.sendFile(path.join(__dirname, "../frontend/dist", "index.html"));
+  });
+}
+
+// Health check route
+app.get("/api/health", (req, res) => {
+  res.json({
+    status: "OK",
+    message: "School Management API is running",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+
+  if (err.name === "ValidationError") {
+    const errors = Object.values(err.errors).map((e) => e.message);
+    return res.status(400).json({
+      success: false,
+      message: "Validation Error",
+      errors,
+    });
+  }
+
+  if (err.name === "CastError") {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid ID format",
+    });
+  }
+
+  res.status(err.statusCode || 500).json({
+    success: false,
+    message: err.message || "Internal Server Error",
+  });
+});
+
+// Handle unmatched routes
+app.use("*", (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "Route not found",
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`
+🚀 School Management API Server Started!
+📍 Server running on port ${PORT}
+🌐 Environment: ${process.env.NODE_ENV}
+🗄️  Database: ${process.env.MONGODB_URI}
+🔗 Network: Server accessible from all devices on network
+  `);
+});

@@ -1,0 +1,9 @@
+
+backend/node_modules/
+frontend/node_modules/
+frontend/dist/
+mobile-app/node_modules/
+mobile-app/dist/
+
+backend/.env
+mobile-app/config/environment.js
