@@ -1,5 +1,5 @@
 import axios from "axios";
-import { config } from "../config/environment";
+import config from "../config";
 
 // Use environment-based API URL
 const API_BASE_URL = config.API_BASE_URL;

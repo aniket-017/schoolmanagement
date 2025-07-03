@@ -17,8 +17,14 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#007AFF"
-      }
+      },
+      "package": "com.jue17.schoolmanagementmobile"
     },
-    "web": {}
+    "web": {},
+    "extra": {
+      "eas": {
+        "projectId": "d7cdd527-0eda-4f21-af91-24365f0c0e4c"
+      }
+    }
   }
-} 
+}

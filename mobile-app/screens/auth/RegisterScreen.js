@@ -11,7 +11,7 @@ import {
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { config } from "../../config/environment";
+import config from "../../config";
 
 const RegisterScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
