@@ -1,7 +1,7 @@
 // Environment configuration for frontend
 const config = {
   development: {
-    API_BASE_URL: "http://localhost:3000/api",
+    API_BASE_URL: "http://localhost:1704/api",
     APP_NAME: "School Management (Development)",
   },
   production: {
