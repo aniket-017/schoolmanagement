@@ -51,49 +51,49 @@ jobs:
         if: github.ref == 'refs/heads/main'
         run: |
           ssh admin@dev.zealits.com << 'EOF'
-            # Backup the .env file if it exists
-            if [ -f ~/schoolmanagement/backend/.env ]; then
-              cp ~/schoolmanagement/backend/.env ~/.env.bak
-            fi
+           echo "🔐 Starting deployment to remote server"
 
-            # Use git pull if the repository exists; otherwise, clone it
-            if [ -d ~/schoolmanagement]; then
-              cd ~/schoolmanagement
-              git reset --hard
-              git pull origin main
-            else
-              git clone https://github.com/aniket-017/schoolmanagement.git ~/schoolmanagement
-              cd ~/schoolmanagement
-            fi
+           if [ -f ~/schoolmanagement/backend/.env ]; then
+             echo "📁 Backing up existing .env file"
+             cp ~/schoolmanagement/backend/.env ~/.env.bak
+           fi
 
-            # Restore the config.env file if a backup exists
-            if [ -f ~/.env.bak ]; then
-              mv ~/.env.bak ~/schoolmanagement/backend/.env
-            fi
+           if [ -d ~/schoolmanagement ]; then
+             echo "📂 Pulling latest changes from Git"
+             cd ~/schoolmanagement
+             git reset --hard
+             git pull origin main
+           else
+             echo "📂 Cloning repository"
+             git clone https://github.com/aniket-017/schoolmanagement.git ~/schoolmanagement
+             cd ~/schoolmanagement
+           fi
 
-            # Install backend dependencies
-            cd backend
-            npm install
-             
+           if [ -f ~/.env.bak ]; then
+             echo "♻️ Restoring .env from backup"
+             mv ~/.env.bak ~/schoolmanagement/backend/.env
+           fi
 
-            cd ..
+           echo "📦 Installing backend dependencies"
+           cd backend
+           npm install
 
-            # Install frontend dependencies and build
-            cd frontend
-            npm install --force
-            npm run build
-            cd ..
+           cd ../frontend
+           echo "📦 Installing frontend dependencies"
+           npm install --force
+           echo "🛠️ Building frontend"
+           npm run build
 
-            cd backend
-            # Restart the application using PM2
-            if pm2 list | grep -q "schoolmanagement"; then
-              echo "Restarting schoolmanagement"
-              pm2 restart schoolmanagement
-            else
-              echo "Starting schoolmanagement"
-              pm2 start npm --name "schoolmanagement" -- run dev
-            fi
+           cd ../backend
+           echo "🚀 Starting or restarting PM2 process"
+           if pm2 list | grep -q "schoolmanagement"; then
+             echo "🔁 Restarting schoolmanagement"
+             pm2 restart schoolmanagement
+           else
+             echo "▶️ Starting schoolmanagement"
+             pm2 start npm --name "schoolmanagement" -- run dev
+           fi
 
-            # Check the status of PM2 processes
-            pm2 list
+           echo "📋 PM2 process list:"
+           pm2 list
           EOF
