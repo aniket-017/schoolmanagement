@@ -21,6 +21,7 @@ const classSchema = new mongoose.Schema(
       ref: "User",
       required: [true, "Class teacher is required"],
     },
+    // Academic Information
     subjects: [
       {
         subject: {
@@ -31,8 +32,10 @@ const classSchema = new mongoose.Schema(
           type: mongoose.Schema.Types.ObjectId,
           ref: "User",
         },
+        hoursPerWeek: Number,
       },
     ],
+
     students: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -43,10 +46,20 @@ const classSchema = new mongoose.Schema(
       type: Number,
       default: 50,
     },
+    currentStrength: Number,
+
+    // Infrastructure
+    classroom: String,
+    building: String,
+    floor: String,
+
+    // Academic Calendar
     academicYear: {
       type: String,
       required: [true, "Academic year is required"],
     },
+    semester: String,
+    // Schedule
     schedule: [
       {
         day: {
@@ -66,6 +79,7 @@ const classSchema = new mongoose.Schema(
             startTime: String,
             endTime: String,
             room: String,
+            periodNumber: Number,
           },
         ],
       },

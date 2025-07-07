@@ -23,14 +23,16 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["admin", "teacher", "student", "parent"],
+      enum: ["admin", "principal", "teacher", "student", "cleaner", "bus_driver", "accountant"],
       required: [true, "Role is required"],
     },
-    // Profile information
+
+    // Contact Information
     phone: {
       type: String,
       match: [/^[\+]?[1-9][\d]{0,15}$/, "Please enter a valid phone number"],
     },
+    alternatePhone: String,
     address: {
       street: String,
       city: String,
@@ -38,7 +40,8 @@ const userSchema = new mongoose.Schema(
       zipCode: String,
       country: String,
     },
-    // Student/Teacher specific fields
+
+    // Identification
     employeeId: {
       type: String,
       unique: true,
@@ -49,14 +52,19 @@ const userSchema = new mongoose.Schema(
       unique: true,
       sparse: true,
     },
-    // Parent specific fields
-    children: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
-    // Academic information
+
+    // Personal Information
+    dateOfBirth: Date,
+    bloodGroup: String,
+    gender: {
+      type: String,
+      enum: ["male", "female", "other"],
+    },
+    religion: String,
+    nationality: String,
+    profilePicture: String,
+
+    // Academic/Professional Information
     class: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Class",
@@ -69,20 +77,61 @@ const userSchema = new mongoose.Schema(
     ],
     department: {
       type: String,
-      enum: ["Mathematics", "Science", "English", "Social Studies", "Physical Education", "Arts", "Computer Science"],
+      enum: [
+        "Mathematics",
+        "Science",
+        "English",
+        "Social Studies",
+        "Physical Education",
+        "Arts",
+        "Computer Science",
+        "Languages",
+      ],
     },
-    dateOfBirth: Date,
+    qualification: String,
+    experience: Number,
     joiningDate: {
       type: Date,
       default: Date.now,
     },
+
+    // Family Information (for students)
+    father: {
+      name: String,
+      occupation: String,
+      phone: String,
+      email: String,
+    },
+    mother: {
+      name: String,
+      occupation: String,
+      phone: String,
+      email: String,
+    },
+    guardian: {
+      name: String,
+      relation: String,
+      phone: String,
+      email: String,
+    },
+
+    // Employment Information
+    salary: Number,
+    bankDetails: {
+      accountNumber: String,
+      bankName: String,
+      ifscCode: String,
+      accountHolderName: String,
+    },
+
+    // System Information
     isActive: {
       type: Boolean,
       default: true,
     },
     status: {
       type: String,
-      enum: ["pending", "approved", "rejected"],
+      enum: ["pending", "approved", "rejected", "suspended"],
       default: function () {
         return this.role === "admin" ? "approved" : "pending";
       },
@@ -92,6 +141,7 @@ const userSchema = new mongoose.Schema(
       ref: "User",
     },
     approvedAt: Date,
+    emergencyContact: String,
   },
   {
     timestamps: true,

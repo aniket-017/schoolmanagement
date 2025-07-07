@@ -32,6 +32,21 @@ app.use("/api/assignments", require("./routes/assignments"));
 app.use("/api/attendance", require("./routes/attendance"));
 app.use("/api/fees", require("./routes/fees"));
 
+// New comprehensive routes
+app.use("/api/subjects", require("./routes/subjects"));
+app.use("/api/attendances", require("./routes/attendances"));
+app.use("/api/timetables", require("./routes/timetables"));
+app.use("/api/examinations", require("./routes/examinations"));
+app.use("/api/grades", require("./routes/grades"));
+app.use("/api/syllabus", require("./routes/syllabus"));
+app.use("/api/announcements", require("./routes/announcements"));
+app.use("/api/salaries", require("./routes/salaries"));
+app.use("/api/libraries", require("./routes/libraries"));
+app.use("/api/transports", require("./routes/transports"));
+app.use("/api/communications", require("./routes/communications"));
+app.use("/api/assignments-detailed", require("./routes/assignmentsroutes"));
+app.use("/api/fees-detailed", require("./routes/feesroutes"));
+
 // Serve static files from React app build
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "../frontend/dist")));

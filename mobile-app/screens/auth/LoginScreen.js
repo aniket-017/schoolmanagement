@@ -1,10 +1,27 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Alert,
+  TouchableOpacity,
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import * as Animatable from "react-native-animatable";
 import { useAuth } from "../../context/AuthContext";
+import Button from "../../components/ui/Button";
+import Card from "../../components/ui/Card";
+import theme from "../../utils/theme";
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
 
@@ -15,128 +32,264 @@ export default function LoginScreen({ navigation }) {
     }
 
     setLoading(true);
-    const result = await login(email, password);
-    setLoading(false);
-
-    if (!result.success) {
-      Alert.alert("Login Failed", result.error);
+    try {
+      await login(email, password);
+      // Navigation is handled by AuthContext
+    } catch (error) {
+      Alert.alert("Login Failed", error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>School Management</Text>
-        <Text style={styles.subtitle}>Sign in to continue</Text>
-      </View>
+    <LinearGradient colors={theme.colors.gradients.primary} style={styles.container}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardView}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {/* Header */}
+          <Animatable.View animation="fadeInDown" delay={200} style={styles.header}>
+            <View style={styles.logoContainer}>
+              <View style={styles.logo}>
+                <Ionicons name="school-outline" size={40} color={theme.colors.textLight} />
+              </View>
+            </View>
+            <Text style={styles.title}>School Management</Text>
+            <Text style={styles.subtitle}>Sign in to your account</Text>
+          </Animatable.View>
 
-      <View style={styles.form}>
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
+          {/* Login Form */}
+          <Animatable.View animation="fadeInUp" delay={400} style={styles.formContainer}>
+            <Card padding="xl" shadow="xl">
+              <View style={styles.form}>
+                {/* Email Input */}
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Email Address</Text>
+                  <View style={styles.inputWrapper}>
+                    <Ionicons
+                      name="mail-outline"
+                      size={20}
+                      color={theme.colors.textSecondary}
+                      style={styles.inputIcon}
+                    />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter your email"
+                      placeholderTextColor={theme.colors.placeholder}
+                      value={email}
+                      onChangeText={setEmail}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                  </View>
+                </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
+                {/* Password Input */}
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Password</Text>
+                  <View style={styles.inputWrapper}>
+                    <Ionicons
+                      name="lock-closed-outline"
+                      size={20}
+                      color={theme.colors.textSecondary}
+                      style={styles.inputIcon}
+                    />
+                    <TextInput
+                      style={[styles.input, styles.passwordInput]}
+                      placeholder="Enter your password"
+                      placeholderTextColor={theme.colors.placeholder}
+                      value={password}
+                      onChangeText={setPassword}
+                      secureTextEntry={!showPassword}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                    <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.passwordToggle}>
+                      <Ionicons
+                        name={showPassword ? "eye-outline" : "eye-off-outline"}
+                        size={20}
+                        color={theme.colors.textSecondary}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
 
-        <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={loading}>
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.loginButtonText}>Sign In</Text>}
-        </TouchableOpacity>
-      </View>
+                {/* Forgot Password */}
+                <TouchableOpacity style={styles.forgotPassword}>
+                  <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                </TouchableOpacity>
 
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>For students, teachers, and parents</Text>
-        <View style={styles.registerContainer}>
-          <Text style={styles.registerText}>Don't have an account? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate("Register")}>
-            <Text style={styles.registerLink}>Sign Up</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
+                {/* Login Button */}
+                <Button
+                  title="Sign In"
+                  onPress={handleLogin}
+                  loading={loading}
+                  gradient={true}
+                  fullWidth={true}
+                  size="large"
+                  style={styles.loginButton}
+                />
+
+                {/* Quick Login Options */}
+                <View style={styles.quickLogin}>
+                  <Text style={styles.quickLoginTitle}>Quick Login</Text>
+                  <View style={styles.quickLoginButtons}>
+                    <Button
+                      title="Student"
+                      variant="outline"
+                      size="small"
+                      onPress={() => {
+                        setEmail("student@school.com");
+                        setPassword("password123");
+                      }}
+                      style={styles.quickButton}
+                    />
+                    <Button
+                      title="Teacher"
+                      variant="outline"
+                      size="small"
+                      onPress={() => {
+                        setEmail("teacher@school.com");
+                        setPassword("password123");
+                      }}
+                      style={styles.quickButton}
+                    />
+                  </View>
+                </View>
+              </View>
+            </Card>
+          </Animatable.View>
+
+          {/* Footer */}
+          <Animatable.View animation="fadeIn" delay={600} style={styles.footer}>
+            <Text style={styles.footerText}>
+              Don't have an account?{" "}
+              <Text style={styles.footerLink} onPress={() => navigation.navigate("Register")}>
+                Sign Up
+              </Text>
+            </Text>
+          </Animatable.View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
-    justifyContent: "center",
-    paddingHorizontal: 20,
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: theme.spacing.lg,
   },
   header: {
     alignItems: "center",
-    marginBottom: 40,
+    paddingTop: theme.spacing.xxl * 2,
+    paddingBottom: theme.spacing.xl,
+  },
+  logoContainer: {
+    marginBottom: theme.spacing.lg,
+  },
+  logo: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 8,
+    ...theme.typography.h2,
+    color: theme.colors.textLight,
+    textAlign: "center",
+    marginBottom: theme.spacing.sm,
   },
   subtitle: {
-    fontSize: 16,
-    color: "#666",
+    ...theme.typography.body1,
+    color: theme.colors.textLight,
+    textAlign: "center",
+    opacity: 0.9,
+  },
+  formContainer: {
+    flex: 1,
+    marginBottom: theme.spacing.xl,
   },
   form: {
-    backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    width: "100%",
+  },
+  inputContainer: {
+    marginBottom: theme.spacing.lg,
+  },
+  inputLabel: {
+    ...theme.typography.subtitle2,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.sm,
+  },
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: theme.spacing.md,
+  },
+  inputIcon: {
+    marginRight: theme.spacing.sm,
   },
   input: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 15,
-    marginBottom: 15,
-    fontSize: 16,
+    flex: 1,
+    height: 50,
+    ...theme.typography.body1,
+    color: theme.colors.text,
+  },
+  passwordInput: {
+    paddingRight: 0,
+  },
+  passwordToggle: {
+    padding: theme.spacing.sm,
+  },
+  forgotPassword: {
+    alignSelf: "flex-end",
+    marginBottom: theme.spacing.lg,
+  },
+  forgotPasswordText: {
+    ...theme.typography.body2,
+    color: theme.colors.primary,
   },
   loginButton: {
-    backgroundColor: "#007AFF",
-    borderRadius: 8,
-    padding: 15,
-    alignItems: "center",
-    marginTop: 10,
+    marginBottom: theme.spacing.lg,
   },
-  loginButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
+  quickLogin: {
+    alignItems: "center",
+  },
+  quickLoginTitle: {
+    ...theme.typography.subtitle2,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.md,
+  },
+  quickLoginButtons: {
+    flexDirection: "row",
+    gap: theme.spacing.md,
+  },
+  quickButton: {
+    minWidth: 80,
   },
   footer: {
     alignItems: "center",
-    marginTop: 30,
+    paddingBottom: theme.spacing.xl,
   },
   footerText: {
-    color: "#666",
-    fontSize: 14,
+    ...theme.typography.body2,
+    color: theme.colors.textLight,
+    textAlign: "center",
   },
-  registerContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginTop: 20,
-  },
-  registerText: {
-    fontSize: 14,
-    color: "#666",
-  },
-  registerLink: {
-    fontSize: 14,
-    color: "#007AFF",
+  footerLink: {
     fontWeight: "600",
+    textDecorationLine: "underline",
   },
 });

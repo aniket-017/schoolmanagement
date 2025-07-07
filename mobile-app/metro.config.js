@@ -1,8 +1,12 @@
 const { getDefaultConfig } = require("expo/metro-config");
+const { mergeConfig } = require("@react-native/metro-config");
 
-const config = getDefaultConfig(__dirname);
+const defaultConfig = getDefaultConfig(__dirname);
 
-// Add custom module resolution
-config.resolver.sourceExts.push("js", "jsx", "ts", "tsx");
+const config = {
+  resolver: {
+    sourceExts: [...defaultConfig.resolver.sourceExts, "js", "jsx", "ts", "tsx"],
+  },
+};
 
-module.exports = config;
+module.exports = mergeConfig(defaultConfig, config);

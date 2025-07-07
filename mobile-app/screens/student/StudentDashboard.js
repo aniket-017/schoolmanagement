@@ -1,144 +1,474 @@
-import React from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet, ScrollView, RefreshControl, Alert, Dimensions } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import * as Animatable from "react-native-animatable";
+import { ProgressChart, LineChart } from "react-native-chart-kit";
 import { useAuth } from "../../context/AuthContext";
+import apiService from "../../services/apiService";
+import Card from "../../components/ui/Card";
+import Button from "../../components/ui/Button";
+import theme from "../../utils/theme";
+
+const { width } = Dimensions.get("window");
 
 export default function StudentDashboard({ navigation }) {
   const { user, logout } = useAuth();
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const dashboardCards = [
-    { title: "Attendance", value: "92%", color: "#4CAF50" },
-    { title: "Assignments", value: "8 Pending", color: "#FF9800" },
-    { title: "Grades", value: "A Average", color: "#2196F3" },
-    { title: "Next Class", value: "Math - 2:00 PM", color: "#9C27B0" },
-  ];
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch various data in parallel
+      const [attendanceData, assignmentsData, gradesData, announcementsData, timetableData] = await Promise.all([
+        apiService.attendance.getStudentAttendance(user.id, { limit: 30 }),
+        apiService.assignments.getAssignments({ student_id: user.id, limit: 5 }),
+        apiService.grades.getStudentGrades(user.id, { limit: 10 }),
+        apiService.announcements.getAnnouncementsForUser(user.id, { active_only: true, limit: 3 }),
+        user.class_id ? apiService.timetable.getClassTimetable(user.class_id) : { data: {} },
+      ]);
+
+      // Process data for dashboard
+      const processedData = {
+        attendance: processAttendanceData(attendanceData.data),
+        assignments: assignmentsData.data,
+        grades: processGradesData(gradesData.data),
+        announcements: announcementsData.data,
+        timetable: timetableData.data,
+        stats: calculateStats(attendanceData.data, assignmentsData.data, gradesData.data),
+      };
+
+      setDashboardData(processedData);
+    } catch (error) {
+      console.error("Dashboard error:", error);
+      Alert.alert("Error", "Failed to load dashboard data");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const processAttendanceData = (attendance) => {
+    const totalDays = attendance.length;
+    const presentDays = attendance.filter((day) => day.status === "present").length;
+    const attendancePercentage = totalDays > 0 ? (presentDays / totalDays) * 100 : 0;
+
+    return {
+      percentage: attendancePercentage,
+      totalDays,
+      presentDays,
+      absentDays: totalDays - presentDays,
+    };
+  };
+
+  const processGradesData = (grades) => {
+    if (!grades.grades || grades.grades.length === 0) {
+      return { average: 0, trend: [], distribution: [] };
+    }
+
+    const gradeValues = grades.grades.map((g) => g.percentage);
+    const average = gradeValues.reduce((sum, grade) => sum + grade, 0) / gradeValues.length;
+
+    return {
+      average,
+      trend: gradeValues.slice(-6), // Last 6 grades for trend
+      distribution: grades.grades,
+    };
+  };
+
+  const calculateStats = (attendance, assignments, grades) => {
+    return {
+      attendancePercentage:
+        attendance.length > 0
+          ? ((attendance.filter((a) => a.status === "present").length / attendance.length) * 100).toFixed(1)
+          : "0",
+      pendingAssignments: assignments.filter ? assignments.filter((a) => a.status === "pending").length : 0,
+      averageGrade: grades.summary?.average_percentage || 0,
+      totalSubjects: grades.summary?.total_exams || 0,
+    };
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadDashboardData();
+  };
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 17) return "Good Afternoon";
+    return "Good Evening";
+  };
+
+  const renderHeader = () => (
+    <LinearGradient colors={theme.colors.gradients.primary} style={styles.header}>
+      <Animatable.View animation="fadeInDown" delay={200}>
+        <Text style={styles.greeting}>{getGreeting()},</Text>
+        <Text style={styles.userName}>{user?.name || "Student"}</Text>
+        <Text style={styles.userClass}>
+          {user?.class_id ? `Class: ${user.class_id.name} - ${user.class_id.section}` : "No Class Assigned"}
+        </Text>
+      </Animatable.View>
+    </LinearGradient>
+  );
+
+  const renderStatsCards = () => (
+    <View style={styles.statsContainer}>
+      <Animatable.View animation="fadeInUp" delay={300}>
+        <Card gradient="primary" style={styles.statsCard} onPress={() => navigation.navigate("Attendance")}>
+          <View style={styles.statsContent}>
+            <Ionicons name="calendar-outline" size={24} color={theme.colors.textLight} />
+            <Text style={styles.statsValue}>{dashboardData?.stats.attendancePercentage || "0"}%</Text>
+            <Text style={styles.statsLabel}>Attendance</Text>
+          </View>
+        </Card>
+      </Animatable.View>
+
+      <Animatable.View animation="fadeInUp" delay={400}>
+        <Card gradient="secondary" style={styles.statsCard} onPress={() => navigation.navigate("Assignments")}>
+          <View style={styles.statsContent}>
+            <Ionicons name="document-text-outline" size={24} color={theme.colors.textLight} />
+            <Text style={styles.statsValue}>{dashboardData?.stats.pendingAssignments || 0}</Text>
+            <Text style={styles.statsLabel}>Pending</Text>
+          </View>
+        </Card>
+      </Animatable.View>
+
+      <Animatable.View animation="fadeInUp" delay={500}>
+        <Card gradient="success" style={styles.statsCard} onPress={() => navigation.navigate("Grades")}>
+          <View style={styles.statsContent}>
+            <Ionicons name="trophy-outline" size={24} color={theme.colors.textLight} />
+            <Text style={styles.statsValue}>{dashboardData?.stats.averageGrade.toFixed(1) || "0"}%</Text>
+            <Text style={styles.statsLabel}>Average</Text>
+          </View>
+        </Card>
+      </Animatable.View>
+    </View>
+  );
+
+  const renderAttendanceChart = () => {
+    if (!dashboardData?.attendance) return null;
+
+    const data = {
+      data: [dashboardData.attendance.percentage / 100],
+    };
+
+    return (
+      <Animatable.View animation="fadeInUp" delay={600}>
+        <Card style={styles.chartCard}>
+          <Text style={styles.cardTitle}>Attendance Overview</Text>
+          <View style={styles.chartContainer}>
+            <ProgressChart
+              data={data}
+              width={width - 80}
+              height={180}
+              strokeWidth={12}
+              radius={60}
+              chartConfig={{
+                backgroundColor: "#fff",
+                backgroundGradientFrom: "#fff",
+                backgroundGradientTo: "#fff",
+                color: (opacity = 1) => `rgba(33, 150, 243, ${opacity})`,
+              }}
+              hideLegend={true}
+            />
+            <View style={styles.chartOverlay}>
+              <Text style={styles.chartPercentage}>{dashboardData.attendance.percentage.toFixed(1)}%</Text>
+              <Text style={styles.chartLabel}>Present</Text>
+            </View>
+          </View>
+          <View style={styles.attendanceStats}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{dashboardData.attendance.presentDays}</Text>
+              <Text style={styles.statLabel}>Present</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{dashboardData.attendance.absentDays}</Text>
+              <Text style={styles.statLabel}>Absent</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{dashboardData.attendance.totalDays}</Text>
+              <Text style={styles.statLabel}>Total</Text>
+            </View>
+          </View>
+        </Card>
+      </Animatable.View>
+    );
+  };
+
+  const renderQuickActions = () => (
+    <Animatable.View animation="fadeInUp" delay={700}>
+      <Card style={styles.actionsCard}>
+        <Text style={styles.cardTitle}>Quick Actions</Text>
+        <View style={styles.actionsGrid}>
+          <Button
+            title="Timetable"
+            icon="time-outline"
+            variant="outline"
+            size="small"
+            onPress={() => navigation.navigate("Timetable")}
+            style={styles.actionButton}
+          />
+          <Button
+            title="Assignments"
+            icon="document-text-outline"
+            variant="outline"
+            size="small"
+            onPress={() => navigation.navigate("Assignments")}
+            style={styles.actionButton}
+          />
+          <Button
+            title="Grades"
+            icon="trophy-outline"
+            variant="outline"
+            size="small"
+            onPress={() => navigation.navigate("Grades")}
+            style={styles.actionButton}
+          />
+          <Button
+            title="Messages"
+            icon="chatbubble-outline"
+            variant="outline"
+            size="small"
+            onPress={() => navigation.navigate("Messages")}
+            style={styles.actionButton}
+          />
+        </View>
+      </Card>
+    </Animatable.View>
+  );
+
+  const renderRecentAnnouncements = () => {
+    if (!dashboardData?.announcements || dashboardData.announcements.length === 0) {
+      return null;
+    }
+
+    return (
+      <Animatable.View animation="fadeInUp" delay={800}>
+        <Card style={styles.announcementsCard}>
+          <Text style={styles.cardTitle}>Recent Announcements</Text>
+          {dashboardData.announcements.slice(0, 2).map((announcement, index) => (
+            <View key={announcement._id} style={styles.announcementItem}>
+              <View style={styles.announcementHeader}>
+                <Ionicons name="megaphone-outline" size={16} color={theme.colors.primary} />
+                <Text style={styles.announcementTitle} numberOfLines={1}>
+                  {announcement.title}
+                </Text>
+              </View>
+              <Text style={styles.announcementContent} numberOfLines={2}>
+                {announcement.content}
+              </Text>
+              <Text style={styles.announcementDate}>{new Date(announcement.created_at).toLocaleDateString()}</Text>
+            </View>
+          ))}
+          <Button
+            title="View All"
+            variant="ghost"
+            size="small"
+            onPress={() => navigation.navigate("Announcements")}
+            style={styles.viewAllButton}
+          />
+        </Card>
+      </Animatable.View>
+    );
+  };
+
+  if (loading && !dashboardData) {
+    return (
+      <View style={styles.loadingContainer}>
+        <LinearGradient colors={theme.colors.gradients.primary} style={styles.loadingGradient}>
+          <Animatable.View animation="pulse" iterationCount="infinite">
+            <Ionicons name="school-outline" size={60} color={theme.colors.textLight} />
+          </Animatable.View>
+          <Text style={styles.loadingText}>Loading Dashboard...</Text>
+        </LinearGradient>
+      </View>
+    );
+  }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.welcomeText}>Welcome back,</Text>
-        <Text style={styles.userName}>{user?.name || "Student"}</Text>
-        <Text style={styles.userRole}>Class: {user?.class || "N/A"}</Text>
-      </View>
+    <View style={styles.container}>
+      {renderHeader()}
 
-      <View style={styles.cardsContainer}>
-        {dashboardCards.map((card, index) => (
-          <View key={index} style={[styles.card, { borderLeftColor: card.color }]}>
-            <Text style={styles.cardTitle}>{card.title}</Text>
-            <Text style={styles.cardValue}>{card.value}</Text>
-          </View>
-        ))}
-      </View>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
+        {renderStatsCards()}
+        {renderAttendanceChart()}
+        {renderQuickActions()}
+        {renderRecentAnnouncements()}
 
-      <View style={styles.quickActions}>
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
-
-        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate("Assignments")}>
-          <Text style={styles.actionButtonText}>View Assignments</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate("Timetable")}>
-          <Text style={styles.actionButtonText}>Check Timetable</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate("Grades")}>
-          <Text style={styles.actionButtonText}>View Grades</Text>
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-        <Text style={styles.logoutButtonText}>Logout</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <View style={styles.footer}>
+          <Button title="Logout" variant="danger" icon="log-out-outline" onPress={logout} fullWidth />
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: theme.colors.background,
+  },
+  loadingContainer: {
+    flex: 1,
+  },
+  loadingGradient: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    ...theme.typography.h6,
+    color: theme.colors.textLight,
+    marginTop: theme.spacing.lg,
   },
   header: {
-    backgroundColor: "#007AFF",
-    padding: 20,
-    paddingBottom: 30,
+    padding: theme.spacing.lg,
+    paddingTop: theme.spacing.xxl,
+    borderBottomLeftRadius: theme.borderRadius.xl,
+    borderBottomRightRadius: theme.borderRadius.xl,
   },
-  welcomeText: {
-    color: "#fff",
-    fontSize: 16,
+  greeting: {
+    ...theme.typography.body1,
+    color: theme.colors.textLight,
     opacity: 0.9,
   },
   userName: {
-    color: "#fff",
-    fontSize: 24,
-    fontWeight: "bold",
-    marginTop: 5,
+    ...theme.typography.h3,
+    color: theme.colors.textLight,
+    marginTop: theme.spacing.xs,
   },
-  userRole: {
-    color: "#fff",
-    fontSize: 14,
+  userClass: {
+    ...theme.typography.body2,
+    color: theme.colors.textLight,
     opacity: 0.8,
-    marginTop: 5,
+    marginTop: theme.spacing.xs,
   },
-  cardsContainer: {
-    padding: 20,
+  content: {
+    flex: 1,
+    padding: theme.spacing.lg,
   },
-  card: {
-    backgroundColor: "#fff",
-    padding: 20,
-    marginBottom: 15,
-    borderRadius: 10,
-    borderLeftWidth: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  statsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: theme.spacing.lg,
   },
-  cardTitle: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 5,
+  statsCard: {
+    flex: 1,
+    marginHorizontal: theme.spacing.xs,
+    padding: theme.spacing.md,
   },
-  cardValue: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  quickActions: {
-    padding: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 15,
-  },
-  actionButton: {
-    backgroundColor: "#fff",
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  actionButtonText: {
-    fontSize: 16,
-    color: "#007AFF",
-    textAlign: "center",
-  },
-  logoutButton: {
-    margin: 20,
-    padding: 15,
-    backgroundColor: "#ff4444",
-    borderRadius: 10,
+  statsContent: {
     alignItems: "center",
   },
-  logoutButtonText: {
-    color: "#fff",
-    fontSize: 16,
+  statsValue: {
+    ...theme.typography.h4,
+    color: theme.colors.textLight,
+    marginTop: theme.spacing.sm,
+  },
+  statsLabel: {
+    ...theme.typography.caption,
+    color: theme.colors.textLight,
+    opacity: 0.9,
+  },
+  chartCard: {
+    marginBottom: theme.spacing.lg,
+  },
+  cardTitle: {
+    ...theme.typography.h6,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.md,
+  },
+  chartContainer: {
+    alignItems: "center",
+    position: "relative",
+  },
+  chartOverlay: {
+    position: "absolute",
+    top: 70,
+    alignItems: "center",
+  },
+  chartPercentage: {
+    ...theme.typography.h4,
+    color: theme.colors.primary,
     fontWeight: "bold",
+  },
+  chartLabel: {
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
+  },
+  attendanceStats: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginTop: theme.spacing.lg,
+  },
+  statItem: {
+    alignItems: "center",
+  },
+  statValue: {
+    ...theme.typography.h6,
+    color: theme.colors.text,
+  },
+  statLabel: {
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
+  },
+  actionsCard: {
+    marginBottom: theme.spacing.lg,
+  },
+  actionsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  actionButton: {
+    width: "48%",
+    marginBottom: theme.spacing.sm,
+  },
+  announcementsCard: {
+    marginBottom: theme.spacing.lg,
+  },
+  announcementItem: {
+    paddingVertical: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.divider,
+  },
+  announcementHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: theme.spacing.xs,
+  },
+  announcementTitle: {
+    ...theme.typography.subtitle2,
+    color: theme.colors.text,
+    marginLeft: theme.spacing.sm,
+    flex: 1,
+  },
+  announcementContent: {
+    ...theme.typography.body2,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xs,
+  },
+  announcementDate: {
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
+  },
+  viewAllButton: {
+    marginTop: theme.spacing.sm,
+  },
+  footer: {
+    marginTop: theme.spacing.xl,
+    marginBottom: theme.spacing.lg,
   },
 });
