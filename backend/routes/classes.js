@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { auth, teacherOrAdmin } = require("../middleware/auth");
+const { auth, teacherOrAdmin, adminOnly } = require("../middleware/auth");
 const {
   getAllClasses,
   getClassById,
@@ -25,10 +25,15 @@ router.get("/test", (req, res) => {
 // @access  Private (Teacher/Admin)
 router.get("/", auth, teacherOrAdmin, getAllClasses);
 
+// @route   GET /api/classes/available-teachers
+// @desc    Get available teachers for assignment
+// @access  Private (Admin only)
+router.get("/available-teachers", auth, adminOnly, getAvailableTeachers);
+
 // @route   POST /api/classes
 // @desc    Create new class
 // @access  Private (Admin only)
-router.post("/", auth, createClass);
+router.post("/", auth, adminOnly, createClass);
 
 // @route   GET /api/classes/:id
 // @desc    Get class by ID
@@ -38,21 +43,16 @@ router.get("/:id", auth, teacherOrAdmin, getClassById);
 // @route   PUT /api/classes/:id
 // @desc    Update class
 // @access  Private (Admin only)
-router.put("/:id", auth, updateClass);
+router.put("/:id", auth, adminOnly, updateClass);
 
 // @route   DELETE /api/classes/:id
 // @desc    Delete class
 // @access  Private (Admin only)
-router.delete("/:id", auth, deleteClass);
+router.delete("/:id", auth, adminOnly, deleteClass);
 
 // @route   PUT /api/classes/:id/assign-teacher
 // @desc    Assign class teacher
 // @access  Private (Admin only)
-router.put("/:id/assign-teacher", auth, assignClassTeacher);
-
-// @route   GET /api/classes/available-teachers
-// @desc    Get available teachers for assignment
-// @access  Private (Admin only)
-router.get("/available-teachers", auth, getAvailableTeachers);
+router.put("/:id/assign-teacher", auth, adminOnly, assignClassTeacher);
 
 module.exports = router;

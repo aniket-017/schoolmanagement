@@ -250,11 +250,40 @@ const getAvailableTeachers = async (req, res) => {
       role: "teacher",
       isActive: true,
       status: "approved",
-    }).select("name email employeeId");
+    })
+      .select("name email employeeId subjects qualification experience")
+      .populate("subjects", "name code")
+      .populate("class", "name grade division");
+
+    // Get all classes to show which teachers are already assigned
+    const classes = await Class.find({ isActive: true })
+      .populate("classTeacher", "name email employeeId")
+      .select("name grade division classTeacher");
+
+    // Create a map of teachers who are already class teachers
+    const assignedTeachers = new Map();
+    classes.forEach((cls) => {
+      if (cls.classTeacher) {
+        assignedTeachers.set(cls.classTeacher._id.toString(), {
+          classId: cls._id,
+          className: `${cls.grade}${getOrdinalSuffix(cls.grade)} Class - ${cls.division}`,
+        });
+      }
+    });
+
+    // Add assignment info to each teacher
+    const teachersWithAssignments = teachers.map((teacher) => {
+      const assignment = assignedTeachers.get(teacher._id.toString());
+      return {
+        ...teacher.toObject(),
+        currentClassAssignment: assignment || null,
+        isClassTeacher: !!assignment,
+      };
+    });
 
     res.json({
       success: true,
-      data: teachers,
+      data: teachersWithAssignments,
     });
   } catch (error) {
     console.error("Error fetching available teachers:", error);

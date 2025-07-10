@@ -27,6 +27,7 @@ const ClassManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAssignTeacherModal, setShowAssignTeacherModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [selectedClass, setSelectedClass] = useState(null);
   const [availableTeachers, setAvailableTeachers] = useState([]);
   const [filterGrade, setFilterGrade] = useState("all");
@@ -38,6 +39,12 @@ const ClassManagement = () => {
     academicYear: new Date().getFullYear().toString(),
     maxStudents: 40,
     classroom: "",
+  });
+
+  const [editFormData, setEditFormData] = useState({
+    maxStudents: 40,
+    classroom: "",
+    isActive: true,
   });
 
   const [assignTeacherData, setAssignTeacherData] = useState({
@@ -87,14 +94,20 @@ const ClassManagement = () => {
 
   const fetchAvailableTeachers = async () => {
     try {
+      console.log("Fetching available teachers from:", `${appConfig.API_BASE_URL}/classes/available-teachers`);
       const response = await fetch(`${appConfig.API_BASE_URL}/classes/available-teachers`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
+      console.log("Teachers response status:", response.status);
       const data = await response.json();
+      console.log("Teachers response data:", data);
       if (data.success) {
         setAvailableTeachers(data.data);
+        console.log("Available teachers:", data.data);
+      } else {
+        console.error("API returned error for teachers:", data.message);
       }
     } catch (error) {
       console.error("Error fetching teachers:", error);
@@ -175,6 +188,45 @@ const ClassManagement = () => {
     } catch (error) {
       console.error("Error deleting class:", error);
     }
+  };
+
+  const handleEditClass = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await fetch(`${appConfig.API_BASE_URL}/classes/${selectedClass._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify(editFormData),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setShowEditModal(false);
+        setSelectedClass(null);
+        setEditFormData({
+          maxStudents: 40,
+          classroom: "",
+          isActive: true,
+        });
+        fetchClasses();
+      } else {
+        alert(data.message);
+      }
+    } catch (error) {
+      console.error("Error updating class:", error);
+    }
+  };
+
+  const openEditModal = (classItem) => {
+    setSelectedClass(classItem);
+    setEditFormData({
+      maxStudents: classItem.maxStudents || 40,
+      classroom: classItem.classroom || "",
+      isActive: classItem.isActive !== false,
+    });
+    setShowEditModal(true);
   };
 
   const getOrdinalSuffix = (num) => {
@@ -268,7 +320,7 @@ const ClassManagement = () => {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setShowAddModal(true)}
-              className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm"
+              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium"
             >
               <Plus className="w-4 h-4 mr-2" />
               Add New Class
@@ -429,7 +481,10 @@ const ClassManagement = () => {
                     Assign Teacher
                   </button>
                 )}
-                <button className="flex items-center px-3 py-2 text-sm text-warning-600 hover:bg-warning-50 rounded-lg transition-colors">
+                <button
+                  onClick={() => openEditModal(classItem)}
+                  className="flex items-center px-3 py-2 text-sm text-warning-600 hover:bg-warning-50 rounded-lg transition-colors"
+                >
                   <Edit className="w-4 h-4 mr-2" />
                   Edit
                 </button>
@@ -566,7 +621,7 @@ const ClassManagement = () => {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                 >
                   Create Class
                 </button>
@@ -582,7 +637,7 @@ const ClassManagement = () => {
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="bg-white rounded-2xl p-6 w-full max-w-md mx-4"
+            className="bg-white rounded-2xl p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-secondary-900">Assign Class Teacher</h2>
@@ -614,13 +669,97 @@ const ClassManagement = () => {
                   required
                 >
                   <option value="">Select a teacher</option>
-                  {availableTeachers.map((teacher) => (
-                    <option key={teacher._id} value={teacher._id}>
-                      {teacher.name} ({teacher.employeeId})
+                  {availableTeachers.length === 0 ? (
+                    <option value="" disabled>
+                      No teachers available
                     </option>
-                  ))}
+                  ) : (
+                    availableTeachers.map((teacher) => (
+                      <option key={teacher._id} value={teacher._id}>
+                        {teacher.name} ({teacher.employeeId})
+                        {teacher.isClassTeacher
+                          ? ` - Currently assigned to ${teacher.currentClassAssignment.className}`
+                          : " - Available"}
+                      </option>
+                    ))
+                  )}
                 </select>
+                {availableTeachers.length === 0 && (
+                  <p className="text-sm text-red-600 mt-2">
+                    No teachers found. Please create teachers first or check if teachers are approved.
+                  </p>
+                )}
               </div>
+
+              {/* Teacher Details Section */}
+              {assignTeacherData.teacherId && (
+                <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                  <h3 className="text-lg font-medium text-secondary-900 mb-3">Teacher Details</h3>
+                  {(() => {
+                    const selectedTeacher = availableTeachers.find((t) => t._id === assignTeacherData.teacherId);
+                    if (!selectedTeacher) return null;
+
+                    return (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-sm font-medium text-secondary-700">Name</p>
+                            <p className="text-sm text-secondary-900">{selectedTeacher.name}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-secondary-700">Employee ID</p>
+                            <p className="text-sm text-secondary-900">{selectedTeacher.employeeId}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-secondary-700">Email</p>
+                            <p className="text-sm text-secondary-900">{selectedTeacher.email}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-secondary-700">Experience</p>
+                            <p className="text-sm text-secondary-900">{selectedTeacher.experience || 0} years</p>
+                          </div>
+                        </div>
+
+                        {/* Current Assignment */}
+                        {selectedTeacher.isClassTeacher && (
+                          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <p className="text-sm font-medium text-yellow-800 mb-1">⚠️ Current Assignment</p>
+                            <p className="text-sm text-yellow-700">
+                              This teacher is currently assigned to:{" "}
+                              <strong>{selectedTeacher.currentClassAssignment.className}</strong>
+                            </p>
+                            <p className="text-xs text-yellow-600 mt-1">
+                              Assigning to this class will remove them from their current assignment.
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Subjects */}
+                        {selectedTeacher.subjects && selectedTeacher.subjects.length > 0 && (
+                          <div className="mt-4">
+                            <p className="text-sm font-medium text-secondary-700 mb-2">Subjects</p>
+                            <div className="flex flex-wrap gap-2">
+                              {selectedTeacher.subjects.map((subject, index) => (
+                                <span key={index} className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-md">
+                                  {subject.name} ({subject.code})
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Qualification */}
+                        {selectedTeacher.qualification && (
+                          <div className="mt-4">
+                            <p className="text-sm font-medium text-secondary-700 mb-1">Qualification</p>
+                            <p className="text-sm text-secondary-900">{selectedTeacher.qualification}</p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
 
               <div className="flex space-x-3 pt-4">
                 <button
@@ -632,9 +771,84 @@ const ClassManagement = () => {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-success-600 text-white rounded-lg hover:bg-success-700 transition-colors"
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
                 >
                   Assign Teacher
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Edit Class Modal */}
+      {showEditModal && selectedClass && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-2xl p-6 w-full max-w-md mx-4"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-secondary-900">Edit Class</h2>
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="p-2 text-secondary-400 hover:text-secondary-600 hover:bg-secondary-50 rounded-lg transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditClass} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-secondary-700 mb-2">Max Students</label>
+                <input
+                  type="number"
+                  value={editFormData.maxStudents}
+                  onChange={(e) => setEditFormData({ ...editFormData, maxStudents: parseInt(e.target.value) })}
+                  className="w-full px-3 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  min="1"
+                  max="50"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-secondary-700 mb-2">Classroom</label>
+                <input
+                  type="text"
+                  value={editFormData.classroom}
+                  onChange={(e) => setEditFormData({ ...editFormData, classroom: e.target.value })}
+                  className="w-full px-3 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  placeholder="e.g., Room 101"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-secondary-700 mb-2">Active Status</label>
+                <select
+                  value={editFormData.isActive ? "true" : "false"}
+                  onChange={(e) => setEditFormData({ ...editFormData, isActive: e.target.value === "true" })}
+                  className="w-full px-3 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                >
+                  <option value="true">Active</option>
+                  <option value="false">Inactive</option>
+                </select>
+              </div>
+
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1 px-4 py-2 border border-secondary-300 text-secondary-700 rounded-lg hover:bg-secondary-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium"
+                >
+                  Save Changes
                 </button>
               </div>
             </form>
