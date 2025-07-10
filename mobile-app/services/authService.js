@@ -1,41 +1,62 @@
-import axios from "axios";
-import config from "../config";
+import axios from "../utils/axios";
 
-// Use environment-based API URL
-const API_BASE_URL = config.API_BASE_URL;
-
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 10000,
-});
-
-export const authService = {
-  login: async (email, password) => {
+class AuthService {
+  async login(email, password) {
     try {
-      const response = await api.post("/auth/login", {
-        email,
-        password,
+      const response = await axios.post("/api/auth/login", { email, password });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  }
+
+  async register(userData) {
+    try {
+      const response = await axios.post("/api/auth/register", userData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  }
+
+  async logout() {
+    try {
+      const response = await axios.post("/api/auth/logout");
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  }
+
+  async changePassword(currentPassword, newPassword) {
+    try {
+      const response = await axios.put("/api/auth/change-password", {
+        currentPassword,
+        newPassword,
       });
       return response.data;
     } catch (error) {
-      throw new Error(error.response?.data?.message || "Login failed");
+      throw error.response?.data || error;
     }
-  },
+  }
 
-  register: async (userData) => {
+  async getProfile() {
     try {
-      const response = await api.post("/auth/register", userData);
+      const response = await axios.get("/api/auth/profile");
       return response.data;
     } catch (error) {
-      throw new Error(error.response?.data?.message || "Registration failed");
+      throw error.response?.data || error;
     }
-  },
+  }
 
-  logout: async () => {
+  async updateProfile(profileData) {
     try {
-      await api.post("/auth/logout");
+      const response = await axios.put("/api/auth/profile", profileData);
+      return response.data;
     } catch (error) {
-      console.log("Logout error:", error);
+      throw error.response?.data || error;
     }
-  },
-};
+  }
+}
+
+export default new AuthService();

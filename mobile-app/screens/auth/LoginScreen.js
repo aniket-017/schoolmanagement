@@ -6,9 +6,10 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   Alert,
   TouchableOpacity,
+  SafeAreaView,
+  StatusBar,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -33,8 +34,12 @@ export default function LoginScreen({ navigation }) {
 
     setLoading(true);
     try {
-      await login(email, password);
-      // Navigation is handled by AuthContext
+      const result = await login(email, password);
+      if (result.requirePasswordChange) {
+        // Navigate to change password screen if it's a first-time login
+        navigation.navigate("ChangePassword");
+      }
+      // Navigation for regular login is handled by AuthContext
     } catch (error) {
       Alert.alert("Login Failed", error.message);
     } finally {
@@ -43,18 +48,19 @@ export default function LoginScreen({ navigation }) {
   };
 
   return (
-    <LinearGradient colors={theme.colors.gradients.primary} style={styles.container}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardView}>
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary} />
+      <LinearGradient colors={theme.colors.gradients.primary} style={styles.container}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardView}>
           {/* Header */}
           <Animatable.View animation="fadeInDown" delay={200} style={styles.header}>
             <View style={styles.logoContainer}>
               <View style={styles.logo}>
-                <Ionicons name="school-outline" size={40} color={theme.colors.textLight} />
+                <Ionicons name="school-outline" size={50} color={theme.colors.textLight} />
               </View>
             </View>
             <Text style={styles.title}>School Management</Text>
-            <Text style={styles.subtitle}>Sign in to your account</Text>
+            <Text style={styles.subtitle}>Welcome back!</Text>
           </Animatable.View>
 
           {/* Login Form */}
@@ -124,99 +130,70 @@ export default function LoginScreen({ navigation }) {
                   title="Sign In"
                   onPress={handleLogin}
                   loading={loading}
-                  gradient={true}
                   fullWidth={true}
                   size="large"
                   style={styles.loginButton}
                 />
-
-                {/* Quick Login Options */}
-                <View style={styles.quickLogin}>
-                  <Text style={styles.quickLoginTitle}>Quick Login</Text>
-                  <View style={styles.quickLoginButtons}>
-                    <Button
-                      title="Student"
-                      variant="outline"
-                      size="small"
-                      onPress={() => {
-                        setEmail("student@school.com");
-                        setPassword("password123");
-                      }}
-                      style={styles.quickButton}
-                    />
-                    <Button
-                      title="Teacher"
-                      variant="outline"
-                      size="small"
-                      onPress={() => {
-                        setEmail("teacher@school.com");
-                        setPassword("password123");
-                      }}
-                      style={styles.quickButton}
-                    />
-                  </View>
-                </View>
               </View>
             </Card>
           </Animatable.View>
 
           {/* Footer */}
           <Animatable.View animation="fadeIn" delay={600} style={styles.footer}>
-            <Text style={styles.footerText}>
-              Don't have an account?{" "}
-              <Text style={styles.footerLink} onPress={() => navigation.navigate("Register")}>
-                Sign Up
+            <TouchableOpacity style={styles.signUpButton} onPress={() => navigation.navigate("Register")}>
+              <Text style={styles.signUpText}>
+                Don't have an account? <Text style={styles.signUpLink}>Sign Up</Text>
               </Text>
-            </Text>
+            </TouchableOpacity>
           </Animatable.View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </LinearGradient>
+        </KeyboardAvoidingView>
+      </LinearGradient>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: theme.colors.primary,
+  },
   container: {
     flex: 1,
   },
   keyboardView: {
     flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: theme.spacing.lg,
+    justifyContent: "space-between",
+    padding: theme.spacing.lg,
   },
   header: {
     alignItems: "center",
-    paddingTop: theme.spacing.xxl * 2,
-    paddingBottom: theme.spacing.xl,
+    paddingTop: theme.spacing.xxl,
   },
   logoContainer: {
     marginBottom: theme.spacing.lg,
   },
   logo: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     backgroundColor: "rgba(255, 255, 255, 0.2)",
     alignItems: "center",
     justifyContent: "center",
   },
   title: {
-    ...theme.typography.h2,
+    ...theme.typography.h1,
     color: theme.colors.textLight,
     textAlign: "center",
     marginBottom: theme.spacing.sm,
   },
   subtitle: {
-    ...theme.typography.body1,
+    ...theme.typography.h5,
     color: theme.colors.textLight,
     textAlign: "center",
     opacity: 0.9,
   },
   formContainer: {
-    flex: 1,
-    marginBottom: theme.spacing.xl,
+    width: "100%",
   },
   form: {
     width: "100%",
@@ -237,59 +214,53 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     paddingHorizontal: theme.spacing.md,
+    height: 56,
   },
   inputIcon: {
     marginRight: theme.spacing.sm,
   },
   input: {
     flex: 1,
-    height: 50,
     ...theme.typography.body1,
     color: theme.colors.text,
+    height: "100%",
   },
   passwordInput: {
-    paddingRight: 0,
+    paddingRight: theme.spacing.xl,
   },
   passwordToggle: {
     padding: theme.spacing.sm,
   },
   forgotPassword: {
     alignSelf: "flex-end",
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.xl,
   },
   forgotPasswordText: {
-    ...theme.typography.body2,
+    ...theme.typography.subtitle2,
     color: theme.colors.primary,
   },
   loginButton: {
-    marginBottom: theme.spacing.lg,
-  },
-  quickLogin: {
-    alignItems: "center",
-  },
-  quickLoginTitle: {
-    ...theme.typography.subtitle2,
-    color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.md,
-  },
-  quickLoginButtons: {
-    flexDirection: "row",
-    gap: theme.spacing.md,
-  },
-  quickButton: {
-    minWidth: 80,
+    // marginTop: theme.spacing.md,
+    height: 50, // Adjust the height as needed
+    paddingVertical: 10, // Adjust the padding vertically
   },
   footer: {
+    width: "100%",
+    paddingVertical: theme.spacing.xl,
+  },
+  signUpButton: {
     alignItems: "center",
-    paddingBottom: theme.spacing.xl,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    padding: theme.spacing.lg,
+    borderRadius: theme.borderRadius.lg,
   },
-  footerText: {
-    ...theme.typography.body2,
+  signUpText: {
+    ...theme.typography.body1,
     color: theme.colors.textLight,
-    textAlign: "center",
   },
-  footerLink: {
-    fontWeight: "600",
+  signUpLink: {
+    ...theme.typography.subtitle1,
+    color: theme.colors.textLight,
     textDecorationLine: "underline",
   },
 });

@@ -17,6 +17,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [requirePasswordChange, setRequirePasswordChange] = useState(false);
 
   useEffect(() => {
     initializeAuth();
@@ -26,11 +27,13 @@ export const AuthProvider = ({ children }) => {
     try {
       const token = await AsyncStorage.getItem("token");
       const userData = await AsyncStorage.getItem("user");
+      const passwordChangeRequired = await AsyncStorage.getItem("requirePasswordChange");
 
       if (token && userData) {
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
         setIsAuthenticated(true);
+        setRequirePasswordChange(passwordChangeRequired === "true");
 
         // Verify token is still valid
         try {
@@ -41,7 +44,6 @@ export const AuthProvider = ({ children }) => {
           }
         } catch (error) {
           console.log("Token verification failed:", error);
-          // Token might be expired, clear storage
           await clearAuthData();
         }
       }
@@ -55,9 +57,10 @@ export const AuthProvider = ({ children }) => {
 
   const clearAuthData = async () => {
     try {
-      await AsyncStorage.multiRemove(["token", "user"]);
+      await AsyncStorage.multiRemove(["token", "user", "requirePasswordChange"]);
       setUser(null);
       setIsAuthenticated(false);
+      setRequirePasswordChange(false);
     } catch (error) {
       console.error("Error clearing auth data:", error);
     }
@@ -71,19 +74,27 @@ export const AuthProvider = ({ children }) => {
       if (response.success && response.user && response.token) {
         setUser(response.user);
         setIsAuthenticated(true);
+        setRequirePasswordChange(response.requirePasswordChange || false);
 
         // Store auth data
         await AsyncStorage.setItem("token", response.token);
         await AsyncStorage.setItem("user", JSON.stringify(response.user));
+        await AsyncStorage.setItem("requirePasswordChange", String(response.requirePasswordChange || false));
 
         showMessage({
           message: "Login Successful",
-          description: `Welcome back, ${response.user.name}!`,
+          description: response.requirePasswordChange
+            ? "Please change your password to continue"
+            : `Welcome back, ${response.user.name}!`,
           type: "success",
           duration: 3000,
         });
 
-        return { success: true, user: response.user };
+        return {
+          success: true,
+          user: response.user,
+          requirePasswordChange: response.requirePasswordChange,
+        };
       } else {
         throw new Error(response.message || "Login failed");
       }
@@ -201,6 +212,42 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const changePassword = async (currentPassword, newPassword) => {
+    try {
+      setIsLoading(true);
+      const response = await apiService.auth.changePassword(currentPassword, newPassword);
+
+      if (response.success) {
+        setRequirePasswordChange(false);
+        await AsyncStorage.setItem("requirePasswordChange", "false");
+
+        showMessage({
+          message: "Password Changed",
+          description: "Your password has been updated successfully",
+          type: "success",
+          duration: 3000,
+        });
+
+        return { success: true };
+      } else {
+        throw new Error(response.message || "Password change failed");
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.message || "Failed to change password";
+
+      showMessage({
+        message: "Password Change Failed",
+        description: errorMessage,
+        type: "danger",
+        duration: 4000,
+      });
+
+      throw new Error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const refreshUser = async () => {
     try {
       const response = await apiService.student.getProfile();
@@ -233,6 +280,7 @@ export const AuthProvider = ({ children }) => {
     user,
     isLoading,
     isAuthenticated,
+    requirePasswordChange,
 
     // Actions
     login,
@@ -240,6 +288,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateProfile,
     refreshUser,
+    changePassword,
 
     // Helpers
     hasRole,

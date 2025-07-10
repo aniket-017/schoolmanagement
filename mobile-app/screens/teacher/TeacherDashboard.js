@@ -1,144 +1,200 @@
 import React from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../context/AuthContext";
+import theme from "../../utils/theme";
+import Card from "../../components/ui/Card";
 
 export default function TeacherDashboard({ navigation }) {
   const { user, logout } = useAuth();
 
-  const dashboardCards = [
-    { title: "Total Classes", value: "5", color: "#4CAF50" },
-    { title: "Total Students", value: "127", color: "#2196F3" },
-    { title: "Pending Grades", value: "23", color: "#FF9800" },
-    { title: "Today's Classes", value: "3", color: "#9C27B0" },
-  ];
+  const handleLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Logout", onPress: () => logout(), style: "destructive" },
+    ]);
+  };
+
+  const handleChangePassword = () => {
+    navigation.navigate("ChangePassword");
+  };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.welcomeText}>Welcome back,</Text>
-        <Text style={styles.userName}>{user?.name || "Teacher"}</Text>
-        <Text style={styles.userRole}>Department: {user?.department || "N/A"}</Text>
-      </View>
+    <View style={styles.container}>
+      <ScrollView style={styles.scrollView}>
+        {/* Welcome Section */}
+        <View style={styles.header}>
+          <Text style={styles.welcomeText}>Welcome back,</Text>
+          <Text style={styles.nameText}>{user?.name}</Text>
+        </View>
 
-      <View style={styles.cardsContainer}>
-        {dashboardCards.map((card, index) => (
-          <View key={index} style={[styles.card, { borderLeftColor: card.color }]}>
-            <Text style={styles.cardTitle}>{card.title}</Text>
-            <Text style={styles.cardValue}>{card.value}</Text>
+        {/* Quick Actions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.actionGrid}>
+            <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate("TeacherClasses")}>
+              <Ionicons name="people" size={32} color={theme.colors.primary} />
+              <Text style={styles.actionText}>Classes</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate("TeacherAttendance")}>
+              <Ionicons name="calendar" size={32} color={theme.colors.primary} />
+              <Text style={styles.actionText}>Attendance</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate("TeacherGrades")}>
+              <Ionicons name="school" size={32} color={theme.colors.primary} />
+              <Text style={styles.actionText}>Grades</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate("ChangePassword")}>
+              <Ionicons name="key" size={32} color={theme.colors.primary} />
+              <Text style={styles.actionText}>Change Password</Text>
+            </TouchableOpacity>
           </View>
-        ))}
-      </View>
+        </View>
 
-      <View style={styles.quickActions}>
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
-
-        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate("Classes")}>
-          <Text style={styles.actionButtonText}>Manage Classes</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate("Attendance")}>
-          <Text style={styles.actionButtonText}>Take Attendance</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate("Grades")}>
-          <Text style={styles.actionButtonText}>Grade Management</Text>
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-        <Text style={styles.logoutButtonText}>Logout</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        {/* Profile Section */}
+        <Card style={styles.profileCard}>
+          <View style={styles.profileHeader}>
+            <View style={styles.profileIcon}>
+              <Ionicons name="person" size={32} color={theme.colors.textLight} />
+            </View>
+            <View style={styles.profileInfo}>
+              <Text style={styles.profileName}>{user?.name}</Text>
+              <Text style={styles.profileRole}>{user?.role}</Text>
+            </View>
+          </View>
+          <View style={styles.profileDetails}>
+            <View style={styles.detailRow}>
+              <Ionicons name="mail" size={20} color={theme.colors.textSecondary} />
+              <Text style={styles.detailText}>{user?.email}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Ionicons name="call" size={20} color={theme.colors.textSecondary} />
+              <Text style={styles.detailText}>{user?.phone || "Not provided"}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Ionicons name="business" size={20} color={theme.colors.textSecondary} />
+              <Text style={styles.detailText}>{user?.department || "Not provided"}</Text>
+            </View>
+          </View>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Ionicons name="log-out" size={20} color={theme.colors.error} />
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+        </Card>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: theme.colors.background,
+  },
+  scrollView: {
+    flex: 1,
   },
   header: {
-    backgroundColor: "#007AFF",
-    padding: 20,
-    paddingBottom: 30,
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.primary,
   },
   welcomeText: {
-    color: "#fff",
-    fontSize: 16,
+    ...theme.typography.h5,
+    color: theme.colors.textLight,
     opacity: 0.9,
   },
-  userName: {
-    color: "#fff",
-    fontSize: 24,
-    fontWeight: "bold",
-    marginTop: 5,
+  nameText: {
+    ...theme.typography.h3,
+    color: theme.colors.textLight,
+    marginTop: theme.spacing.xs,
   },
-  userRole: {
-    color: "#fff",
-    fontSize: 14,
-    opacity: 0.8,
-    marginTop: 5,
-  },
-  cardsContainer: {
-    padding: 20,
-  },
-  card: {
-    backgroundColor: "#fff",
-    padding: 20,
-    marginBottom: 15,
-    borderRadius: 10,
-    borderLeftWidth: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cardTitle: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 5,
-  },
-  cardValue: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  quickActions: {
-    padding: 20,
+  section: {
+    padding: theme.spacing.lg,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 15,
+    ...theme.typography.h6,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.md,
   },
-  actionButton: {
-    backgroundColor: "#fff",
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+  actionGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginHorizontal: -theme.spacing.sm,
   },
-  actionButtonText: {
-    fontSize: 16,
-    color: "#007AFF",
+  actionCard: {
+    width: "50%",
+    padding: theme.spacing.sm,
+  },
+  actionInner: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+    alignItems: "center",
+    ...theme.shadows.md,
+  },
+  actionText: {
+    ...theme.typography.subtitle1,
+    color: theme.colors.text,
+    marginTop: theme.spacing.sm,
     textAlign: "center",
   },
-  logoutButton: {
-    margin: 20,
-    padding: 15,
-    backgroundColor: "#ff4444",
-    borderRadius: 10,
-    alignItems: "center",
+  profileCard: {
+    margin: theme.spacing.lg,
+    padding: theme.spacing.lg,
   },
-  logoutButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
+  profileHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: theme.spacing.lg,
+  },
+  profileIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: theme.colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: theme.spacing.md,
+  },
+  profileInfo: {
+    flex: 1,
+  },
+  profileName: {
+    ...theme.typography.h6,
+    color: theme.colors.text,
+  },
+  profileRole: {
+    ...theme.typography.subtitle2,
+    color: theme.colors.textSecondary,
+    textTransform: "capitalize",
+  },
+  profileDetails: {
+    marginBottom: theme.spacing.lg,
+  },
+  detailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: theme.spacing.md,
+  },
+  detailText: {
+    ...theme.typography.body2,
+    color: theme.colors.text,
+    marginLeft: theme.spacing.md,
+  },
+  logoutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.divider,
+  },
+  logoutText: {
+    ...theme.typography.button,
+    color: theme.colors.error,
+    marginLeft: theme.spacing.sm,
   },
 });

@@ -60,6 +60,13 @@ export const apiService = {
       await AsyncStorage.removeItem("user");
       return api.post("/auth/logout");
     },
+    changePassword: async (currentPassword, newPassword) => {
+      const response = await api.put("/auth/change-password", {
+        currentPassword,
+        newPassword,
+      });
+      return response.data;
+    },
   },
 
   // Student Services
