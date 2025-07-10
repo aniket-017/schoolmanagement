@@ -1,31 +1,83 @@
 import React from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "../../context/AuthContext";
 import theme from "../../utils/theme";
 import Card from "../../components/ui/Card";
 
+// Dummy Data
+const scheduleData = [
+  { time: "10:00 AM", subject: "Grade 9 - Math", location: "Room 101" },
+  { time: "11:00 AM", subject: "Grade 10 - History", location: "Room 203" },
+  { time: "01:00 PM", subject: "Grade 9 - Science", location: "Lab A" },
+];
+
+const notificationData = [
+  { id: 1, text: "New announcement from Administration." },
+  { id: 2, text: "You have 3 assignments to grade for English." },
+  { id: 3, text: "Parent-teacher meeting scheduled for tomorrow." },
+];
+
 export default function TeacherDashboard({ navigation }) {
-  const { user, logout } = useAuth();
-
-  const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Logout", onPress: () => logout(), style: "destructive" },
-    ]);
-  };
-
-  const handleChangePassword = () => {
-    navigation.navigate("ChangePassword");
-  };
+  const { user } = useAuth();
+  const insets = useSafeAreaInsets();
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollView}>
-        {/* Welcome Section */}
-        <View style={styles.header}>
+      <LinearGradient
+        colors={[theme.colors.primary, '#3b5998']}
+        style={[styles.header, { paddingTop: insets.top + theme.spacing.lg }]}
+      >
+        <View>
           <Text style={styles.welcomeText}>Welcome back,</Text>
           <Text style={styles.nameText}>{user?.name}</Text>
+        </View>
+        <TouchableOpacity style={styles.profileIconContainer} onPress={() => navigation.navigate("TeacherProfile")}>
+          <Ionicons name="person-outline" size={28} color={theme.colors.primary} />
+        </TouchableOpacity>
+      </LinearGradient>
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={{
+          paddingBottom: insets.bottom + theme.spacing.lg,
+        }}
+      >
+        {/* Today's Schedule */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Today's Schedule</Text>
+          <Card style={styles.infoCard}>
+            {scheduleData.map((item, index) => (
+              <View
+                key={index}
+                style={[styles.scheduleItem, index === scheduleData.length - 1 && styles.lastItem]}
+              >
+                <Text style={styles.scheduleTime}>{item.time}</Text>
+                <View>
+                  <Text style={styles.scheduleSubject}>{item.subject}</Text>
+                  <Text style={styles.scheduleLocation}>{item.location}</Text>
+                </View>
+              </View>
+            ))}
+          </Card>
+        </View>
+
+        {/* Recent Notifications */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Recent Notifications</Text>
+          <Card style={styles.infoCard}>
+            {notificationData.map((item, index) => (
+              <View
+                key={item.id}
+                style={[styles.notificationItem, index === notificationData.length - 1 && styles.lastItem]}
+              >
+                <Ionicons name="notifications-outline" size={20} color={theme.colors.primary} />
+                <Text style={styles.notificationText}>{item.text}</Text>
+              </View>
+            ))}
+          </Card>
         </View>
 
         {/* Quick Actions */}
@@ -33,57 +85,27 @@ export default function TeacherDashboard({ navigation }) {
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.actionGrid}>
             <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate("TeacherClasses")}>
-              <Ionicons name="people" size={32} color={theme.colors.primary} />
-              <Text style={styles.actionText}>Classes</Text>
+              <View style={styles.actionInner}>
+                <Ionicons name="people" size={32} color={theme.colors.primary} />
+                <Text style={styles.actionText}>Classes</Text>
+              </View>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate("TeacherAttendance")}>
-              <Ionicons name="calendar" size={32} color={theme.colors.primary} />
-              <Text style={styles.actionText}>Attendance</Text>
+              <View style={styles.actionInner}>
+                <Ionicons name="calendar" size={32} color={theme.colors.primary} />
+                <Text style={styles.actionText}>Attendance</Text>
+              </View>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate("TeacherGrades")}>
-              <Ionicons name="school" size={32} color={theme.colors.primary} />
-              <Text style={styles.actionText}>Grades</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate("ChangePassword")}>
-              <Ionicons name="key" size={32} color={theme.colors.primary} />
-              <Text style={styles.actionText}>Change Password</Text>
+              <View style={styles.actionInner}>
+                <Ionicons name="school" size={32} color={theme.colors.primary} />
+                <Text style={styles.actionText}>Grades</Text>
+              </View>
             </TouchableOpacity>
           </View>
         </View>
-
-        {/* Profile Section */}
-        <Card style={styles.profileCard}>
-          <View style={styles.profileHeader}>
-            <View style={styles.profileIcon}>
-              <Ionicons name="person" size={32} color={theme.colors.textLight} />
-            </View>
-            <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>{user?.name}</Text>
-              <Text style={styles.profileRole}>{user?.role}</Text>
-            </View>
-          </View>
-          <View style={styles.profileDetails}>
-            <View style={styles.detailRow}>
-              <Ionicons name="mail" size={20} color={theme.colors.textSecondary} />
-              <Text style={styles.detailText}>{user?.email}</Text>
-            </View>
-            <View style={styles.detailRow}>
-              <Ionicons name="call" size={20} color={theme.colors.textSecondary} />
-              <Text style={styles.detailText}>{user?.phone || "Not provided"}</Text>
-            </View>
-            <View style={styles.detailRow}>
-              <Ionicons name="business" size={20} color={theme.colors.textSecondary} />
-              <Text style={styles.detailText}>{user?.department || "Not provided"}</Text>
-            </View>
-          </View>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Ionicons name="log-out" size={20} color={theme.colors.error} />
-            <Text style={styles.logoutText}>Logout</Text>
-          </TouchableOpacity>
-        </Card>
       </ScrollView>
     </View>
   );
@@ -92,14 +114,19 @@ export default function TeacherDashboard({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: "#f4f7fc",
   },
   scrollView: {
     flex: 1,
   },
   header: {
-    padding: theme.spacing.lg,
-    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.lg,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderBottomLeftRadius: theme.borderRadius.xl,
+    borderBottomRightRadius: theme.borderRadius.xl,
   },
   welcomeText: {
     ...theme.typography.h5,
@@ -110,14 +137,25 @@ const styles = StyleSheet.create({
     ...theme.typography.h3,
     color: theme.colors.textLight,
     marginTop: theme.spacing.xs,
+    fontWeight: "bold",
+  },
+  profileIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   section: {
-    padding: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
   },
   sectionTitle: {
     ...theme.typography.h6,
     color: theme.colors.text,
     marginBottom: theme.spacing.md,
+    fontWeight: "bold",
   },
   actionGrid: {
     flexDirection: "row",
@@ -130,71 +168,60 @@ const styles = StyleSheet.create({
   },
   actionInner: {
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.lg,
+    borderRadius: theme.borderRadius.lg,
     alignItems: "center",
-    ...theme.shadows.md,
+    justifyContent: "center",
+    ...theme.shadows.sm,
+    height: 120,
   },
   actionText: {
-    ...theme.typography.subtitle1,
-    color: theme.colors.text,
+    ...theme.typography.subtitle2,
+    color: theme.colors.textSecondary,
     marginTop: theme.spacing.sm,
     textAlign: "center",
   },
-  profileCard: {
-    margin: theme.spacing.lg,
-    padding: theme.spacing.lg,
+  infoCard: {
+    padding: 0,
+    borderRadius: theme.borderRadius.lg,
+    ...theme.shadows.sm,
+    overflow: "hidden",
+    backgroundColor: theme.colors.surface,
   },
-  profileHeader: {
+  scheduleItem: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: theme.spacing.lg,
+    padding: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.divider,
   },
-  profileIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: theme.colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: theme.spacing.md,
+  scheduleTime: {
+    ...theme.typography.subtitle1,
+    color: theme.colors.primary,
+    width: 90,
   },
-  profileInfo: {
-    flex: 1,
-  },
-  profileName: {
-    ...theme.typography.h6,
+  scheduleSubject: {
+    ...theme.typography.subtitle1,
     color: theme.colors.text,
   },
-  profileRole: {
-    ...theme.typography.subtitle2,
+  scheduleLocation: {
+    ...theme.typography.body2,
     color: theme.colors.textSecondary,
-    textTransform: "capitalize",
   },
-  profileDetails: {
-    marginBottom: theme.spacing.lg,
-  },
-  detailRow: {
+  notificationItem: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: theme.spacing.md,
+    padding: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.divider,
   },
-  detailText: {
+  notificationText: {
     ...theme.typography.body2,
     color: theme.colors.text,
     marginLeft: theme.spacing.md,
+    flex: 1,
   },
-  logoutButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: theme.spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.divider,
-  },
-  logoutText: {
-    ...theme.typography.button,
-    color: theme.colors.error,
-    marginLeft: theme.spacing.sm,
+  lastItem: {
+    borderBottomWidth: 0,
   },
 });
