@@ -211,6 +211,29 @@ const assignClassTeacher = async (req, res) => {
       });
     }
 
+    // Get current class to assign
+    const classToAssign = await Class.findById(req.params.id);
+    if (!classToAssign) {
+      return res.status(404).json({
+        success: false,
+        message: "Class not found",
+      });
+    }
+
+    // Check if teacher is already assigned to this class
+    if (classToAssign.classTeacher && classToAssign.classTeacher.toString() === teacherId) {
+      return res.status(400).json({
+        success: false,
+        message: "Teacher is already assigned to this class",
+      });
+    }
+
+    // Get all classes where this teacher is currently assigned
+    const currentAssignments = await Class.find({
+      classTeacher: teacherId,
+      isActive: true,
+    }).select("name grade division");
+
     const updatedClass = await Class.findByIdAndUpdate(
       req.params.id,
       { classTeacher: teacherId },
@@ -226,10 +249,23 @@ const assignClassTeacher = async (req, res) => {
       });
     }
 
+    // Prepare response message
+    let message = `Teacher ${teacher.name} assigned to ${updatedClass.grade}${getOrdinalSuffix(
+      updatedClass.grade
+    )} Class - ${updatedClass.division}`;
+
+    if (currentAssignments.length > 0) {
+      const assignmentList = currentAssignments
+        .map((cls) => `${cls.grade}${getOrdinalSuffix(cls.grade)} Class - ${cls.division}`)
+        .join(", ");
+      message += `. Teacher is also assigned to: ${assignmentList}`;
+    }
+
     res.json({
       success: true,
-      message: "Class teacher assigned successfully",
+      message: message,
       data: updatedClass,
+      currentAssignments: currentAssignments,
     });
   } catch (error) {
     console.error("Error assigning class teacher:", error);
@@ -241,55 +277,54 @@ const assignClassTeacher = async (req, res) => {
   }
 };
 
-// @desc    Get available teachers for assignment
+// @desc    Get available teachers for class assignment
 // @route   GET /api/classes/available-teachers
 // @access  Private (Admin only)
 const getAvailableTeachers = async (req, res) => {
   try {
-    const teachers = await User.find({
-      role: "teacher",
-      isActive: true,
-      status: "approved",
-    })
-      .select("name email employeeId subjects qualification experience")
-      .populate("subjects", "name code")
-      .populate("class", "name grade division");
+    // Get all teachers
+    const teachers = await User.find({ role: "teacher" })
+      .populate("subjects", "name")
+      .select("name email subjects experience");
 
-    // Get all classes to show which teachers are already assigned
-    const classes = await Class.find({ isActive: true })
-      .populate("classTeacher", "name email employeeId")
-      .select("name grade division classTeacher");
+    // Get current class assignments for each teacher
+    const teachersWithAssignments = await Promise.all(
+      teachers.map(async (teacher) => {
+        const currentAssignments = await Class.find({
+          classTeacher: teacher._id,
+          isActive: true,
+        }).select("name grade division");
 
-    // Create a map of teachers who are already class teachers
-    const assignedTeachers = new Map();
-    classes.forEach((cls) => {
-      if (cls.classTeacher) {
-        assignedTeachers.set(cls.classTeacher._id.toString(), {
-          classId: cls._id,
-          className: `${cls.grade}${getOrdinalSuffix(cls.grade)} Class - ${cls.division}`,
-        });
-      }
-    });
-
-    // Add assignment info to each teacher
-    const teachersWithAssignments = teachers.map((teacher) => {
-      const assignment = assignedTeachers.get(teacher._id.toString());
-      return {
-        ...teacher.toObject(),
-        currentClassAssignment: assignment || null,
-        isClassTeacher: !!assignment,
-      };
-    });
+        return {
+          _id: teacher._id,
+          name: teacher.name,
+          email: teacher.email,
+          subjects: teacher.subjects,
+          experience: teacher.experience,
+          isClassTeacher: currentAssignments.length > 0,
+          currentClassAssignment:
+            currentAssignments.length > 0
+              ? {
+                  className: currentAssignments
+                    .map((cls) => `${cls.grade}${getOrdinalSuffix(cls.grade)} Class - ${cls.division}`)
+                    .join(", "),
+                  assignments: currentAssignments,
+                }
+              : null,
+          totalAssignments: currentAssignments.length,
+        };
+      })
+    );
 
     res.json({
       success: true,
       data: teachersWithAssignments,
     });
   } catch (error) {
-    console.error("Error fetching available teachers:", error);
+    console.error("Error getting available teachers:", error);
     res.status(500).json({
       success: false,
-      message: "Error fetching available teachers",
+      message: "Error getting available teachers",
       error: error.message,
     });
   }

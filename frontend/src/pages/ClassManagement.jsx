@@ -20,6 +20,23 @@ import {
 import Layout from "../components/Layout";
 import { cn } from "../utils/cn";
 import appConfig from "../config/environment";
+import { toast } from "react-toastify";
+
+// Helper function to get ordinal suffix
+const getOrdinalSuffix = (num) => {
+  const j = num % 10;
+  const k = num % 100;
+  if (j === 1 && k !== 11) {
+    return "st";
+  }
+  if (j === 2 && k !== 12) {
+    return "nd";
+  }
+  if (j === 3 && k !== 13) {
+    return "rd";
+  }
+  return "th";
+};
 
 const ClassManagement = () => {
   const [classes, setClasses] = useState([]);
@@ -157,12 +174,21 @@ const ClassManagement = () => {
       });
       const data = await response.json();
       if (data.success) {
+        toast.success(data.message);
         setShowAssignTeacherModal(false);
         setSelectedClass(null);
         setAssignTeacherData({ teacherId: "" });
-        fetchClasses();
+        fetchClasses(); // Refresh the classes list
+
+        // Show additional info if teacher has multiple assignments
+        if (data.currentAssignments && data.currentAssignments.length > 1) {
+          const assignmentList = data.currentAssignments
+            .map((cls) => `${cls.grade}${getOrdinalSuffix(cls.grade)} Class - ${cls.division}`)
+            .join(", ");
+          toast.info(`Teacher is now assigned to: ${assignmentList}`);
+        }
       } else {
-        alert(data.message);
+        toast.error(data.message || "Failed to assign teacher");
       }
     } catch (error) {
       console.error("Error assigning teacher:", error);
@@ -227,15 +253,6 @@ const ClassManagement = () => {
       isActive: classItem.isActive !== false,
     });
     setShowEditModal(true);
-  };
-
-  const getOrdinalSuffix = (num) => {
-    const j = num % 10;
-    const k = num % 100;
-    if (j === 1 && k !== 11) return "st";
-    if (j === 2 && k !== 12) return "nd";
-    if (j === 3 && k !== 13) return "rd";
-    return "th";
   };
 
   const filteredClasses = classes.filter((cls) => {
@@ -676,9 +693,11 @@ const ClassManagement = () => {
                   ) : (
                     availableTeachers.map((teacher) => (
                       <option key={teacher._id} value={teacher._id}>
-                        {teacher.name} ({teacher.employeeId})
+                        {teacher.name}
                         {teacher.isClassTeacher
-                          ? ` - Currently assigned to ${teacher.currentClassAssignment.className}`
+                          ? ` - Class Teacher of ${teacher.currentClassAssignment.className} (${
+                              teacher.totalAssignments
+                            } class${teacher.totalAssignments > 1 ? "es" : ""})`
                           : " - Available"}
                       </option>
                     ))
@@ -707,10 +726,6 @@ const ClassManagement = () => {
                             <p className="text-sm text-secondary-900">{selectedTeacher.name}</p>
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-secondary-700">Employee ID</p>
-                            <p className="text-sm text-secondary-900">{selectedTeacher.employeeId}</p>
-                          </div>
-                          <div>
                             <p className="text-sm font-medium text-secondary-700">Email</p>
                             <p className="text-sm text-secondary-900">{selectedTeacher.email}</p>
                           </div>
@@ -718,18 +733,27 @@ const ClassManagement = () => {
                             <p className="text-sm font-medium text-secondary-700">Experience</p>
                             <p className="text-sm text-secondary-900">{selectedTeacher.experience || 0} years</p>
                           </div>
+                          <div>
+                            <p className="text-sm font-medium text-secondary-700">Status</p>
+                            <p className="text-sm text-secondary-900">
+                              {selectedTeacher.isClassTeacher ? "Class Teacher" : "Available"}
+                            </p>
+                          </div>
                         </div>
 
                         {/* Current Assignment */}
                         {selectedTeacher.isClassTeacher && (
-                          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                            <p className="text-sm font-medium text-yellow-800 mb-1">⚠️ Current Assignment</p>
-                            <p className="text-sm text-yellow-700">
-                              This teacher is currently assigned to:{" "}
+                          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p className="text-sm font-medium text-blue-800 mb-1">
+                              📚 Current Class Assignments ({selectedTeacher.totalAssignments})
+                            </p>
+                            <p className="text-sm text-blue-700">
+                              This teacher is currently the <strong>Class Teacher</strong> of:{" "}
                               <strong>{selectedTeacher.currentClassAssignment.className}</strong>
                             </p>
-                            <p className="text-xs text-yellow-600 mt-1">
-                              Assigning to this class will remove them from their current assignment.
+                            <p className="text-xs text-blue-600 mt-1">
+                              Teachers can be assigned to multiple classes. This assignment will be added to their
+                              current responsibilities.
                             </p>
                           </div>
                         )}
