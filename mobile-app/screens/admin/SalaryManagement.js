@@ -62,8 +62,7 @@ export default function SalaryManagement({ navigation }) {
       filtered = filtered.filter(
         (salary) =>
           salary.employee.name.toLowerCase().includes(query.toLowerCase()) ||
-          salary.employee.employeeId.toLowerCase().includes(query.toLowerCase()) ||
-          salary.department.toLowerCase().includes(query.toLowerCase())
+          salary.employee.employeeId.toLowerCase().includes(query.toLowerCase())
       );
     }
 
@@ -158,9 +157,7 @@ export default function SalaryManagement({ navigation }) {
               />
               <View style={styles.employeeInfo}>
                 <Title style={styles.title}>{salary.employee.name}</Title>
-                <Paragraph style={styles.employeeId}>
-                  {salary.employee.employeeId} • {salary.department}
-                </Paragraph>
+                <Paragraph style={styles.employeeId}>{salary.employee.employeeId}</Paragraph>
               </View>
             </View>
             <Chip
@@ -276,10 +273,7 @@ export default function SalaryManagement({ navigation }) {
                         <Text style={styles.label}>Employee ID:</Text>
                         <Text style={styles.value}>{selectedSalary.employee.employeeId}</Text>
                       </View>
-                      <View style={styles.detailRow}>
-                        <Text style={styles.label}>Department:</Text>
-                        <Text style={styles.value}>{selectedSalary.department}</Text>
-                      </View>
+                      <View style={styles.detailRow}></View>
                       <View style={styles.detailRow}>
                         <Text style={styles.label}>Position:</Text>
                         <Text style={styles.value}>{selectedSalary.employee.position}</Text>

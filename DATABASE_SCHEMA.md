@@ -43,7 +43,6 @@ This document outlines the complete database schema design for the school manage
   // Academic/Professional Information
   class: ObjectId (ref: 'Class'),
   subjects: [ObjectId] (ref: 'Subject'),
-  department: String,
   qualification: String,
   experience: Number,
   joiningDate: Date,
@@ -147,7 +146,7 @@ This document outlines the complete database schema design for the school manage
   name: String (required),
   code: String (required, unique),
   description: String,
-  department: String,
+
   credits: Number,
 
   // Curriculum

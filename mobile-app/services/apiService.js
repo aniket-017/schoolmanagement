@@ -69,6 +69,18 @@ export const apiService = {
     },
   },
 
+  // User Services (works for all user types)
+  user: {
+    getProfile: async () => {
+      const response = await api.get("/auth/profile");
+      return response.data;
+    },
+    updateProfile: async (data) => {
+      const response = await api.put("/auth/profile", data);
+      return response.data;
+    },
+  },
+
   // Student Services
   student: {
     getDashboard: async () => {
@@ -76,11 +88,11 @@ export const apiService = {
       return response.data;
     },
     getProfile: async () => {
-      const response = await api.get("/users/profile");
+      const response = await api.get("/auth/profile");
       return response.data;
     },
     updateProfile: async (data) => {
-      const response = await api.put("/users/profile", data);
+      const response = await api.put("/auth/profile", data);
       return response.data;
     },
   },

@@ -137,7 +137,43 @@ export default function UserManagement({ navigation }) {
                 >
                   {user.isActive ? "Active" : "Inactive"}
                 </Chip>
+                {user.role === "teacher" && (
+                  <Chip
+                    style={[
+                      styles.passwordChip,
+                      {
+                        backgroundColor: user.isFirstLogin ? theme.colors.warning + "20" : theme.colors.success + "20",
+                      },
+                    ]}
+                  >
+                    {user.isFirstLogin ? "First Login" : "Password Changed"}
+                  </Chip>
+                )}
               </View>
+              {user.role === "teacher" && user.subjects && user.subjects.length > 0 && (
+                <View style={styles.subjectsContainer}>
+                  <Paragraph style={styles.subjectsLabel}>Subjects:</Paragraph>
+                  <View style={styles.subjectsList}>
+                    {user.subjects.slice(0, 3).map((subject, index) => (
+                      <Chip
+                        key={subject._id || index}
+                        style={[styles.subjectChip, { backgroundColor: theme.colors.info + "20" }]}
+                        textStyle={{ color: theme.colors.info }}
+                      >
+                        {subject.name}
+                      </Chip>
+                    ))}
+                    {user.subjects.length > 3 && (
+                      <Chip
+                        style={[styles.subjectChip, { backgroundColor: theme.colors.grey + "20" }]}
+                        textStyle={{ color: theme.colors.grey }}
+                      >
+                        +{user.subjects.length - 3} more
+                      </Chip>
+                    )}
+                  </View>
+                </View>
+              )}
             </View>
           </View>
           <IconButton icon="chevron-right" size={24} iconColor={theme.colors.primary} />
@@ -186,6 +222,30 @@ export default function UserManagement({ navigation }) {
                 <Paragraph>Name: {selectedUser.name}</Paragraph>
                 <Paragraph>Email: {selectedUser.email}</Paragraph>
                 <Paragraph>Role: {selectedUser.role}</Paragraph>
+                <Paragraph>Status: {selectedUser.isActive ? "Active" : "Inactive"}</Paragraph>
+                {selectedUser.role === "teacher" && (
+                  <>
+                    <Paragraph>
+                      Password Status: {selectedUser.isFirstLogin ? "First Login Required" : "Password Changed"}
+                    </Paragraph>
+                    {selectedUser.subjects && selectedUser.subjects.length > 0 && (
+                      <View style={styles.dialogSubjectsContainer}>
+                        <Paragraph style={styles.dialogSubjectsLabel}>Subjects Taught:</Paragraph>
+                        <View style={styles.dialogSubjectsList}>
+                          {selectedUser.subjects.map((subject, index) => (
+                            <Chip
+                              key={subject._id || index}
+                              style={[styles.dialogSubjectChip, { backgroundColor: theme.colors.info + "20" }]}
+                              textStyle={{ color: theme.colors.info }}
+                            >
+                              {subject.name}
+                            </Chip>
+                          ))}
+                        </View>
+                      </View>
+                    )}
+                  </>
+                )}
                 <View style={styles.dialogActions}>
                   <Button
                     mode="contained"
@@ -275,6 +335,25 @@ const styles = StyleSheet.create({
   statusChip: {
     marginRight: theme.spacing.sm,
   },
+  passwordChip: {
+    marginRight: theme.spacing.sm,
+  },
+  subjectsContainer: {
+    marginTop: theme.spacing.xs,
+  },
+  subjectsLabel: {
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xs,
+  },
+  subjectsList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  subjectChip: {
+    marginRight: theme.spacing.xs,
+    marginBottom: theme.spacing.xs,
+  },
   fab: {
     position: "absolute",
     margin: theme.spacing.lg,
@@ -289,5 +368,21 @@ const styles = StyleSheet.create({
   },
   statusButton: {
     marginRight: theme.spacing.md,
+  },
+  dialogSubjectsContainer: {
+    marginTop: theme.spacing.sm,
+  },
+  dialogSubjectsLabel: {
+    ...theme.typography.body2,
+    fontWeight: "bold",
+    marginBottom: theme.spacing.xs,
+  },
+  dialogSubjectsList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  dialogSubjectChip: {
+    marginRight: theme.spacing.xs,
+    marginBottom: theme.spacing.xs,
   },
 });

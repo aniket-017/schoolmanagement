@@ -179,7 +179,7 @@ export const AuthProvider = ({ children }) => {
   const updateProfile = async (profileData) => {
     try {
       setIsLoading(true);
-      const response = await apiService.student.updateProfile(profileData);
+      const response = await apiService.user.updateProfile(profileData);
 
       if (response.success && response.user) {
         setUser(response.user);
@@ -250,7 +250,7 @@ export const AuthProvider = ({ children }) => {
 
   const refreshUser = async () => {
     try {
-      const response = await apiService.student.getProfile();
+      const response = await apiService.user.getProfile();
       if (response.user) {
         setUser(response.user);
         await AsyncStorage.setItem("user", JSON.stringify(response.user));

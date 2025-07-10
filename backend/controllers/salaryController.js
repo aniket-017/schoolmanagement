@@ -73,7 +73,7 @@ exports.createSalaryRecord = async (req, res) => {
 // Get all salary records with filters
 exports.getSalaryRecords = async (req, res) => {
   try {
-    const { staff_id, month, year, status, department, page = 1, limit = 10 } = req.query;
+    const { staff_id, month, year, status, page = 1, limit = 10 } = req.query;
 
     let query = {};
 
@@ -85,7 +85,7 @@ exports.getSalaryRecords = async (req, res) => {
 
     const skip = (page - 1) * limit;
 
-    // If department filter is provided, need to join with users
+    // Join with users to get staff information
     let aggregationPipeline = [
       {
         $lookup: {
@@ -97,13 +97,6 @@ exports.getSalaryRecords = async (req, res) => {
       },
       { $unwind: "$staff" },
     ];
-
-    // Add department filter if provided
-    if (department) {
-      aggregationPipeline.push({
-        $match: { "staff.department": department },
-      });
-    }
 
     // Add other filters
     if (Object.keys(query).length > 0) {
@@ -156,7 +149,7 @@ exports.getSalaryRecords = async (req, res) => {
 exports.getSalaryRecordById = async (req, res) => {
   try {
     const salaryRecord = await StaffSalary.findById(req.params.id)
-      .populate("staff_id", "name email role department")
+      .populate("staff_id", "name email role")
       .populate("created_by", "name email");
 
     if (!salaryRecord) {
@@ -357,7 +350,7 @@ exports.deleteSalaryRecord = async (req, res) => {
 // Generate payroll report
 exports.generatePayrollReport = async (req, res) => {
   try {
-    const { month, year, department } = req.query;
+    const { month, year } = req.query;
 
     if (!month || !year) {
       return res.status(400).json({
@@ -383,13 +376,6 @@ exports.generatePayrollReport = async (req, res) => {
       },
       { $unwind: "$staff" },
     ];
-
-    // Add department filter if provided
-    if (department) {
-      aggregationPipeline.push({
-        $match: { "staff.department": department },
-      });
-    }
 
     aggregationPipeline.push({
       $group: {
@@ -423,30 +409,6 @@ exports.generatePayrollReport = async (req, res) => {
       { $group: { _id: "$status", count: { $sum: 1 }, total_amount: { $sum: "$net_salary" } } },
     ]);
 
-    // Get department breakdown if not filtered by department
-    let departmentBreakdown = [];
-    if (!department) {
-      departmentBreakdown = await StaffSalary.aggregate([
-        { $match: matchStage },
-        {
-          $lookup: {
-            from: "users",
-            localField: "staff_id",
-            foreignField: "_id",
-            as: "staff",
-          },
-        },
-        { $unwind: "$staff" },
-        {
-          $group: {
-            _id: "$staff.department",
-            count: { $sum: 1 },
-            total_amount: { $sum: "$net_salary" },
-          },
-        },
-      ]);
-    }
-
     res.json({
       success: true,
       data: {
@@ -462,7 +424,6 @@ exports.generatePayrollReport = async (req, res) => {
           total_net_salary: report.total_net_salary,
         },
         status_breakdown: statusBreakdown,
-        department_breakdown: departmentBreakdown,
         detailed_records: report.records,
       },
     });
@@ -490,26 +451,6 @@ exports.getSalaryStats = async (req, res) => {
 
     const statusDistribution = await StaffSalary.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]);
 
-    const departmentSalaryStats = await StaffSalary.aggregate([
-      {
-        $lookup: {
-          from: "users",
-          localField: "staff_id",
-          foreignField: "_id",
-          as: "staff",
-        },
-      },
-      { $unwind: "$staff" },
-      {
-        $group: {
-          _id: "$staff.department",
-          total_salary: { $sum: "$net_salary" },
-          avg_salary: { $avg: "$net_salary" },
-          staff_count: { $sum: 1 },
-        },
-      },
-    ]);
-
     const monthlyTrends = await StaffSalary.aggregate([
       {
         $group: {
@@ -528,7 +469,7 @@ exports.getSalaryStats = async (req, res) => {
         total_records: totalRecords,
         current_month_records: currentMonthRecords,
         status_distribution: statusDistribution,
-        department_salary_stats: departmentSalaryStats,
+
         monthly_trends: monthlyTrends,
       },
     });

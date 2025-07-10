@@ -144,7 +144,7 @@ backend/
   children: [ObjectId] (parents),
   class: ObjectId,
   subjects: [ObjectId],
-  department: String,
+
   dateOfBirth: Date,
   joiningDate: Date,
   isActive: Boolean

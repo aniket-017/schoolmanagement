@@ -8,7 +8,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import theme from "../../utils/theme";
 import { useAuth } from "../../context/AuthContext";
 
-export default function SettingsScreen() {
+export default function SettingsScreen({ navigation }) {
   const { user, updateUser } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
@@ -95,6 +95,15 @@ export default function SettingsScreen() {
                 title="Role"
                 description={user?.role}
                 left={(props) => <List.Icon {...props} icon="account" />}
+              />
+              <Divider style={styles.divider} />
+              <List.Item
+                title="Profile"
+                description="Manage your profile information"
+                left={(props) => <List.Icon {...props} icon="account-edit" />}
+                right={(props) => (
+                  <IconButton {...props} icon="chevron-right" onPress={() => navigation.navigate("AdminProfile")} />
+                )}
               />
               <Divider style={styles.divider} />
               <List.Item

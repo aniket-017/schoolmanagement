@@ -69,7 +69,7 @@ const UserApproval = () => {
       email: "emily.johnson@email.com",
       phone: "+1 (555) 123-4567",
       role: "teacher",
-      department: "Mathematics",
+
       experience: "5 years",
       qualification: "M.Sc. Mathematics",
       appliedDate: "2024-01-15T09:30:00Z",
@@ -83,7 +83,7 @@ const UserApproval = () => {
       email: "michael.brown@email.com",
       phone: "+1 (555) 234-5678",
       role: "teacher",
-      department: "Physics",
+
       experience: "8 years",
       qualification: "Ph.D. Physics",
       appliedDate: "2024-01-14T14:20:00Z",
@@ -97,7 +97,7 @@ const UserApproval = () => {
       email: "sarah.davis@email.com",
       phone: "+1 (555) 345-6789",
       role: "admin",
-      department: "Administration",
+
       experience: "3 years",
       qualification: "MBA",
       appliedDate: "2024-01-13T11:15:00Z",
@@ -111,7 +111,7 @@ const UserApproval = () => {
       email: "david.wilson@email.com",
       phone: "+1 (555) 456-7890",
       role: "teacher",
-      department: "Computer Science",
+
       experience: "6 years",
       qualification: "M.Tech Computer Science",
       appliedDate: "2024-01-12T16:45:00Z",
@@ -158,7 +158,7 @@ const UserApproval = () => {
     (user) =>
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.department.toLowerCase().includes(searchTerm.toLowerCase())
+      user.role.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const formatDate = (dateString) => {
@@ -378,10 +378,7 @@ const UserApproval = () => {
                                 </div>
 
                                 <div className="space-y-2">
-                                  <div className="flex items-center text-sm text-secondary-600">
-                                    <School className="w-4 h-4 mr-2" />
-                                    {user.department}
-                                  </div>
+
                                   <div className="flex items-center text-sm text-secondary-600">
                                     <Calendar className="w-4 h-4 mr-2" />
                                     Applied {formatDate(user.appliedDate)}

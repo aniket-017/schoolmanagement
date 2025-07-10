@@ -5,8 +5,7 @@ import TeacherDashboard from "../screens/teacher/TeacherDashboard";
 import ClassesScreen from "../screens/teacher/ClassesScreen";
 import AttendanceManagement from "../screens/teacher/AttendanceManagement";
 import GradeManagement from "../screens/teacher/GradeManagement";
-import ChangePassword from "../screens/teacher/ChangePassword";
-import ProfileScreen from '../screens/teacher/ProfileScreen';
+import ProfileScreen from "../screens/teacher/ProfileScreen";
 
 const Stack = createStackNavigator();
 
@@ -25,15 +24,10 @@ export default function TeacherNavigator({ navigation, route }) {
         },
       }}
     >
-      <Stack.Screen
-        name="TeacherDashboard"
-        component={TeacherDashboard}
-        options={{ headerShown: false }}
-      />
+      <Stack.Screen name="TeacherDashboard" component={TeacherDashboard} options={{ headerShown: false }} />
       <Stack.Screen name="TeacherClasses" component={ClassesScreen} options={{ title: "Classes" }} />
       <Stack.Screen name="TeacherAttendance" component={AttendanceManagement} options={{ title: "Attendance" }} />
       <Stack.Screen name="TeacherGrades" component={GradeManagement} options={{ title: "Grades" }} />
-      <Stack.Screen name="ChangePassword" component={ChangePassword} options={{ title: "Change Password" }} />
       <Stack.Screen name="TeacherProfile" component={ProfileScreen} options={{ title: "Profile" }} />
     </Stack.Navigator>
   );

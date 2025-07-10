@@ -36,6 +36,7 @@ export const theme = {
     offline: "#9E9E9E",
     pending: "#FF9800",
     completed: "#4CAF50",
+    grey: "#9E9E9E",
 
     // Gradient colors
     gradients: {

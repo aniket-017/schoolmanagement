@@ -53,7 +53,7 @@ const AdminDashboard = () => {
     { month: "Jun", collected: 62000, pending: 4000 },
   ];
 
-  const departmentData = [
+  const subjectDistribution = [
     { name: "Science", students: 350, color: "#3b82f6" },
     { name: "Mathematics", students: 280, color: "#10b981" },
     { name: "English", students: 320, color: "#f59e0b" },
@@ -353,46 +353,6 @@ const AdminDashboard = () => {
 
         {/* Bottom Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Department Distribution */}
-          <motion.div
-            variants={itemVariants}
-            className="bg-white rounded-2xl shadow-sm border border-secondary-200 p-6"
-          >
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-secondary-900 mb-2">Department Distribution</h3>
-              <p className="text-sm text-secondary-600">Students by department</p>
-            </div>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={departmentData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={100}
-                  paddingAngle={5}
-                  dataKey="students"
-                >
-                  {departmentData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="space-y-2">
-              {departmentData.map((dept, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: dept.color }}></div>
-                    <span className="text-sm text-secondary-700">{dept.name}</span>
-                  </div>
-                  <span className="text-sm font-medium text-secondary-900">{dept.students}</span>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-
           {/* Recent Activity */}
           <motion.div
             variants={itemVariants}

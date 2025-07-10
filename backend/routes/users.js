@@ -32,9 +32,7 @@ const generateTempPassword = () => {
 router.get("/subjects", auth, adminOrPrincipal, async (req, res) => {
   try {
     const Subject = require("../models/Subject");
-    const subjects = await Subject.find({ isActive: true })
-      .select("name code department")
-      .sort({ department: 1, name: 1 });
+    const subjects = await Subject.find({ isActive: true }).select("name code").sort({ name: 1 });
 
     res.json({
       success: true,
@@ -104,19 +102,8 @@ router.get("/", auth, adminOrPrincipal, async (req, res) => {
 // @access  Private (Admin/Principal only)
 router.post("/teacher", auth, adminOrPrincipal, async (req, res) => {
   try {
-    const {
-      name,
-      email,
-      phone,
-      department,
-      qualification,
-      experience,
-      subjects,
-      dateOfBirth,
-      address,
-      salary,
-      joiningDate,
-    } = req.body;
+    const { name, email, phone, qualification, experience, subjects, dateOfBirth, address, salary, joiningDate } =
+      req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -138,7 +125,6 @@ router.post("/teacher", auth, adminOrPrincipal, async (req, res) => {
       password: tempPassword,
       role: "teacher",
       phone,
-      department,
       qualification,
       experience,
       subjects,
@@ -193,7 +179,6 @@ router.get("/excel-template", auth, adminOrPrincipal, (req, res) => {
         Name: "John Doe",
         Email: "john.doe@school.com",
         Phone: "+1234567890",
-        Department: "Mathematics",
         Qualification: "M.Sc Mathematics",
         Experience: 5,
         "Date of Birth": "1990-01-15",
@@ -315,7 +300,6 @@ router.post("/bulk-upload", auth, adminOrPrincipal, upload.single("excelFile"), 
           password: tempPassword,
           role: "teacher",
           phone: row.Phone || "",
-          department: row.Department || "",
           qualification: row.Qualification || "",
           experience: row.Experience || 0,
           salary: row.Salary || 0,

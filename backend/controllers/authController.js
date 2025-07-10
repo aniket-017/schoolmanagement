@@ -13,7 +13,7 @@ const generateToken = (id) => {
 // @access  Public (requires admin approval)
 const register = async (req, res) => {
   try {
-    const { name, email, password, role, phone, department, employeeId, studentId } = req.body;
+    const { name, email, password, role, phone, employeeId, studentId } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -31,7 +31,6 @@ const register = async (req, res) => {
       password,
       role,
       phone,
-      department,
     };
 
     // Add role-specific fields
@@ -179,13 +178,19 @@ const getProfile = async (req, res) => {
 // @access  Private
 const updateProfile = async (req, res) => {
   try {
-    const { name, phone, address } = req.body;
+    const { name, phone, address, qualification, experience } = req.body;
 
-    const user = await User.findByIdAndUpdate(
-      req.user.id,
-      { name, phone, address },
-      { new: true, runValidators: true }
-    );
+    // Build update object with only provided fields
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (phone !== undefined) updateData.phone = phone;
+    if (address !== undefined) updateData.address = address;
+    if (qualification !== undefined) updateData.qualification = qualification;
+    if (experience !== undefined) updateData.experience = parseInt(experience) || 0;
+
+    const user = await User.findByIdAndUpdate(req.user.id, updateData, { new: true, runValidators: true })
+      .populate("class", "name grade section")
+      .populate("subjects", "name");
 
     res.json({
       success: true,

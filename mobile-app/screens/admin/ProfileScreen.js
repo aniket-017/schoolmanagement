@@ -98,7 +98,6 @@ export default function ProfileScreen({ navigation }) {
 
     setLoading(true);
     try {
-      // Assuming changePassword is available in AuthContext
       await changePassword(passwordData.currentPassword, passwordData.newPassword);
       Alert.alert("Success", "Password changed successfully");
       setIsChangePasswordModalVisible(false);

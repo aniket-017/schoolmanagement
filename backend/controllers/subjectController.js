@@ -7,13 +7,12 @@ const User = require("../models/User");
 // @access  Private
 const getAllSubjects = async (req, res) => {
   try {
-    const { department, isActive } = req.query;
+    const { isActive } = req.query;
 
     const filter = {};
-    if (department) filter.department = department;
     if (isActive !== undefined) filter.isActive = isActive === "true";
 
-    const subjects = await Subject.find(filter).sort({ department: 1, name: 1 });
+    const subjects = await Subject.find(filter).sort({ name: 1 });
 
     res.json({
       success: true,
@@ -211,30 +210,6 @@ const deleteSubject = async (req, res) => {
   }
 };
 
-// @desc    Get subjects by department
-// @route   GET /api/subjects/department/:department
-// @access  Private
-const getSubjectsByDepartment = async (req, res) => {
-  try {
-    const subjects = await Subject.find({
-      department: req.params.department,
-      isActive: true,
-    }).sort({ name: 1 });
-
-    res.json({
-      success: true,
-      count: subjects.length,
-      data: subjects,
-    });
-  } catch (error) {
-    console.error("Get subjects by department error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error while fetching subjects by department",
-    });
-  }
-};
-
 // @desc    Assign subject to teacher
 // @route   PUT /api/subjects/:id/assign-teacher
 // @access  Private (Admin only)
@@ -283,6 +258,6 @@ module.exports = {
   createSubject,
   updateSubject,
   deleteSubject,
-  getSubjectsByDepartment,
+
   assignSubjectToTeacher,
 };

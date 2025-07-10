@@ -17,6 +17,7 @@ import SalaryManagement from "../screens/admin/SalaryManagement";
 import AnnouncementManagement from "../screens/admin/AnnouncementManagement";
 import ReportsScreen from "../screens/admin/ReportsScreen";
 import SettingsScreen from "../screens/admin/SettingsScreen";
+import ProfileScreen from "../screens/admin/ProfileScreen";
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -107,6 +108,7 @@ export default function AdminNavigator() {
   return (
     <Stack.Navigator screenOptions={screenOptions}>
       <Stack.Screen name="AdminTabs" component={AdminTabNavigator} options={{ headerShown: false }} />
+      <Stack.Screen name="AdminProfile" component={ProfileScreen} options={{ title: "Profile" }} />
     </Stack.Navigator>
   );
 }

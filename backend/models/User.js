@@ -75,19 +75,6 @@ const userSchema = new mongoose.Schema(
         ref: "Subject",
       },
     ],
-    department: {
-      type: String,
-      enum: [
-        "Mathematics",
-        "Science",
-        "English",
-        "Social Studies",
-        "Physical Education",
-        "Arts",
-        "Computer Science",
-        "Languages",
-      ],
-    },
     qualification: String,
     experience: Number,
     joiningDate: {
