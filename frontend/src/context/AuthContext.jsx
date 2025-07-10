@@ -17,60 +17,98 @@ const API_BASE_URL = appConfig.API_BASE_URL;
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [requirePasswordChange, setRequirePasswordChange] = useState(false);
 
   useEffect(() => {
-    checkAuthStatus();
+    const token = localStorage.getItem("token");
+    if (token) {
+      // Verify token and get user data
+      fetchUserProfile(token);
+    } else {
+      setLoading(false);
+    }
   }, []);
 
-  const checkAuthStatus = () => {
-    const token = localStorage.getItem("token");
-    const userData = localStorage.getItem("user");
+  const fetchUserProfile = async (token) => {
+    try {
+      const response = await fetch(`${appConfig.API_BASE_URL}/auth/profile`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-    if (token && userData) {
-      setUser(JSON.parse(userData));
+      const data = await response.json();
+      if (data.success) {
+        setUser(data.user);
+        // Check if user needs to change password
+        setRequirePasswordChange(data.user.isFirstLogin || false);
+      } else {
+        // Only remove token if response indicates it's invalid
+        if (response.status === 401) {
+          localStorage.removeItem("token");
+          setUser(null);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      // Only remove token on network errors if response is 401
+      if (error.status === 401) {
+        localStorage.removeItem("token");
+        setUser(null);
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/login`, {
-        email,
-        password,
+      const response = await fetch(`${appConfig.API_BASE_URL}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
       });
 
-      const { token, user: userData } = response.data;
+      const data = await response.json();
 
-      // Only allow admin users
-      if (userData.role !== "admin") {
-        throw new Error("Access denied. Admin privileges required.");
+      if (data.success) {
+        localStorage.setItem("token", data.token);
+        setUser(data.user);
+        setRequirePasswordChange(data.requirePasswordChange || false);
+        return { success: true };
+      } else {
+        return { success: false, message: data.message };
       }
-
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(userData));
-
-      setUser(userData);
-      return { success: true };
     } catch (error) {
-      return {
-        success: false,
-        error: error.response?.data?.message || error.message,
-      };
+      console.error("Login error:", error);
+      return { success: false, message: "Network error. Please try again." };
     }
   };
 
   const logout = () => {
     localStorage.removeItem("token");
-    localStorage.removeItem("user");
     setUser(null);
+    setRequirePasswordChange(false);
   };
 
-  const value = {
-    user,
-    login,
-    logout,
-    loading,
+  const clearPasswordChangeRequirement = () => {
+    setRequirePasswordChange(false);
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        login,
+        logout,
+        loading,
+        requirePasswordChange,
+        clearPasswordChangeRequirement,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };

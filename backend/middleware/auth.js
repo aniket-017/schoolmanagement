@@ -78,6 +78,12 @@ const authorize = (...roles) => {
 // Admin only middleware
 const adminOnly = authorize("admin");
 
+// Principal (superadmin) only middleware  
+const principalOnly = authorize("principal");
+
+// Admin or Principal middleware (for user management)
+const adminOrPrincipal = authorize("admin", "principal");
+
 // Teacher and Admin middleware
 const teacherOrAdmin = authorize("teacher", "admin");
 
@@ -88,6 +94,8 @@ module.exports = {
   auth,
   authorize,
   adminOnly,
+  principalOnly,
+  adminOrPrincipal,
   teacherOrAdmin,
   authenticated,
 };

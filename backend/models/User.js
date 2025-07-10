@@ -142,6 +142,18 @@ const userSchema = new mongoose.Schema(
     },
     approvedAt: Date,
     emergencyContact: String,
+
+    // Password Management
+    isFirstLogin: {
+      type: Boolean,
+      default: function () {
+        return this.role === "teacher"; // Teachers created by admin need to change password on first login
+      },
+    },
+    lastPasswordChange: {
+      type: Date,
+      default: Date.now,
+    },
   },
   {
     timestamps: true,

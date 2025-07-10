@@ -1,108 +1,502 @@
 import React from "react";
+import { motion } from "framer-motion";
+import {
+  Users,
+  GraduationCap,
+  DollarSign,
+  TrendingUp,
+  UserCheck,
+  AlertTriangle,
+  Calendar,
+  BookOpen,
+  PlusCircle,
+  FileText,
+  BarChart3,
+} from "lucide-react";
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
 import Layout from "../components/Layout";
+import { cn } from "../utils/cn";
 
 const AdminDashboard = () => {
+  // Sample data for charts
+  const enrollmentData = [
+    { month: "Jan", students: 1200, teachers: 85 },
+    { month: "Feb", students: 1245, teachers: 87 },
+    { month: "Mar", students: 1280, teachers: 89 },
+    { month: "Apr", students: 1320, teachers: 92 },
+    { month: "May", students: 1350, teachers: 94 },
+    { month: "Jun", students: 1385, teachers: 96 },
+  ];
+
+  const feeCollectionData = [
+    { month: "Jan", collected: 45000, pending: 8000 },
+    { month: "Feb", collected: 52000, pending: 6000 },
+    { month: "Mar", collected: 48000, pending: 12000 },
+    { month: "Apr", collected: 55000, pending: 5000 },
+    { month: "May", collected: 58000, pending: 7000 },
+    { month: "Jun", collected: 62000, pending: 4000 },
+  ];
+
+  const departmentData = [
+    { name: "Science", students: 350, color: "#3b82f6" },
+    { name: "Mathematics", students: 280, color: "#10b981" },
+    { name: "English", students: 320, color: "#f59e0b" },
+    { name: "Social Studies", students: 250, color: "#ef4444" },
+    { name: "Arts", students: 185, color: "#8b5cf6" },
+  ];
+
   const stats = [
-    { name: "Total Students", value: "1,245", icon: "👥", color: "bg-blue-500" },
-    { name: "Total Teachers", value: "87", icon: "👨‍🏫", color: "bg-green-500" },
-    { name: "Total Classes", value: "34", icon: "🎓", color: "bg-yellow-500" },
-    { name: "Pending Fees", value: "$45,670", icon: "💰", color: "bg-red-500" },
+    {
+      name: "Total Students",
+      value: "1,385",
+      change: "+12%",
+      changeType: "increase",
+      icon: Users,
+      color: "primary",
+      description: "Active enrolled students",
+    },
+    {
+      name: "Total Teachers",
+      value: "96",
+      change: "+8%",
+      changeType: "increase",
+      icon: GraduationCap,
+      color: "success",
+      description: "Faculty members",
+    },
+    {
+      name: "Monthly Revenue",
+      value: "$62,000",
+      change: "+15%",
+      changeType: "increase",
+      icon: DollarSign,
+      color: "warning",
+      description: "This month's collection",
+    },
+    {
+      name: "Pending Approvals",
+      value: "24",
+      change: "-5%",
+      changeType: "decrease",
+      icon: UserCheck,
+      color: "error",
+      description: "Awaiting approval",
+    },
   ];
 
   const recentActivities = [
-    { action: "New student registration", user: "John Doe", time: "2 minutes ago" },
-    { action: "Fee payment received", user: "Jane Smith", time: "15 minutes ago" },
-    { action: "Class schedule updated", user: "Prof. Johnson", time: "1 hour ago" },
-    { action: "Announcement posted", user: "Admin", time: "2 hours ago" },
+    {
+      id: 1,
+      action: "New student registration",
+      user: "John Doe",
+      time: "2 minutes ago",
+      type: "registration",
+      icon: UserCheck,
+    },
+    {
+      id: 2,
+      action: "Fee payment received",
+      user: "Jane Smith",
+      time: "15 minutes ago",
+      type: "payment",
+      icon: DollarSign,
+    },
+    {
+      id: 3,
+      action: "Class schedule updated",
+      user: "Prof. Johnson",
+      time: "1 hour ago",
+      type: "schedule",
+      icon: Calendar,
+    },
+    {
+      id: 4,
+      action: "New announcement posted",
+      user: "Admin",
+      time: "2 hours ago",
+      type: "announcement",
+      icon: FileText,
+    },
   ];
+
+  const quickActions = [
+    {
+      title: "Add New Student",
+      description: "Register a new student",
+      icon: PlusCircle,
+      color: "primary",
+      action: () => {},
+    },
+    {
+      title: "Create Announcement",
+      description: "Send school-wide announcement",
+      icon: FileText,
+      color: "success",
+      action: () => {},
+    },
+    {
+      title: "Generate Report",
+      description: "Create monthly report",
+      icon: BarChart3,
+      color: "warning",
+      action: () => {},
+    },
+  ];
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        type: "spring",
+        stiffness: 300,
+        damping: 24,
+      },
+    },
+  };
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="mt-1 text-sm text-gray-500">School Management 1704</p>
-        </div>
-
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat) => (
-            <div key={stat.name} className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className={`w-8 h-8 ${stat.color} rounded-md flex items-center justify-center`}>
-                      <span className="text-white text-lg">{stat.icon}</span>
-                    </div>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">{stat.name}</dt>
-                      <dd className="text-lg font-medium text-gray-900">{stat.value}</dd>
-                    </dl>
-                  </div>
+        <motion.div variants={itemVariants} className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-secondary-900 mb-2">Welcome back, Admin! 👋</h1>
+            <p className="text-secondary-600">Here's what's happening at your school today.</p>
+          </div>
+          <div className="mt-4 lg:mt-0">
+            <div className="flex items-center space-x-4">
+              <div className="bg-white px-4 py-2 rounded-lg shadow-sm border border-secondary-200">
+                <div className="flex items-center space-x-2">
+                  <Calendar className="w-4 h-4 text-secondary-500" />
+                  <span className="text-sm font-medium text-secondary-700">
+                    {new Date().toLocaleDateString("en-US", {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </span>
                 </div>
               </div>
             </div>
-          ))}
+          </div>
+        </motion.div>
+
+        {/* Statistics Cards */}
+        <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {stats.map((stat, index) => {
+            const Icon = stat.icon;
+            return (
+              <motion.div
+                key={stat.name}
+                whileHover={{ y: -5, scale: 1.02 }}
+                className="bg-white rounded-2xl shadow-sm border border-secondary-200 p-6 hover:shadow-lg transition-all duration-200"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div
+                    className={cn(
+                      "p-3 rounded-xl",
+                      stat.color === "primary" && "bg-primary-100",
+                      stat.color === "success" && "bg-success-100",
+                      stat.color === "warning" && "bg-warning-100",
+                      stat.color === "error" && "bg-error-100"
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        "w-6 h-6",
+                        stat.color === "primary" && "text-primary-600",
+                        stat.color === "success" && "text-success-600",
+                        stat.color === "warning" && "text-warning-600",
+                        stat.color === "error" && "text-error-600"
+                      )}
+                    />
+                  </div>
+                  <div
+                    className={cn(
+                      "flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium",
+                      stat.changeType === "increase" ? "bg-success-100 text-success-700" : "bg-error-100 text-error-700"
+                    )}
+                  >
+                    <TrendingUp className={cn("w-3 h-3", stat.changeType === "decrease" && "rotate-180")} />
+                    <span>{stat.change}</span>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-secondary-900 mb-1">{stat.value}</p>
+                  <p className="text-sm font-medium text-secondary-700 mb-1">{stat.name}</p>
+                  <p className="text-xs text-secondary-500">{stat.description}</p>
+                </div>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Enrollment Trends */}
+          <motion.div
+            variants={itemVariants}
+            className="bg-white rounded-2xl shadow-sm border border-secondary-200 p-6"
+          >
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-secondary-900 mb-2">Enrollment Trends</h3>
+              <p className="text-sm text-secondary-600">Student and teacher growth over time</p>
+            </div>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={enrollmentData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="month" stroke="#64748b" fontSize={12} />
+                <YAxis stroke="#64748b" fontSize={12} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "white",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "8px",
+                    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                  }}
+                />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="students"
+                  stroke="#3b82f6"
+                  strokeWidth={3}
+                  dot={{ fill: "#3b82f6", strokeWidth: 2, r: 4 }}
+                  name="Students"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="teachers"
+                  stroke="#10b981"
+                  strokeWidth={3}
+                  dot={{ fill: "#10b981", strokeWidth: 2, r: 4 }}
+                  name="Teachers"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </motion.div>
+
+          {/* Fee Collection */}
+          <motion.div
+            variants={itemVariants}
+            className="bg-white rounded-2xl shadow-sm border border-secondary-200 p-6"
+          >
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-secondary-900 mb-2">Fee Collection</h3>
+              <p className="text-sm text-secondary-600">Monthly collection vs pending amounts</p>
+            </div>
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={feeCollectionData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="month" stroke="#64748b" fontSize={12} />
+                <YAxis stroke="#64748b" fontSize={12} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "white",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "8px",
+                    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                  }}
+                />
+                <Legend />
+                <Area
+                  type="monotone"
+                  dataKey="collected"
+                  stackId="1"
+                  stroke="#10b981"
+                  fill="#10b981"
+                  fillOpacity={0.6}
+                  name="Collected"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="pending"
+                  stackId="1"
+                  stroke="#f59e0b"
+                  fill="#f59e0b"
+                  fillOpacity={0.6}
+                  name="Pending"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </motion.div>
         </div>
 
-        {/* Recent Activity */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Recent Activity</h3>
-            <div className="flow-root">
-              <ul className="-mb-8">
-                {recentActivities.map((activity, index) => (
-                  <li key={index}>
-                    <div className="relative pb-8">
-                      {index !== recentActivities.length - 1 && (
-                        <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true" />
-                      )}
-                      <div className="relative flex space-x-3">
-                        <div>
-                          <span className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center ring-8 ring-white">
-                            <span className="text-white text-sm">•</span>
-                          </span>
-                        </div>
-                        <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
-                          <div>
-                            <p className="text-sm text-gray-500">
-                              {activity.action} by <span className="font-medium text-gray-900">{activity.user}</span>
-                            </p>
-                          </div>
-                          <div className="text-right text-sm whitespace-nowrap text-gray-500">
-                            <time>{activity.time}</time>
-                          </div>
-                        </div>
+        {/* Bottom Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Department Distribution */}
+          <motion.div
+            variants={itemVariants}
+            className="bg-white rounded-2xl shadow-sm border border-secondary-200 p-6"
+          >
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-secondary-900 mb-2">Department Distribution</h3>
+              <p className="text-sm text-secondary-600">Students by department</p>
+            </div>
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie
+                  data={departmentData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={5}
+                  dataKey="students"
+                >
+                  {departmentData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="space-y-2">
+              {departmentData.map((dept, index) => (
+                <div key={index} className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: dept.color }}></div>
+                    <span className="text-sm text-secondary-700">{dept.name}</span>
+                  </div>
+                  <span className="text-sm font-medium text-secondary-900">{dept.students}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Recent Activity */}
+          <motion.div
+            variants={itemVariants}
+            className="bg-white rounded-2xl shadow-sm border border-secondary-200 p-6"
+          >
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-secondary-900 mb-2">Recent Activity</h3>
+              <p className="text-sm text-secondary-600">Latest updates and actions</p>
+            </div>
+            <div className="space-y-4">
+              {recentActivities.map((activity) => {
+                const Icon = activity.icon;
+                return (
+                  <div
+                    key={activity.id}
+                    className="flex items-start space-x-3 p-3 rounded-lg hover:bg-secondary-50 transition-colors"
+                  >
+                    <div className="flex-shrink-0">
+                      <div
+                        className={cn(
+                          "w-8 h-8 rounded-full flex items-center justify-center",
+                          activity.type === "registration" && "bg-primary-100",
+                          activity.type === "payment" && "bg-success-100",
+                          activity.type === "schedule" && "bg-warning-100",
+                          activity.type === "announcement" && "bg-secondary-100"
+                        )}
+                      >
+                        <Icon
+                          className={cn(
+                            "w-4 h-4",
+                            activity.type === "registration" && "text-primary-600",
+                            activity.type === "payment" && "text-success-600",
+                            activity.type === "schedule" && "text-warning-600",
+                            activity.type === "announcement" && "text-secondary-600"
+                          )}
+                        />
                       </div>
                     </div>
-                  </li>
-                ))}
-              </ul>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-secondary-900">{activity.action}</p>
+                      <p className="text-xs text-secondary-600">
+                        by <span className="font-medium">{activity.user}</span>
+                      </p>
+                      <p className="text-xs text-secondary-500 mt-1">{activity.time}</p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          </div>
-        </div>
+          </motion.div>
 
-        {/* Quick Actions */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Quick Actions</h3>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                Add New Student
-              </button>
-              <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                Create Announcement
-              </button>
-              <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
-                Generate Report
-              </button>
+          {/* Quick Actions */}
+          <motion.div
+            variants={itemVariants}
+            className="bg-white rounded-2xl shadow-sm border border-secondary-200 p-6"
+          >
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-secondary-900 mb-2">Quick Actions</h3>
+              <p className="text-sm text-secondary-600">Commonly used features</p>
             </div>
-          </div>
+            <div className="space-y-3">
+              {quickActions.map((action, index) => {
+                const Icon = action.icon;
+                return (
+                  <motion.button
+                    key={index}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={action.action}
+                    className={cn(
+                      "w-full flex items-center p-4 rounded-xl border-2 border-dashed transition-all duration-200 hover:border-solid",
+                      action.color === "primary" && "border-primary-200 hover:border-primary-300 hover:bg-primary-50",
+                      action.color === "success" && "border-success-200 hover:border-success-300 hover:bg-success-50",
+                      action.color === "warning" && "border-warning-200 hover:border-warning-300 hover:bg-warning-50"
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "flex-shrink-0 p-2 rounded-lg mr-4",
+                        action.color === "primary" && "bg-primary-100",
+                        action.color === "success" && "bg-success-100",
+                        action.color === "warning" && "bg-warning-100"
+                      )}
+                    >
+                      <Icon
+                        className={cn(
+                          "w-5 h-5",
+                          action.color === "primary" && "text-primary-600",
+                          action.color === "success" && "text-success-600",
+                          action.color === "warning" && "text-warning-600"
+                        )}
+                      />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="font-medium text-secondary-900 text-sm">{action.title}</p>
+                      <p className="text-xs text-secondary-600">{action.description}</p>
+                    </div>
+                  </motion.button>
+                );
+              })}
+            </div>
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
     </Layout>
   );
 };

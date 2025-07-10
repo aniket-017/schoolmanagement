@@ -143,6 +143,7 @@ const login = async (req, res) => {
       message: "Login successful",
       token,
       user,
+      requirePasswordChange: user.isFirstLogin || false,
     });
   } catch (error) {
     console.error("Login error:", error);
@@ -158,10 +159,7 @@ const login = async (req, res) => {
 // @access  Private
 const getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id)
-      .populate("class", "name grade section")
-      .populate("subjects", "name")
-      .populate("children", "name email studentId");
+    const user = await User.findById(req.user.id).populate("class", "name grade section").populate("subjects", "name");
 
     res.json({
       success: true,
@@ -229,8 +227,10 @@ const changePassword = async (req, res) => {
       });
     }
 
-    // Update password
+    // Update password and clear first login flag
     user.password = newPassword;
+    user.isFirstLogin = false;
+    user.lastPasswordChange = new Date();
     await user.save();
 
     res.json({
