@@ -103,7 +103,6 @@ librarySchema.pre("save", function (next) {
 });
 
 // Create indexes
-librarySchema.index({ bookId: 1 });
 librarySchema.index({ title: 1 });
 librarySchema.index({ author: 1 });
 librarySchema.index({ isbn: 1 });

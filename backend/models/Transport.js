@@ -113,7 +113,6 @@ transportSchema.pre("save", function (next) {
 });
 
 // Create indexes
-transportSchema.index({ routeNumber: 1 });
 transportSchema.index({ routeName: 1 });
 transportSchema.index({ driverId: 1 });
 transportSchema.index({ vehicleNumber: 1 });

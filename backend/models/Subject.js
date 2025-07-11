@@ -82,7 +82,6 @@ const subjectSchema = new mongoose.Schema(
 );
 
 // Create indexes
-subjectSchema.index({ code: 1 });
 subjectSchema.index({ name: 1 });
 subjectSchema.index({ department: 1 });
 
