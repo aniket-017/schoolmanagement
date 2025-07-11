@@ -206,312 +206,151 @@ const UserApproval = () => {
 
   return (
     <Layout>
-      <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
-        {/* Header */}
-        <motion.div variants={itemVariants} className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-secondary-900 mb-2">User Approval</h1>
-            <p className="text-secondary-600">Review and approve new user registrations for teachers and staff</p>
-          </div>
-          <div className="mt-4 lg:mt-0">
-            <div className="bg-white px-4 py-2 rounded-lg shadow-sm border border-secondary-200">
-              <div className="flex items-center space-x-2">
-                <AlertTriangle className="w-4 h-4 text-warning-500" />
-                <span className="text-sm font-medium text-secondary-700">
+      <div className="max-w-7xl mx-auto p-6 bg-gray-50 min-h-screen">
+        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
+          {/* Header */}
+          <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-lg p-8 flex flex-col lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h1 className="text-4xl font-bold text-gray-900 mb-4">User Approval</h1>
+              <p className="text-xl text-gray-600 mb-2">Review and approve new user registrations for teachers and staff</p>
+            </div>
+            <div className="mt-6 lg:mt-0">
+              <div className="bg-yellow-50 px-4 py-2 rounded-xl shadow border border-yellow-100 flex items-center space-x-2">
+                <AlertTriangle className="w-5 h-5 text-yellow-500" />
+                <span className="text-base font-medium text-yellow-800">
                   {pendingUsers.length} users awaiting approval
                 </span>
               </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
 
-        {/* Statistics Cards */}
-        <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat, index) => {
-            const Icon = stat.icon;
-            return (
-              <motion.div
-                key={stat.name}
-                whileHover={{ y: -2, scale: 1.02 }}
-                className="bg-white rounded-2xl shadow-sm border border-secondary-200 p-6 hover:shadow-md transition-all duration-200"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div
-                    className={cn(
-                      "p-3 rounded-xl",
-                      stat.color === "primary" && "bg-primary-100",
-                      stat.color === "success" && "bg-success-100",
-                      stat.color === "warning" && "bg-warning-100",
-                      stat.color === "error" && "bg-error-100"
-                    )}
-                  >
-                    <Icon
-                      className={cn(
-                        "w-6 h-6",
-                        stat.color === "primary" && "text-primary-600",
-                        stat.color === "success" && "text-success-600",
-                        stat.color === "warning" && "text-warning-600",
-                        stat.color === "error" && "text-error-600"
-                      )}
-                    />
-                  </div>
-                  <div
-                    className={cn(
-                      "flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium",
-                      stat.changeType === "increase" ? "bg-success-100 text-success-700" : "bg-error-100 text-error-700"
-                    )}
-                  >
-                    <span>{stat.change}</span>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-secondary-900 mb-1">{stat.value}</p>
-                  <p className="text-sm font-medium text-secondary-700">{stat.name}</p>
-                </div>
-              </motion.div>
-            );
-          })}
-        </motion.div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2">
-            <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm border border-secondary-200">
-              {/* Tab Navigation */}
-              <div className="border-b border-secondary-200 p-6 pb-0">
-                <nav className="flex space-x-1">
-                  {tabConfig.map((tab) => {
-                    const Icon = tab.icon;
-                    return (
-                      <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={cn(
-                          "flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200",
-                          activeTab === tab.id
-                            ? "bg-primary-50 text-primary-700 border border-primary-200"
-                            : "text-secondary-600 hover:text-secondary-900 hover:bg-secondary-50"
-                        )}
-                      >
-                        <Icon className="w-4 h-4 mr-2" />
-                        {tab.name}
-                        <span
-                          className={cn(
-                            "ml-2 px-2 py-1 text-xs rounded-full",
-                            activeTab === tab.id
-                              ? "bg-primary-100 text-primary-600"
-                              : "bg-secondary-100 text-secondary-600"
-                          )}
-                        >
-                          {tab.count}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </nav>
+          {/* Tabs and Search/Filter */}
+          <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-lg p-6">
+            {/* Tabs */}
+            <div className="flex flex-wrap gap-2 mb-6">
+              {tabConfig.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center px-5 py-2 rounded-full font-medium text-sm shadow-sm transition-all duration-200
+                    ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-100 text-gray-700 hover:bg-blue-50 hover:text-blue-700'}`}
+                >
+                  <tab.icon className="w-4 h-4 mr-2" />
+                  {tab.name}
+                  <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-semibold ${activeTab === tab.id ? 'bg-white text-blue-600' : 'bg-blue-100 text-blue-600'}`}>{tab.count}</span>
+                </button>
+              ))}
+            </div>
+            {/* Search & Filter */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+              <div className="relative w-full sm:w-80">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search users..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 pr-4 py-2 w-full bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-sm"
+                />
               </div>
+              <button className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl transition-colors border border-gray-200">
+                <Filter className="w-4 h-4 mr-2" />
+                Filter
+              </button>
+            </div>
+          </motion.div>
 
-              {/* Search Bar */}
-              <div className="p-6 border-b border-secondary-200">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-secondary-400" />
-                    <input
-                      type="text"
-                      placeholder="Search users..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 pr-4 py-2 w-full sm:w-64 bg-secondary-50 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors text-sm"
-                    />
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button className="flex items-center px-3 py-2 text-sm text-secondary-600 hover:text-secondary-900 hover:bg-secondary-50 rounded-lg transition-colors">
-                      <Filter className="w-4 h-4 mr-2" />
-                      Filter
-                    </button>
-                  </div>
+          {/* Main Content: User Cards & Side Cards */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* User Cards */}
+            <div className="lg:col-span-2 space-y-6">
+              {filteredUsers.length === 0 ? (
+                <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
+                  <User className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-2xl font-semibold text-gray-900 mb-2">No users found</h3>
+                  <p className="text-gray-600 mb-6">Try adjusting your search or filter criteria.</p>
                 </div>
-              </div>
-
-              {/* Users List */}
-              <div className="p-6">
-                {activeTab === "pending" && (
-                  <div className="space-y-4">
-                    {filteredUsers.map((user) => (
-                      <motion.div
-                        key={user.id}
-                        whileHover={{ scale: 1.01 }}
-                        className="border border-secondary-200 rounded-xl p-6 hover:shadow-md transition-all duration-200"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start space-x-4 flex-1">
-                            <div className="flex-shrink-0">
-                              <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white font-semibold">
-                                {user.name.charAt(0)}
-                              </div>
-                            </div>
-
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center space-x-2 mb-2">
-                                <h3 className="text-lg font-semibold text-secondary-900">{user.name}</h3>
-                                <span
-                                  className={cn(
-                                    "px-2 py-1 text-xs font-medium rounded-full",
-                                    user.role === "teacher" && "bg-primary-100 text-primary-700",
-                                    user.role === "admin" && "bg-success-100 text-success-700"
-                                  )}
-                                >
-                                  {user.role}
-                                </span>
-                              </div>
-
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                <div className="space-y-2">
-                                  <div className="flex items-center text-sm text-secondary-600">
-                                    <Mail className="w-4 h-4 mr-2" />
-                                    {user.email}
-                                  </div>
-                                  <div className="flex items-center text-sm text-secondary-600">
-                                    <Phone className="w-4 h-4 mr-2" />
-                                    {user.phone}
-                                  </div>
-                                </div>
-
-                                <div className="space-y-2">
-
-                                  <div className="flex items-center text-sm text-secondary-600">
-                                    <Calendar className="w-4 h-4 mr-2" />
-                                    Applied {formatDate(user.appliedDate)}
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-sm text-secondary-700 mb-1">
-                                    <span className="font-medium">Qualification:</span> {user.qualification}
-                                  </p>
-                                  <p className="text-sm text-secondary-700">
-                                    <span className="font-medium">Experience:</span> {user.experience}
-                                  </p>
-                                </div>
-
-                                <div className="flex items-center space-x-2">
-                                  <button
-                                    onClick={() => setSelectedUser(user)}
-                                    className="flex items-center px-3 py-2 text-sm text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                                  >
-                                    <Eye className="w-4 h-4 mr-2" />
-                                    View Details
-                                  </button>
-
-                                  <button
-                                    onClick={() => handleApprove(user.id)}
-                                    className="flex items-center px-3 py-2 text-sm text-white bg-success-600 hover:bg-success-700 rounded-lg transition-colors"
-                                  >
-                                    <CheckCircle className="w-4 h-4 mr-2" />
-                                    Approve
-                                  </button>
-
-                                  <button
-                                    onClick={() => handleReject(user.id)}
-                                    className="flex items-center px-3 py-2 text-sm text-white bg-error-600 hover:bg-error-700 rounded-lg transition-colors"
-                                  >
-                                    <XCircle className="w-4 h-4 mr-2" />
-                                    Reject
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-
-                {(activeTab === "approved" || activeTab === "rejected") && (
-                  <div className="text-center py-12">
-                    <Users className="w-16 h-16 text-secondary-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-secondary-900 mb-2">
-                      {activeTab === "approved" ? "Approved Users" : "Rejected Users"}
-                    </h3>
-                    <p className="text-secondary-600">
-                      {activeTab === "approved"
-                        ? "List of approved users will be displayed here."
-                        : "List of rejected users will be displayed here."}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Recent Actions */}
-            <motion.div
-              variants={itemVariants}
-              className="bg-white rounded-2xl shadow-sm border border-secondary-200 p-6"
-            >
-              <h3 className="text-lg font-semibold text-secondary-900 mb-4">Recent Actions</h3>
-              <div className="space-y-4">
-                {recentActions.map((action) => (
-                  <div key={action.id} className="flex items-center space-x-3 p-3 rounded-lg bg-secondary-50">
-                    <div
-                      className={cn(
-                        "w-8 h-8 rounded-full flex items-center justify-center",
-                        action.action === "approved" && "bg-success-100",
-                        action.action === "rejected" && "bg-error-100"
-                      )}
-                    >
-                      {action.action === "approved" ? (
-                        <CheckCircle className="w-4 h-4 text-success-600" />
-                      ) : (
-                        <XCircle className="w-4 h-4 text-error-600" />
-                      )}
-                    </div>
-
+              ) : (
+                filteredUsers.map((user) => (
+                  <div key={user.id} className="bg-white rounded-2xl shadow-lg p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-6 border border-gray-100">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-secondary-900">{action.userName}</p>
-                      <p className="text-xs text-secondary-600">
-                        {action.action} as {action.role}
-                      </p>
-                      <p className="text-xs text-secondary-500">{formatDate(action.timestamp)}</p>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xl font-bold text-gray-900">{user.name}</span>
+                          <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full uppercase">{user.role}</span>
+                        </div>
+                        <span className="text-xs text-gray-500">Applied {formatDate(user.appliedDate)}</span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-2">
+                        <span className="flex items-center"><Mail className="w-4 h-4 mr-1" />{user.email}</span>
+                        <span className="flex items-center"><Phone className="w-4 h-4 mr-1" />{user.phone}</span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-2">
+                        <span>Qualification: <span className="font-medium text-gray-900">{user.qualification}</span></span>
+                        <span>Experience: <span className="font-medium text-gray-900">{user.experience}</span></span>
+                        {user.subjects && user.subjects.length > 0 && (
+                          <span>Subjects: <span className="font-medium text-gray-900">{user.subjects.join(', ')}</span></span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {user.documents && user.documents.map((doc, idx) => (
+                          <span key={idx} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">{doc}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2 min-w-[120px]">
+                      <button onClick={() => handleApprove(user.id)} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors">Approve</button>
+                      <button onClick={() => handleReject(user.id)} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 transition-colors">Reject</button>
+                      <button className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors">View Details</button>
                     </div>
                   </div>
-                ))}
+                ))
+              )}
+            </div>
+            {/* Side Cards */}
+            <div className="space-y-6">
+              {/* Recent Actions */}
+              <div className="bg-white rounded-2xl shadow-lg p-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">Recent Actions</h3>
+                <ul className="space-y-4">
+                  {recentActions.map((action) => (
+                    <li key={action.id} className="flex items-start gap-3">
+                      {action.action === 'approved' ? (
+                        <CheckCircle className="w-5 h-5 text-green-500 mt-0.5" />
+                      ) : (
+                        <XCircle className="w-5 h-5 text-red-500 mt-0.5" />
+                      )}
+                      <div>
+                        <span className="font-semibold text-gray-800">{action.userName}</span>
+                        <span className="text-gray-600"> {action.action} as {action.role}</span>
+                        <div className="text-xs text-gray-500">{formatDate(action.timestamp)}</div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               </div>
-            </motion.div>
-
-            {/* Quick Stats */}
-            <motion.div
-              variants={itemVariants}
-              className="bg-white rounded-2xl shadow-sm border border-secondary-200 p-6"
-            >
-              <h3 className="text-lg font-semibold text-secondary-900 mb-4">Quick Stats</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-secondary-600">This Week</span>
-                  <span className="text-sm font-medium text-secondary-900">18 approved</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-secondary-600">This Month</span>
-                  <span className="text-sm font-medium text-secondary-900">67 approved</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-secondary-600">Avg. Processing Time</span>
-                  <span className="text-sm font-medium text-secondary-900">2.3 days</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-secondary-600">Approval Rate</span>
-                  <span className="text-sm font-medium text-success-600">94.2%</span>
+              {/* Quick Stats */}
+              <div className="bg-white rounded-2xl shadow-lg p-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Stats</h3>
+                <div className="flex flex-col gap-2 text-sm text-gray-700">
+                  <div className="flex items-center justify-between">
+                    <span>This Week</span>
+                    <span className="font-semibold text-blue-600">18 approved</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>This Month</span>
+                    <span className="font-semibold text-blue-600">56 approved</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Rejected</span>
+                    <span className="font-semibold text-red-600">8</span>
+                  </div>
                 </div>
               </div>
-            </motion.div>
+            </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
     </Layout>
   );
 };

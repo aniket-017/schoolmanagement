@@ -221,252 +221,248 @@ const Announcements = () => {
 
   return (
     <Layout>
-      <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
-        {/* Header */}
-        <motion.div variants={itemVariants} className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-secondary-900 mb-2">Announcements</h1>
-            <p className="text-secondary-600">
-              Create, manage, and share important announcements with your school community
-            </p>
-          </div>
-          <div className="mt-4 lg:mt-0 flex space-x-3">
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setShowCreateModal(true)}
-              className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Create Announcement
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="flex items-center px-4 py-2 bg-success-600 text-white rounded-lg hover:bg-success-700 transition-colors shadow-sm"
-            >
-              <Send className="w-4 h-4 mr-2" />
-              Send Notification
-            </motion.button>
-          </div>
-        </motion.div>
-
-        {/* Statistics Cards */}
-        <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat, index) => {
-            const Icon = stat.icon;
-            return (
-              <motion.div
-                key={stat.name}
-                whileHover={{ y: -2, scale: 1.02 }}
-                className="bg-white rounded-2xl shadow-sm border border-secondary-200 p-6 hover:shadow-md transition-all duration-200"
+      <div className="max-w-7xl mx-auto p-6 bg-gray-50 min-h-screen">
+        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
+          {/* Header */}
+          <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-lg p-8 flex flex-col lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h1 className="text-4xl font-bold text-gray-900 mb-4">Announcements</h1>
+              <p className="text-xl text-gray-600 mb-2">Create, manage, and share important announcements with your school community</p>
+            </div>
+            <div className="mt-6 lg:mt-0 flex space-x-3">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setShowCreateModal(true)}
+                className="flex items-center px-5 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl font-medium"
               >
-                <div className="flex items-center justify-between mb-4">
-                  <div
-                    className={cn(
-                      "p-3 rounded-xl",
-                      stat.color === "primary" && "bg-primary-100",
-                      stat.color === "success" && "bg-success-100",
-                      stat.color === "warning" && "bg-warning-100",
-                      stat.color === "secondary" && "bg-secondary-100"
-                    )}
-                  >
-                    <Icon
+                <Plus className="w-5 h-5 mr-2" />
+                Create Announcement
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="flex items-center px-5 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all duration-200 shadow-lg hover:shadow-xl font-medium"
+              >
+                <Send className="w-5 h-5 mr-2" />
+                Send Notification
+              </motion.button>
+            </div>
+          </motion.div>
+
+          {/* Statistics Cards */}
+          <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {stats.map((stat, index) => {
+              const Icon = stat.icon;
+              return (
+                <motion.div
+                  key={stat.name}
+                  whileHover={{ y: -4, scale: 1.02 }}
+                  className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 border border-gray-100"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div
                       className={cn(
-                        "w-6 h-6",
-                        stat.color === "primary" && "text-primary-600",
-                        stat.color === "success" && "text-success-600",
-                        stat.color === "warning" && "text-warning-600",
-                        stat.color === "secondary" && "text-secondary-600"
+                        "p-3 rounded-xl",
+                        stat.color === "primary" && "bg-blue-100",
+                        stat.color === "success" && "bg-green-100",
+                        stat.color === "warning" && "bg-orange-100",
+                        stat.color === "secondary" && "bg-purple-100"
                       )}
-                    />
-                  </div>
-                  {stat.change !== "0" && (
+                    >
+                      <Icon
+                        className={cn(
+                          "w-6 h-6",
+                          stat.color === "primary" && "text-blue-600",
+                          stat.color === "success" && "text-green-600",
+                          stat.color === "warning" && "text-orange-600",
+                          stat.color === "secondary" && "text-purple-600"
+                        )}
+                      />
+                    </div>
                     <div
                       className={cn(
                         "flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium",
-                        stat.changeType === "increase"
-                          ? "bg-success-100 text-success-700"
-                          : "bg-error-100 text-error-700"
+                        stat.changeType === "increase" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
                       )}
                     >
                       <span>{stat.change}</span>
                     </div>
-                  )}
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-secondary-900 mb-1">{stat.value}</p>
-                  <p className="text-sm font-medium text-secondary-700">{stat.name}</p>
-                </div>
-              </motion.div>
-            );
-          })}
-        </motion.div>
+                  </div>
+                  <div>
+                    <p className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</p>
+                    <p className="text-sm font-medium text-gray-600">{stat.name}</p>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </motion.div>
 
-        {/* Announcements Section */}
-        <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm border border-secondary-200">
-          {/* Tab Navigation */}
-          <div className="border-b border-secondary-200 p-6 pb-0">
-            <nav className="flex space-x-1">
-              {tabConfig.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={cn(
-                    "flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200",
-                    activeTab === tab.id
-                      ? "bg-primary-50 text-primary-700 border border-primary-200"
-                      : "text-secondary-600 hover:text-secondary-900 hover:bg-secondary-50"
-                  )}
-                >
-                  {tab.name}
-                  <span
+          {/* Announcements Section */}
+          <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-lg p-6">
+            {/* Tab Navigation */}
+            <div className="border-b border-gray-200 p-6 pb-0">
+              <nav className="flex space-x-1">
+                {tabConfig.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
                     className={cn(
-                      "ml-2 px-2 py-1 text-xs rounded-full",
-                      activeTab === tab.id ? "bg-primary-100 text-primary-600" : "bg-secondary-100 text-secondary-600"
+                      "flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200",
+                      activeTab === tab.id
+                        ? "bg-blue-50 text-blue-700 border border-blue-200"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                     )}
                   >
-                    {tab.count}
-                  </span>
-                </button>
-              ))}
-            </nav>
-          </div>
-
-          {/* Search and Filter Bar */}
-          <div className="p-6 border-b border-secondary-200">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-secondary-400" />
-                <input
-                  type="text"
-                  placeholder="Search announcements..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-full sm:w-64 bg-secondary-50 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors text-sm"
-                />
-              </div>
-              <div className="flex items-center space-x-2">
-                <button className="flex items-center px-3 py-2 text-sm text-secondary-600 hover:text-secondary-900 hover:bg-secondary-50 rounded-lg transition-colors">
-                  <Filter className="w-4 h-4 mr-2" />
-                  Filter
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Announcements List */}
-          <div className="p-6">
-            <div className="space-y-4">
-              {filteredAnnouncements.map((announcement) => {
-                const PriorityIcon = getPriorityIcon(announcement.priority);
-                const priorityColor = getPriorityColor(announcement.priority);
-
-                return (
-                  <motion.div
-                    key={announcement.id}
-                    whileHover={{ scale: 1.01 }}
-                    className="border border-secondary-200 rounded-xl p-6 hover:shadow-md transition-all duration-200"
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-start space-x-4 flex-1">
-                        <div
-                          className={cn(
-                            "p-2 rounded-lg flex-shrink-0",
-                            priorityColor === "error" && "bg-error-100",
-                            priorityColor === "warning" && "bg-warning-100",
-                            priorityColor === "success" && "bg-success-100",
-                            priorityColor === "secondary" && "bg-secondary-100"
-                          )}
-                        >
-                          <PriorityIcon
-                            className={cn(
-                              "w-5 h-5",
-                              priorityColor === "error" && "text-error-600",
-                              priorityColor === "warning" && "text-warning-600",
-                              priorityColor === "success" && "text-success-600",
-                              priorityColor === "secondary" && "text-secondary-600"
-                            )}
-                          />
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <h3 className="text-lg font-semibold text-secondary-900 truncate">{announcement.title}</h3>
-                            {announcement.isPinned && <Pin className="w-4 h-4 text-warning-500 flex-shrink-0" />}
-                          </div>
-
-                          <p className="text-secondary-600 mb-3 line-clamp-2">{announcement.content}</p>
-
-                          <div className="flex flex-wrap items-center gap-4 text-sm text-secondary-500">
-                            <div className="flex items-center space-x-1">
-                              <Calendar className="w-4 h-4" />
-                              <span>{formatDate(announcement.createdAt)}</span>
-                            </div>
-                            <div className="flex items-center space-x-1">
-                              <Users className="w-4 h-4" />
-                              <span>{announcement.targetAudience}</span>
-                            </div>
-                            <div className="flex items-center space-x-1">
-                              <Eye className="w-4 h-4" />
-                              <span>{announcement.views} views</span>
-                            </div>
-                            <span>by {announcement.createdBy}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-2 ml-4">
-                        <span
-                          className={cn(
-                            "px-3 py-1 text-xs font-medium rounded-full",
-                            announcement.status === "published" && "bg-success-100 text-success-700",
-                            announcement.status === "draft" && "bg-warning-100 text-warning-700"
-                          )}
-                        >
-                          {announcement.status}
-                        </span>
-
-                        <div className="flex items-center space-x-1">
-                          <button className="p-2 text-secondary-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors">
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button className="p-2 text-secondary-400 hover:text-warning-600 hover:bg-warning-50 rounded-lg transition-colors">
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button className="p-2 text-secondary-400 hover:text-error-600 hover:bg-error-50 rounded-lg transition-colors">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-
-            {filteredAnnouncements.length === 0 && (
-              <div className="text-center py-12">
-                <Megaphone className="w-16 h-16 text-secondary-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-secondary-900 mb-2">No announcements found</h3>
-                <p className="text-secondary-600 mb-6">
-                  {activeTab === "all"
-                    ? "Create your first announcement to get started."
-                    : `No ${activeTab} announcements match your search.`}
-                </p>
-                {activeTab === "all" && (
-                  <button
-                    onClick={() => setShowCreateModal(true)}
-                    className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-                  >
-                    Create Announcement
+                    {tab.name}
+                    <span
+                      className={cn(
+                        "ml-2 px-2 py-1 text-xs rounded-full",
+                        activeTab === tab.id ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-600"
+                      )}
+                    >
+                      {tab.count}
+                    </span>
                   </button>
-                )}
+                ))}
+              </nav>
+            </div>
+
+            {/* Search and Filter Bar */}
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search announcements..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 pr-4 py-2 w-full sm:w-64 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-sm"
+                  />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
+                    <Filter className="w-4 h-4 mr-2" />
+                    Filter
+                  </button>
+                </div>
               </div>
-            )}
-          </div>
+            </div>
+
+            {/* Announcements List */}
+            <div className="p-6">
+              <div className="space-y-4">
+                {filteredAnnouncements.map((announcement) => {
+                  const PriorityIcon = getPriorityIcon(announcement.priority);
+                  const priorityColor = getPriorityColor(announcement.priority);
+
+                  return (
+                    <motion.div
+                      key={announcement.id}
+                      whileHover={{ scale: 1.01 }}
+                      className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all duration-200"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-start space-x-4 flex-1">
+                          <div
+                            className={cn(
+                              "p-2 rounded-lg flex-shrink-0",
+                              priorityColor === "error" && "bg-red-100",
+                              priorityColor === "warning" && "bg-orange-100",
+                              priorityColor === "success" && "bg-green-100",
+                              priorityColor === "secondary" && "bg-purple-100"
+                            )}
+                          >
+                            <PriorityIcon
+                              className={cn(
+                                "w-5 h-5",
+                                priorityColor === "error" && "text-red-600",
+                                priorityColor === "warning" && "text-orange-600",
+                                priorityColor === "success" && "text-green-600",
+                                priorityColor === "secondary" && "text-purple-600"
+                              )}
+                            />
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <h3 className="text-lg font-semibold text-gray-900 truncate">{announcement.title}</h3>
+                              {announcement.isPinned && <Pin className="w-4 h-4 text-orange-500 flex-shrink-0" />}
+                            </div>
+
+                            <p className="text-gray-600 mb-3 line-clamp-2">{announcement.content}</p>
+
+                            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+                              <div className="flex items-center space-x-1">
+                                <Calendar className="w-4 h-4" />
+                                <span>{formatDate(announcement.createdAt)}</span>
+                              </div>
+                              <div className="flex items-center space-x-1">
+                                <Users className="w-4 h-4" />
+                                <span>{announcement.targetAudience}</span>
+                              </div>
+                              <div className="flex items-center space-x-1">
+                                <Eye className="w-4 h-4" />
+                                <span>{announcement.views} views</span>
+                              </div>
+                              <span>by {announcement.createdBy}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-2 ml-4">
+                          <span
+                            className={cn(
+                              "px-3 py-1 text-xs font-medium rounded-full",
+                              announcement.status === "published" && "bg-green-100 text-green-700",
+                              announcement.status === "draft" && "bg-orange-100 text-orange-700"
+                            )}
+                          >
+                            {announcement.status}
+                          </span>
+
+                          <div className="flex items-center space-x-1">
+                            <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button className="p-2 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors">
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              {filteredAnnouncements.length === 0 && (
+                <div className="text-center py-12">
+                  <Megaphone className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No announcements found</h3>
+                  <p className="text-gray-600 mb-6">
+                    {activeTab === "all"
+                      ? "Create your first announcement to get started."
+                      : `No ${activeTab} announcements match your search.`}
+                  </p>
+                  {activeTab === "all" && (
+                    <button
+                      onClick={() => setShowCreateModal(true)}
+                      className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Create Announcement
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </motion.div>
         </motion.div>
-      </motion.div>
+      </div>
     </Layout>
   );
 };

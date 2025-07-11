@@ -1,5 +1,6 @@
 const Class = require("../models/Class");
 const User = require("../models/User");
+const Student = require("../models/Student");
 
 // @desc    Get all classes
 // @route   GET /api/classes
