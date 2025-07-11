@@ -187,7 +187,10 @@ const AdminDashboard = () => {
       <div className="max-w-7xl mx-auto p-6 bg-gray-50 min-h-screen">
         <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
           {/* Header */}
-          <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-lg p-8 flex flex-col lg:flex-row lg:items-center lg:justify-between">
+          <motion.div
+            variants={itemVariants}
+            className="bg-white rounded-2xl shadow-lg p-8 flex flex-col lg:flex-row lg:items-center lg:justify-between"
+          >
             <div>
               <h1 className="text-4xl font-bold text-gray-900 mb-4">Welcome back, Admin! 👋</h1>
               <p className="text-xl text-gray-600 mb-2">Here's what's happening at your school today.</p>
@@ -263,10 +266,7 @@ const AdminDashboard = () => {
           {/* Charts Section */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Enrollment Trends */}
-            <motion.div
-              variants={itemVariants}
-              className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100"
-            >
+            <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Enrollment Trends</h3>
                 <p className="text-sm text-gray-600">Student and teacher growth over time</p>
@@ -306,10 +306,7 @@ const AdminDashboard = () => {
             </motion.div>
 
             {/* Fee Collection */}
-            <motion.div
-              variants={itemVariants}
-              className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100"
-            >
+            <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Fee Collection</h3>
                 <p className="text-sm text-gray-600">Monthly collection vs pending amounts</p>
@@ -354,10 +351,7 @@ const AdminDashboard = () => {
           {/* Bottom Section */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Recent Activity */}
-            <motion.div
-              variants={itemVariants}
-              className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100"
-            >
+            <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Recent Activity</h3>
                 <p className="text-sm text-gray-600">Latest updates and actions</p>
@@ -405,10 +399,7 @@ const AdminDashboard = () => {
             </motion.div>
 
             {/* Quick Actions */}
-            <motion.div
-              variants={itemVariants}
-              className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100"
-            >
+            <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Quick Actions</h3>
                 <p className="text-sm text-gray-600">Commonly used features</p>

@@ -15,6 +15,9 @@ import {
   LogOut,
   User,
   BookOpen,
+  Settings,
+  Bell,
+  Search,
 } from "lucide-react";
 
 const Layout = ({ children }) => {
@@ -23,18 +26,100 @@ const Layout = ({ children }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const navigation = [
-    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, color: "primary" },
-    { name: "User Management", href: "/users", icon: Users, color: "success" },
-    { name: "User Approval", href: "/user-approval", icon: CheckSquare, color: "warning" },
-    { name: "Class Management", href: "/classes", icon: GraduationCap, color: "error" },
-    { name: "Fee Management", href: "/fees", icon: Wallet, color: "primary" },
-    { name: "Announcements", href: "/announcements", icon: Megaphone, color: "success" },
-    { name: "Student Demo", href: "/student-demo", icon: BookOpen, color: "warning" },
+    {
+      name: "Dashboard",
+      href: "/dashboard",
+      icon: LayoutDashboard,
+      color: "blue",
+      description: "Overview and analytics",
+    },
+    {
+      name: "User Management",
+      href: "/users",
+      icon: Users,
+      color: "emerald",
+      description: "Manage students and staff",
+    },
+    {
+      name: "User Approval",
+      href: "/user-approval",
+      icon: CheckSquare,
+      color: "amber",
+      description: "Review pending approvals",
+    },
+    {
+      name: "Class Management",
+      href: "/classes",
+      icon: GraduationCap,
+      color: "purple",
+      description: "Manage classes and subjects",
+    },
+    {
+      name: "Fee Management",
+      href: "/fees",
+      icon: Wallet,
+      color: "cyan",
+      description: "Handle fee collection",
+    },
+    {
+      name: "Announcements",
+      href: "/announcements",
+      icon: Megaphone,
+      color: "rose",
+      description: "School announcements",
+    },
+    {
+      name: "Student Demo",
+      href: "/student-demo",
+      icon: BookOpen,
+      color: "indigo",
+      description: "Student portal demo",
+    },
   ];
 
   const sidebarVariants = {
-    expanded: { width: "16rem" },
-    collapsed: { width: "5rem" },
+    expanded: { width: "280px" },
+    collapsed: { width: "80px" },
+  };
+
+  const getColorClasses = (color, isActive) => {
+    const colorMap = {
+      blue: isActive
+        ? "bg-blue-50 text-blue-700 border-blue-200"
+        : "text-gray-600 hover:bg-blue-50 hover:text-blue-700",
+      emerald: isActive
+        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+        : "text-gray-600 hover:bg-emerald-50 hover:text-emerald-700",
+      amber: isActive
+        ? "bg-amber-50 text-amber-700 border-amber-200"
+        : "text-gray-600 hover:bg-amber-50 hover:text-amber-700",
+      purple: isActive
+        ? "bg-purple-50 text-purple-700 border-purple-200"
+        : "text-gray-600 hover:bg-purple-50 hover:text-purple-700",
+      cyan: isActive
+        ? "bg-cyan-50 text-cyan-700 border-cyan-200"
+        : "text-gray-600 hover:bg-cyan-50 hover:text-cyan-700",
+      rose: isActive
+        ? "bg-rose-50 text-rose-700 border-rose-200"
+        : "text-gray-600 hover:bg-rose-50 hover:text-rose-700",
+      indigo: isActive
+        ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+        : "text-gray-600 hover:bg-indigo-50 hover:text-indigo-700",
+    };
+    return colorMap[color] || colorMap.blue;
+  };
+
+  const getIconColorClasses = (color, isActive) => {
+    const colorMap = {
+      blue: isActive ? "bg-blue-100 text-blue-600" : "text-gray-500 group-hover:text-blue-600",
+      emerald: isActive ? "bg-emerald-100 text-emerald-600" : "text-gray-500 group-hover:text-emerald-600",
+      amber: isActive ? "bg-amber-100 text-amber-600" : "text-gray-500 group-hover:text-amber-600",
+      purple: isActive ? "bg-purple-100 text-purple-600" : "text-gray-500 group-hover:text-purple-600",
+      cyan: isActive ? "bg-cyan-100 text-cyan-600" : "text-gray-500 group-hover:text-cyan-600",
+      rose: isActive ? "bg-rose-100 text-rose-600" : "text-gray-500 group-hover:text-rose-600",
+      indigo: isActive ? "bg-indigo-100 text-indigo-600" : "text-gray-500 group-hover:text-indigo-600",
+    };
+    return colorMap[color] || colorMap.blue;
   };
 
   const NavItem = ({ item, isActive }) => (
@@ -43,19 +128,14 @@ const Layout = ({ children }) => {
         <Tooltip.Trigger asChild>
           <Link
             to={item.href}
-            className={`flex items-center px-3 py-2 rounded-lg transition-all duration-200 group ${
-              isActive
-                ? cn(
-                    "bg-primary-50 text-primary-700",
-                    item.color === "success" && "bg-success-50 text-success-700",
-                    item.color === "warning" && "bg-warning-50 text-warning-700",
-                    item.color === "error" && "bg-error-50 text-error-700"
-                  )
-                : "text-secondary-600 hover:bg-secondary-50 hover:text-secondary-900"
-            }`}
+            className={cn(
+              "group flex items-center px-4 py-3 rounded-xl transition-all duration-300 border-2",
+              getColorClasses(item.color, isActive),
+              isActive ? "shadow-sm" : "border-transparent"
+            )}
           >
             <motion.div
-              className="flex items-center"
+              className="flex items-center w-full"
               initial={false}
               animate={{
                 gap: isCollapsed ? "0" : "0.75rem",
@@ -64,25 +144,17 @@ const Layout = ({ children }) => {
             >
               <div
                 className={cn(
-                  "p-2 rounded-lg transition-colors",
-                  isActive && item.color === "primary" && "bg-primary-100 text-primary-600",
-                  isActive && item.color === "success" && "bg-success-100 text-success-600",
-                  isActive && item.color === "warning" && "bg-warning-100 text-warning-600",
-                  isActive && item.color === "error" && "bg-error-100 text-error-600",
-                  !isActive && "text-secondary-600 group-hover:text-secondary-900"
+                  "p-2.5 rounded-lg transition-all duration-300",
+                  getIconColorClasses(item.color, isActive)
                 )}
               >
                 <item.icon className="w-5 h-5" />
               </div>
               {!isCollapsed && (
-                <motion.span
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="text-sm font-medium"
-                >
-                  {item.name}
-                </motion.span>
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1">
+                  <span className="text-sm font-semibold">{item.name}</span>
+                  <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>
+                </motion.div>
               )}
             </motion.div>
           </Link>
@@ -91,11 +163,14 @@ const Layout = ({ children }) => {
           <Tooltip.Portal>
             <Tooltip.Content
               side="right"
-              className="bg-secondary-900 text-white px-2 py-1 rounded text-sm"
-              sideOffset={5}
+              className="bg-gray-900 text-white px-3 py-2 rounded-lg text-sm font-medium shadow-xl border border-gray-700"
+              sideOffset={8}
             >
-              {item.name}
-              <Tooltip.Arrow className="fill-secondary-900" />
+              <div className="text-center">
+                <div className="font-semibold">{item.name}</div>
+                <div className="text-xs text-gray-300 mt-1">{item.description}</div>
+              </div>
+              <Tooltip.Arrow className="fill-gray-900" />
             </Tooltip.Content>
           </Tooltip.Portal>
         )}
@@ -104,39 +179,52 @@ const Layout = ({ children }) => {
   );
 
   return (
-    <div className="min-h-screen bg-secondary-50">
+    <div className="min-h-screen bg-gray-50">
       {/* Sidebar */}
       <motion.div
         initial="expanded"
         animate={isCollapsed ? "collapsed" : "expanded"}
         variants={sidebarVariants}
         transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="fixed inset-y-0 left-0 z-50 bg-white shadow-lg flex flex-col border-r border-secondary-200"
+        className="fixed inset-y-0 left-0 z-50 bg-white shadow-2xl flex flex-col border-r border-gray-200"
       >
         <div className="flex flex-col h-full">
           {/* Logo and collapse button */}
-          <div className="flex items-center h-16 px-4 bg-gradient-to-r from-primary-700 to-primary-600 justify-between">
+          <div className="flex items-center h-20 px-6 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 justify-between relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-indigo-600/20"></div>
             {!isCollapsed && (
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex items-center space-x-2"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="flex items-center space-x-3 relative z-10"
               >
-                <GraduationCap className="w-8 h-8 text-primary-100" />
-                <motion.h1
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="text-xl font-bold text-primary-50"
-                >
-                  School Admin
-                </motion.h1>
+                <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
+                  <GraduationCap className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <motion.h1
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="text-xl font-bold text-white"
+                  >
+                    School Admin
+                  </motion.h1>
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="text-xs text-blue-100"
+                  >
+                    Management Portal
+                  </motion.p>
+                </div>
               </motion.div>
             )}
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="p-1.5 rounded-lg bg-primary-800/50 text-primary-50 hover:bg-primary-900/50 hover:text-white transition-colors ring-1 ring-primary-400/30"
+              className="p-2 rounded-xl bg-white/20 text-white hover:bg-white/30 transition-all duration-300 ring-1 ring-white/30 backdrop-blur-sm relative z-10"
             >
               <motion.div animate={{ rotate: isCollapsed ? 180 : 0 }} transition={{ duration: 0.3 }}>
                 <ChevronLeft className="w-5 h-5" />
@@ -145,18 +233,18 @@ const Layout = ({ children }) => {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+          <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
             {navigation.map((item) => (
               <NavItem key={item.name} item={item} isActive={location.pathname === item.href} />
             ))}
           </nav>
 
           {/* User info and logout */}
-          <div className="p-4 border-t border-secondary-200 bg-white">
-            <div className="flex items-center justify-center">
+          <div className="p-4 border-t border-gray-200 bg-gray-50/50">
+            <div className="flex items-center justify-center mb-3">
               <div className={`flex items-center ${isCollapsed ? "flex-col" : "w-full"}`}>
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary-100 text-primary-600 ring-2 ring-primary-200">
-                  <User className="w-4 h-4" />
+                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white ring-2 ring-blue-200 shadow-lg">
+                  <User className="w-5 h-5" />
                 </div>
                 {!isCollapsed && (
                   <motion.div
@@ -165,8 +253,8 @@ const Layout = ({ children }) => {
                     exit={{ opacity: 0 }}
                     className="ml-3 flex-1"
                   >
-                    <p className="text-sm font-medium text-secondary-900 truncate">{user?.name || "Admin User"}</p>
-                    <p className="text-xs text-secondary-500 truncate">{user?.email || "admin@school.com"}</p>
+                    <p className="text-sm font-semibold text-gray-900 truncate">{user?.name || "Admin User"}</p>
+                    <p className="text-xs text-gray-500 truncate">{user?.email || "admin@school.com"}</p>
                   </motion.div>
                 )}
               </div>
@@ -176,23 +264,23 @@ const Layout = ({ children }) => {
                 <Tooltip.Trigger asChild>
                   <button
                     onClick={logout}
-                    className={`mt-3 flex items-center justify-center px-3 py-2 text-sm font-medium text-black bg-gradient-to-r from-error-600 to-error-500 rounded-lg hover:from-error-700 hover:to-error-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-error-500 transition-all duration-200 shadow-sm ${
+                    className={`flex items-center justify-center px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-red-500 to-red-600 rounded-xl hover:from-red-600 hover:to-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-300 shadow-lg hover:shadow-xl ${
                       isCollapsed ? "w-full aspect-square" : "w-full"
                     }`}
                   >
                     <LogOut className="w-5 h-5" />
-                    {!isCollapsed && <span className="ml-2">Logout</span>}
+                    {!isCollapsed && <span className="ml-2">Sign Out</span>}
                   </button>
                 </Tooltip.Trigger>
                 {isCollapsed && (
                   <Tooltip.Portal>
                     <Tooltip.Content
                       side="right"
-                      className="bg-secondary-900 text-white px-2 py-1 rounded text-sm shadow-lg"
-                      sideOffset={5}
+                      className="bg-gray-900 text-white px-3 py-2 rounded-lg text-sm font-medium shadow-xl border border-gray-700"
+                      sideOffset={8}
                     >
-                      Logout
-                      <Tooltip.Arrow className="fill-secondary-900" />
+                      Sign Out
+                      <Tooltip.Arrow className="fill-gray-900" />
                     </Tooltip.Content>
                   </Tooltip.Portal>
                 )}
@@ -205,12 +293,12 @@ const Layout = ({ children }) => {
       {/* Main content */}
       <motion.div
         animate={{
-          marginLeft: isCollapsed ? "5rem" : "16rem",
+          marginLeft: isCollapsed ? "80px" : "280px",
         }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
       >
-        <main className="py-6">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">{children}</div>
+        <main className="py-8">
+          <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">{children}</div>
         </main>
       </motion.div>
     </div>
