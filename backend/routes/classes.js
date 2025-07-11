@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { auth, teacherOrAdmin, adminOnly } = require("../middleware/auth");
+const { auth, teacherOrAdmin, adminOnly, teacherOnly } = require("../middleware/auth");
 const {
   getAllClasses,
   getClassById,
@@ -9,6 +9,7 @@ const {
   deleteClass,
   assignClassTeacher,
   getAvailableTeachers,
+  getTeacherAssignedClasses,
 } = require("../controllers/classController");
 
 // Test route to verify API is working
@@ -54,5 +55,10 @@ router.delete("/:id", auth, adminOnly, deleteClass);
 // @desc    Assign class teacher
 // @access  Private (Admin only)
 router.put("/:id/assign-teacher", auth, adminOnly, assignClassTeacher);
+
+// @route   GET /api/classes/teacher/assigned
+// @desc    Get classes assigned to current teacher
+// @access  Private (Teacher only)
+router.get("/teacher/assigned", auth, teacherOnly, getTeacherAssignedClasses);
 
 module.exports = router;

@@ -87,6 +87,9 @@ const adminOrPrincipal = authorize("admin", "principal");
 // Teacher and Admin middleware
 const teacherOrAdmin = authorize("teacher", "admin");
 
+// Teacher only middleware
+const teacherOnly = authorize("teacher");
+
 // Student, Parent, Teacher, and Admin middleware
 const authenticated = authorize("student", "parent", "teacher", "admin");
 
@@ -97,5 +100,6 @@ module.exports = {
   principalOnly,
   adminOrPrincipal,
   teacherOrAdmin,
+  teacherOnly,
   authenticated,
 };

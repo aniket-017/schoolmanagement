@@ -330,6 +330,70 @@ const getAvailableTeachers = async (req, res) => {
   }
 };
 
+// @desc    Get classes assigned to a specific teacher
+// @route   GET /api/classes/teacher/assigned
+// @access  Private (Teacher only)
+const getTeacherAssignedClasses = async (req, res) => {
+  try {
+    // Get classes where the current teacher is assigned as class teacher
+    const assignedClasses = await Class.find({
+      classTeacher: req.user.id,
+      isActive: true,
+    })
+      .populate("students", "name studentId email")
+      .populate("subjects.subject", "name code")
+      .populate("subjects.teacher", "name email")
+      .sort({ grade: 1, division: 1 });
+
+    // Get additional information for each class
+    const classesWithDetails = await Promise.all(
+      assignedClasses.map(async (classItem) => {
+        // Get student count
+        const studentCount = classItem.students ? classItem.students.length : 0;
+        
+        // Get subjects count
+        const subjectsCount = classItem.subjects ? classItem.subjects.length : 0;
+        
+        // Get recent assignments count (last 30 days)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        const Assignment = require("../models/Assignment");
+        const recentAssignments = await Assignment.countDocuments({
+          classId: classItem._id,
+          assignedDate: { $gte: thirtyDaysAgo },
+          isActive: true,
+        });
+
+        return {
+          ...classItem.toObject(),
+          studentCount,
+          subjectsCount,
+          recentAssignments,
+        };
+      })
+    );
+
+    res.json({
+      success: true,
+      data: classesWithDetails,
+      summary: {
+        totalClasses: classesWithDetails.length,
+        totalStudents: classesWithDetails.reduce((sum, cls) => sum + cls.studentCount, 0),
+        totalSubjects: classesWithDetails.reduce((sum, cls) => sum + cls.subjectsCount, 0),
+        totalRecentAssignments: classesWithDetails.reduce((sum, cls) => sum + cls.recentAssignments, 0),
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching teacher assigned classes:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching assigned classes",
+      error: error.message,
+    });
+  }
+};
+
 // Helper function for ordinal suffix
 const getOrdinalSuffix = (num) => {
   const j = num % 10;
@@ -354,4 +418,5 @@ module.exports = {
   deleteClass,
   assignClassTeacher,
   getAvailableTeachers,
+  getTeacherAssignedClasses,
 };

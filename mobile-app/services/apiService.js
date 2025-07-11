@@ -237,6 +237,22 @@ export const apiService = {
     },
   },
 
+  // Classes Services
+  classes: {
+    getAllClasses: async (params = {}) => {
+      const response = await api.get("/classes", { params });
+      return response.data;
+    },
+    getClassById: async (id) => {
+      const response = await api.get(`/classes/${id}`);
+      return response.data;
+    },
+    getTeacherAssignedClasses: async () => {
+      const response = await api.get("/classes/teacher/assigned");
+      return response.data;
+    },
+  },
+
   // Library Services
   library: {
     getBooks: async (params = {}) => {
