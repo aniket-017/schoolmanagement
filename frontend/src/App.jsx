@@ -9,7 +9,7 @@ import ClassManagement from "./pages/ClassManagement";
 import ClassDetails from "./pages/ClassDetails";
 import FeeManagement from "./pages/FeeManagement";
 import Announcements from "./pages/Announcements";
-import UserApproval from "./pages/UserApproval";
+
 import StudentDemo from "./pages/StudentDemo";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ChangePassword from "./components/ChangePassword";
@@ -88,14 +88,7 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/user-approval"
-          element={
-            <ProtectedRoute>
-              <UserApproval />
-            </ProtectedRoute>
-          }
-        />
+
         <Route
           path="/student-demo"
           element={

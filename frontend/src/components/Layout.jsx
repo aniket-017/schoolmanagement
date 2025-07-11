@@ -7,7 +7,6 @@ import { cn } from "../utils/cn";
 import {
   LayoutDashboard,
   Users,
-  CheckSquare,
   GraduationCap,
   Wallet,
   Megaphone,
@@ -40,13 +39,7 @@ const Layout = ({ children }) => {
       color: "emerald",
       description: "Manage students and staff",
     },
-    {
-      name: "User Approval",
-      href: "/user-approval",
-      icon: CheckSquare,
-      color: "amber",
-      description: "Review pending approvals",
-    },
+
     {
       name: "Class Management",
       href: "/classes",
