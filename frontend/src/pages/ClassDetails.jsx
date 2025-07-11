@@ -87,13 +87,13 @@ const ClassDetails = () => {
 
   // Filtering
   const filteredStudents = students.filter(s =>
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (s.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (s.email || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
     (s.rollNumber && s.rollNumber.toLowerCase().includes(searchTerm.toLowerCase()))
   );
   const filteredSubjects = subjects.filter(s =>
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.code.toLowerCase().includes(searchTerm.toLowerCase())
+    (s.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (s.code || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Handlers (add/remove student/subject, upload, etc.)
