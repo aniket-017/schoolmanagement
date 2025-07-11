@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import {
   GraduationCap,
   Users,
@@ -39,6 +40,7 @@ const getOrdinalSuffix = (num) => {
 };
 
 const ClassManagement = () => {
+  const navigate = useNavigate();
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -482,7 +484,10 @@ const ClassManagement = () => {
               </div>
 
               <div className="flex items-center justify-end space-x-2 mt-6 pt-4 border-t border-secondary-200">
-                <button className="flex items-center px-3 py-2 text-sm text-primary-600 hover:bg-primary-50 rounded-lg transition-colors">
+                <button 
+                  onClick={() => navigate(`/classes/${classItem._id}`)}
+                  className="flex items-center px-3 py-2 text-sm text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                >
                   <Eye className="w-4 h-4 mr-2" />
                   View
                 </button>

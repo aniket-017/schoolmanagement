@@ -6,9 +6,11 @@ import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
 import UserManagement from "./pages/UserManagement";
 import ClassManagement from "./pages/ClassManagement";
+import ClassDetails from "./pages/ClassDetails";
 import FeeManagement from "./pages/FeeManagement";
 import Announcements from "./pages/Announcements";
 import UserApproval from "./pages/UserApproval";
+import StudentDemo from "./pages/StudentDemo";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ChangePassword from "./components/ChangePassword";
 
@@ -63,6 +65,14 @@ function AppContent() {
           }
         />
         <Route
+          path="/classes/:classId"
+          element={
+            <ProtectedRoute>
+              <ClassDetails />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/fees"
           element={
             <ProtectedRoute>
@@ -83,6 +93,14 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <UserApproval />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/student-demo"
+          element={
+            <ProtectedRoute>
+              <StudentDemo />
             </ProtectedRoute>
           }
         />

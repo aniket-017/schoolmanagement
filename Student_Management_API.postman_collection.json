@@ -1,0 +1,332 @@
+{
+	"info": {
+		"_postman_id": "student-management-api",
+		"name": "Student Management API",
+		"description": "API collection for testing student management endpoints",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Login as Admin",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@school.com\",\n  \"password\": \"admin123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.token) {",
+									"        pm.environment.set('token', response.token);",
+									"        console.log('Token saved:', response.token);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Classes",
+			"item": [
+				{
+					"name": "Get All Classes",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/classes",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"classes"
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.data && response.data.length > 0) {",
+									"        pm.environment.set('class_id', response.data[0]._id);",
+									"        console.log('Class ID saved:', response.data[0]._id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Class by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/classes/{{class_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"classes",
+								"{{class_id}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Student Management",
+			"item": [
+				{
+					"name": "Get All Students in Class",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/classes/{{class_id}}/students",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"classes",
+								"{{class_id}}",
+								"students"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add Individual Student",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Jane Smith\",\n  \"email\": \"jane.smith@school.com\",\n  \"phone\": \"+1234567892\",\n  \"rollNumber\": \"STU001\",\n  \"dateOfBirth\": \"2010-08-20\",\n  \"parentName\": \"John Smith\",\n  \"parentPhone\": \"+1234567893\",\n  \"address\": \"456 Oak Avenue, Anytown, State 12345, Country\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/classes/{{class_id}}/students",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"classes",
+								"{{class_id}}",
+								"students"
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    if (response.data && response.data.id) {",
+									"        pm.environment.set('student_id', response.data.id);",
+									"        console.log('Student ID saved:', response.data.id);",
+									"        console.log('Temp Password:', response.data.tempPassword);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Download Excel Template",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/classes/{{class_id}}/students/excel-template",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"classes",
+								"{{class_id}}",
+								"students",
+								"excel-template"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Bulk Upload Students",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/classes/{{class_id}}/students/bulk",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"classes",
+								"{{class_id}}",
+								"students",
+								"bulk"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Remove Student from Class",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/classes/{{class_id}}/students/{{student_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"classes",
+								"{{class_id}}",
+								"students",
+								"{{student_id}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:1704/api",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "class_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "student_id",
+			"value": "",
+			"type": "string"
+		}
+	]
+} 

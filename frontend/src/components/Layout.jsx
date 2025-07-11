@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   LogOut,
   User,
+  BookOpen,
 } from "lucide-react";
 
 const Layout = ({ children }) => {
@@ -28,6 +29,7 @@ const Layout = ({ children }) => {
     { name: "Class Management", href: "/classes", icon: GraduationCap, color: "error" },
     { name: "Fee Management", href: "/fees", icon: Wallet, color: "primary" },
     { name: "Announcements", href: "/announcements", icon: Megaphone, color: "success" },
+    { name: "Student Demo", href: "/student-demo", icon: BookOpen, color: "warning" },
   ];
 
   const sidebarVariants = {
