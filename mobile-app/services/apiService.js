@@ -251,6 +251,10 @@ export const apiService = {
       const response = await api.get("/classes/teacher/assigned");
       return response.data;
     },
+    getClassStudents: async (classId) => {
+      const response = await api.get(`/classes/${classId}/students`);
+      return response.data;
+    },
   },
 
   // Library Services

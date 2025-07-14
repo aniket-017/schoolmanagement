@@ -71,7 +71,7 @@ export default function ClassesScreen({ navigation }) {
   };
 
   const handleClassPress = (classItem) => {
-    navigation.navigate("ClassDetails", {
+    navigation.navigate("TeacherClassDetails", {
       classId: classItem._id,
       className: `${classItem.grade}${getOrdinalSuffix(classItem.grade)} Class - ${classItem.division}`,
     });

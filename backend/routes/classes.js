@@ -122,7 +122,20 @@ router.post("/:id/students", auth, adminOnly, async (req, res) => {
   try {
     const Class = require("../models/Class");
     const Student = require("../models/Student");
-    const { name, email, phone, rollNumber, dateOfBirth, parentName, parentPhone, address } = req.body;
+    const { 
+      firstName, 
+      middleName, 
+      lastName, 
+      email, 
+      mobileNumber, 
+      rollNumber, 
+      dateOfBirth, 
+      gender,
+      currentAddress,
+      mothersName,
+      parentsMobileNumber,
+      address 
+    } = req.body;
 
     // Check if class exists
     const classData = await Class.findById(req.params.id);
@@ -167,29 +180,36 @@ router.post("/:id/students", auth, adminOnly, async (req, res) => {
 
     // Create student
     const student = await Student.create({
-      name,
+      firstName,
+      middleName,
+      lastName,
       email,
-      phone,
+      mobileNumber,
       rollNumber,
       dateOfBirth,
-      studentId,
+      gender,
+      currentAddress,
+      mothersName,
+      parentsMobileNumber,
+      grade: `${classData.grade}${classData.getOrdinalSuffix(classData.grade)}`,
       class: req.params.id,
       academicYear: classData.academicYear,
       currentGrade: `${classData.grade}${classData.getOrdinalSuffix(classData.grade)}`,
+      // Legacy fields for backward compatibility
       father: { 
-        name: parentName, 
-        phone: parentPhone 
+        name: mothersName, 
+        phone: parentsMobileNumber 
       },
       mother: { 
-        name: parentName, 
-        phone: parentPhone 
+        name: mothersName, 
+        phone: parentsMobileNumber 
       },
-      address: typeof address === 'string' ? { 
-        street: address,
+      address: { 
+        street: currentAddress || "",
         city: "",
         state: "",
         country: "India"
-      } : address,
+      },
       createdBy: req.user.id,
     });
 
@@ -223,6 +243,80 @@ router.post("/:id/students", auth, adminOnly, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error adding student",
+      error: error.message,
+    });
+  }
+});
+
+// @route   GET /api/classes/:id/students/excel-template
+// @desc    Download Excel template for bulk student upload
+// @access  Private (Admin only)
+router.get("/:id/students/excel-template", auth, adminOnly, async (req, res) => {
+  try {
+    const Class = require("../models/Class");
+    
+    // Check if class exists
+    const classData = await Class.findById(req.params.id);
+    if (!classData) {
+      return res.status(404).json({
+        success: false,
+        message: "Class not found",
+      });
+    }
+
+    // Create template data
+    const templateData = [
+      {
+        FirstName: "John",
+        MiddleName: "Michael",
+        LastName: "Doe",
+        Email: "john.doe@example.com",
+        MobileNumber: "+1234567890",
+        DateOfBirth: "2010-05-15",
+        Gender: "male",
+        CurrentAddress: "123 Main Street, City, State",
+        MothersName: "Jane Doe",
+        ParentsMobileNumber: "+1234567891",
+        RollNumber: "001"
+      }
+    ];
+
+    // Create workbook and worksheet
+    const workbook = xlsx.utils.book_new();
+    const worksheet = xlsx.utils.json_to_sheet(templateData);
+
+    // Set column widths
+    const columnWidths = [
+      { wch: 15 }, // FirstName
+      { wch: 15 }, // MiddleName
+      { wch: 15 }, // LastName
+      { wch: 25 }, // Email
+      { wch: 15 }, // MobileNumber
+      { wch: 12 }, // DateOfBirth
+      { wch: 10 }, // Gender
+      { wch: 40 }, // CurrentAddress
+      { wch: 20 }, // MothersName
+      { wch: 15 }, // ParentsMobileNumber
+      { wch: 10 }, // RollNumber
+    ];
+    worksheet['!cols'] = columnWidths;
+
+    // Add worksheet to workbook
+    xlsx.utils.book_append_sheet(workbook, worksheet, "Students Template");
+
+    // Generate buffer
+    const buffer = xlsx.write(workbook, { type: "buffer", bookType: "xlsx" });
+
+    // Set headers for file download
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="students_template_${classData.grade}${classData.division}.xlsx"`);
+    
+    res.send(buffer);
+  } catch (error) {
+    console.error("Error generating template:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error generating template",
       error: error.message,
     });
   }
@@ -279,10 +373,10 @@ router.post("/:id/students/bulk", auth, adminOnly, upload.single("file"), async 
 
       try {
         // Validate required fields
-        if (!row.Name || !row.Email || !row.RollNumber) {
+        if (!row.FirstName || !row.LastName || !row.Email || !row.RollNumber) {
           results.failed.push({
             row: rowNumber,
-            error: "Name, Email, and RollNumber are required",
+            error: "FirstName, LastName, Email, and RollNumber are required",
           });
           continue;
         }
@@ -326,25 +420,32 @@ router.post("/:id/students/bulk", auth, adminOnly, upload.single("file"), async 
 
         // Create student
         const student = await Student.create({
-          name: row.Name,
+          firstName: row.FirstName,
+          middleName: row.MiddleName || "",
+          lastName: row.LastName,
           email: row.Email,
-          phone: row.Phone || "",
+          mobileNumber: row.MobileNumber || row.Phone || "",
           rollNumber: row.RollNumber,
           dateOfBirth: row.DateOfBirth || null,
-          studentId,
+          gender: row.Gender || "other",
+          currentAddress: row.CurrentAddress || row.Address || "",
+          mothersName: row.MothersName || row.ParentName || "",
+          parentsMobileNumber: row.ParentsMobileNumber || row.ParentPhone || "",
+          grade: `${classData.grade}${classData.getOrdinalSuffix(classData.grade)}`,
           class: req.params.id,
           academicYear: classData.academicYear,
           currentGrade: `${classData.grade}${classData.getOrdinalSuffix(classData.grade)}`,
+          // Legacy fields for backward compatibility
           father: {
-            name: row.ParentName || "",
-            phone: row.ParentPhone || "",
+            name: row.MothersName || row.ParentName || "",
+            phone: row.ParentsMobileNumber || row.ParentPhone || "",
           },
           mother: {
-            name: row.ParentName || "",
-            phone: row.ParentPhone || "",
+            name: row.MothersName || row.ParentName || "",
+            phone: row.ParentsMobileNumber || row.ParentPhone || "",
           },
           address: {
-            street: row.Address || "",
+            street: row.CurrentAddress || row.Address || "",
             city: row.City || "",
             state: row.State || "",
             zipCode: row.ZipCode || "",

@@ -34,15 +34,16 @@ const ClassDetails = () => {
   const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
   const [showAddSubjectModal, setShowAddSubjectModal] = useState(false);
   const [studentForm, setStudentForm] = useState({
-    name: "",
+    firstName: "",
+    middleName: "",
+    lastName: "",
     email: "",
-    phone: "",
+    mobileNumber: "",
     dateOfBirth: "",
-    parentName: "",
-    parentPhone: "",
-    address: "",
-    city: "",
-    state: "",
+    gender: "",
+    currentAddress: "",
+    mothersName: "",
+    parentsMobileNumber: "",
     rollNumber: "",
   });
   const [subjectForm, setSubjectForm] = useState({
@@ -101,16 +102,8 @@ const ClassDetails = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem("token");
-      // Compose address object
-      const addressObj = {
-        street: studentForm.address,
-        city: studentForm.city,
-        state: studentForm.state,
-        country: "India",
-      };
       const payload = {
         ...studentForm,
-        address: addressObj,
       };
       const response = await fetch(`${appConfig.API_BASE_URL}/classes/${classId}/students`, {
         method: "POST",
@@ -126,15 +119,16 @@ const ClassDetails = () => {
         toast.success("Student added successfully");
         setShowAddStudentModal(false);
         setStudentForm({
-          name: "",
+          firstName: "",
+          middleName: "",
+          lastName: "",
           email: "",
-          phone: "",
+          mobileNumber: "",
           dateOfBirth: "",
-          parentName: "",
-          parentPhone: "",
-          address: "",
-          city: "",
-          state: "",
+          gender: "",
+          currentAddress: "",
+          mothersName: "",
+          parentsMobileNumber: "",
           rollNumber: "",
         });
         fetchClassDetails();
@@ -409,10 +403,10 @@ const ClassDetails = () => {
                             Roll No
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Phone
+                            Mobile
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Parent
+                            Mother's Name
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Student ID
@@ -431,10 +425,15 @@ const ClassDetails = () => {
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex items-center">
                                 <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm mr-3">
-                                  {student.name.charAt(0)}
+                                  {(student.firstName || student.name || 'S').charAt(0)}
                                 </div>
                                 <div>
-                                  <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {student.firstName && student.lastName 
+                                      ? `${student.firstName} ${student.middleName ? student.middleName + ' ' : ''}${student.lastName}`.trim()
+                                      : student.name || 'N/A'
+                                    }
+                                  </div>
                                   <div className="text-sm text-gray-500">{student.email}</div>
                                 </div>
                               </div>
@@ -443,10 +442,10 @@ const ClassDetails = () => {
                               {student.rollNumber || "N/A"}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {student.phone || "N/A"}
+                              {student.mobileNumber || student.phone || "N/A"}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {student.father?.name || "N/A"}
+                              {student.mothersName || student.mother?.name || "N/A"}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               {student.studentId || "N/A"}
@@ -537,35 +536,126 @@ const ClassDetails = () => {
             >
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Add Student</h2>
               <form onSubmit={handleAddStudent} className="space-y-4">
+                {/* Basic Information */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={studentForm.firstName}
+                      onChange={(e) => setStudentForm({ ...studentForm, firstName: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
+                    <input
+                      type="text"
+                      value={studentForm.middleName}
+                      onChange={(e) => setStudentForm({ ...studentForm, middleName: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={studentForm.lastName}
+                      onChange={(e) => setStudentForm({ ...studentForm, lastName: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label>
+                    <input
+                      type="date"
+                      required
+                      value={studentForm.dateOfBirth}
+                      onChange={(e) => setStudentForm({ ...studentForm, dateOfBirth: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Gender *</label>
+                    <select
+                      required
+                      value={studentForm.gender}
+                      onChange={(e) => setStudentForm({ ...studentForm, gender: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Contact Information */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email Address *</label>
+                    <input
+                      type="email"
+                      required
+                      value={studentForm.email}
+                      onChange={(e) => setStudentForm({ ...studentForm, email: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number *</label>
+                    <input
+                      type="tel"
+                      required
+                      value={studentForm.mobileNumber}
+                      onChange={(e) => setStudentForm({ ...studentForm, mobileNumber: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                  <input
-                    type="text"
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Current Address *</label>
+                  <textarea
                     required
-                    value={studentForm.name}
-                    onChange={(e) => setStudentForm({ ...studentForm, name: e.target.value })}
+                    value={studentForm.currentAddress}
+                    onChange={(e) => setStudentForm({ ...studentForm, currentAddress: e.target.value })}
+                    rows={3}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <input
-                    type="email"
-                    required
-                    value={studentForm.email}
-                    onChange={(e) => setStudentForm({ ...studentForm, email: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+
+                {/* Parent/Guardian Information */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Mother's Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={studentForm.mothersName}
+                      onChange={(e) => setStudentForm({ ...studentForm, mothersName: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Parent's Mobile Number *</label>
+                    <input
+                      type="tel"
+                      required
+                      value={studentForm.parentsMobileNumber}
+                      onChange={(e) => setStudentForm({ ...studentForm, parentsMobileNumber: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                  <input
-                    type="tel"
-                    value={studentForm.phone}
-                    onChange={(e) => setStudentForm({ ...studentForm, phone: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
+
+                {/* Academic Information */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Roll Number *</label>
                   <input
@@ -573,62 +663,6 @@ const ClassDetails = () => {
                     required
                     value={studentForm.rollNumber}
                     onChange={(e) => setStudentForm({ ...studentForm, rollNumber: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-                  <input
-                    type="date"
-                    value={studentForm.dateOfBirth}
-                    onChange={(e) => setStudentForm({ ...studentForm, dateOfBirth: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Parent Name</label>
-                  <input
-                    type="text"
-                    value={studentForm.parentName}
-                    onChange={(e) => setStudentForm({ ...studentForm, parentName: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Parent Phone</label>
-                  <input
-                    type="tel"
-                    value={studentForm.parentPhone}
-                    onChange={(e) => setStudentForm({ ...studentForm, parentPhone: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                  <textarea
-                    value={studentForm.address}
-                    onChange={(e) => setStudentForm({ ...studentForm, address: e.target.value })}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">City<span className="text-red-500">*</span></label>
-                  <input
-                    type="text"
-                    required
-                    value={studentForm.city}
-                    onChange={(e) => setStudentForm({ ...studentForm, city: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">State<span className="text-red-500">*</span></label>
-                  <input
-                    type="text"
-                    required
-                    value={studentForm.state}
-                    onChange={(e) => setStudentForm({ ...studentForm, state: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -690,7 +724,7 @@ const ClassDetails = () => {
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                   <p className="text-xs text-gray-600 mt-1">
-                    File should contain columns: Name, Email, Phone, DateOfBirth, ParentName, ParentPhone, Address, City, State, ZipCode, Country, RollNumber
+                    File should contain columns: FirstName, MiddleName, LastName, Email, MobileNumber, DateOfBirth, Gender, CurrentAddress, MothersName, ParentsMobileNumber, RollNumber
                   </p>
                 </div>
                 <div className="flex space-x-3 pt-4">

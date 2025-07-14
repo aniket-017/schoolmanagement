@@ -3,21 +3,26 @@ const mongoose = require("mongoose");
 const studentSchema = new mongoose.Schema(
   {
     // Basic Information
-    name: {
+    studentId: {
       type: String,
-      required: [true, "Name is required"],
+      unique: true,
+    },
+    firstName: {
+      type: String,
+      required: [true, "First name is required"],
       trim: true,
-      maxlength: [100, "Name cannot exceed 100 characters"],
+      maxlength: [50, "First name cannot exceed 50 characters"],
     },
-    email: {
+    middleName: {
       type: String,
-      required: [true, "Email is required"],
-      lowercase: true,
-      match: [/^\S+@\S+\.\S+$/, "Please enter a valid email"],
+      trim: true,
+      maxlength: [50, "Middle name cannot exceed 50 characters"],
     },
-    phone: {
+    lastName: {
       type: String,
-      match: [/^[\+]?[\d\s\-\(\)]{7,15}$/, "Please enter a valid phone number"],
+      required: [true, "Last name is required"],
+      trim: true,
+      maxlength: [50, "Last name cannot exceed 50 characters"],
     },
     dateOfBirth: {
       type: Date,
@@ -26,27 +31,62 @@ const studentSchema = new mongoose.Schema(
     gender: {
       type: String,
       enum: ["male", "female", "other"],
+      required: [true, "Gender is required"],
     },
-    bloodGroup: String,
-    nationality: String,
-    religion: String,
+
+    // Contact Information
+    mobileNumber: {
+      type: String,
+      required: [true, "Mobile number is required"],
+      match: [/^[\+]?[\d\s\-\(\)]{7,15}$/, "Please enter a valid mobile number"],
+    },
+    email: {
+      type: String,
+      required: [true, "Email is required"],
+      lowercase: true,
+      match: [/^\S+@\S+\.\S+$/, "Please enter a valid email"],
+    },
+    currentAddress: {
+      type: String,
+      required: [true, "Current address is required"],
+      trim: true,
+    },
+
+    // Parent/Guardian Information
+    mothersName: {
+      type: String,
+      required: [true, "Mother's name is required"],
+      trim: true,
+      maxlength: [100, "Mother's name cannot exceed 100 characters"],
+    },
+    parentsMobileNumber: {
+      type: String,
+      required: [true, "Parent's mobile number is required"],
+      match: [/^[\+]?[\d\s\-\(\)]{7,15}$/, "Please enter a valid mobile number"],
+    },
 
     // Academic Information
-    studentId: {
-      type: String,
-    },
-    rollNumber: {
-      type: String,
-      required: [true, "Roll number is required"],
-    },
     class: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Class",
       required: [true, "Class is required"],
     },
+    grade: {
+      type: String,
+      required: [true, "Grade is required"],
+    },
+
+    // Legacy fields for backward compatibility
+    name: {
+      type: String,
+      trim: true,
+    },
+    phone: String,
+    rollNumber: {
+      type: String,
+    },
     academicYear: {
       type: String,
-      required: [true, "Academic year is required"],
     },
     admissionDate: {
       type: Date,
@@ -54,14 +94,12 @@ const studentSchema = new mongoose.Schema(
     },
     currentGrade: {
       type: String,
-      required: [true, "Current grade is required"],
     },
 
-    // Family Information
+    // Family Information (legacy)
     father: {
       name: {
         type: String,
-        required: [true, "Father's name is required"],
       },
       occupation: String,
       phone: String,
@@ -70,7 +108,6 @@ const studentSchema = new mongoose.Schema(
     mother: {
       name: {
         type: String,
-        required: [true, "Mother's name is required"],
       },
       occupation: String,
       phone: String,
@@ -83,19 +120,16 @@ const studentSchema = new mongoose.Schema(
       email: String,
     },
 
-    // Address Information
+    // Address Information (legacy)
     address: {
       street: {
         type: String,
-        required: [true, "Street address is required"],
       },
       city: {
         type: String,
-        required: [true, "City is required"],
       },
       state: {
         type: String,
-        required: [true, "State is required"],
       },
       zipCode: String,
       country: {
@@ -103,6 +137,11 @@ const studentSchema = new mongoose.Schema(
         default: "India",
       },
     },
+
+    // Additional fields
+    bloodGroup: String,
+    nationality: String,
+    religion: String,
 
     // Emergency Contact
     emergencyContact: {
@@ -186,7 +225,6 @@ const studentSchema = new mongoose.Schema(
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
     },
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -200,7 +238,6 @@ const studentSchema = new mongoose.Schema(
 
 // Create indexes
 studentSchema.index({ email: 1 });
-studentSchema.index({ studentId: 1 });
 studentSchema.index({ rollNumber: 1 });
 studentSchema.index({ class: 1 });
 studentSchema.index({ status: 1 });
@@ -208,7 +245,10 @@ studentSchema.index({ isActive: 1 });
 
 // Virtual for full name
 studentSchema.virtual("fullName").get(function () {
-  return this.name;
+  if (this.firstName && this.lastName) {
+    return `${this.firstName} ${this.middleName ? this.middleName + ' ' : ''}${this.lastName}`.trim();
+  }
+  return this.name || '';
 });
 
 // Virtual for age
@@ -224,11 +264,37 @@ studentSchema.virtual("age").get(function () {
   return age;
 });
 
-// Pre-save middleware to generate student ID if not provided
+// Pre-save middleware to generate student ID if not provided and set legacy fields
 studentSchema.pre("save", function (next) {
   if (!this.studentId) {
     this.studentId = `STU${Date.now()}`;
   }
+  
+  // Set legacy name field for backward compatibility
+  if (this.firstName && this.lastName) {
+    this.name = `${this.firstName} ${this.middleName ? this.middleName + ' ' : ''}${this.lastName}`.trim();
+  }
+  
+  // Set legacy phone field for backward compatibility
+  if (this.mobileNumber && !this.phone) {
+    this.phone = this.mobileNumber;
+  }
+  
+  // Set legacy mother name for backward compatibility
+  if (this.mothersName && !this.mother.name) {
+    this.mother.name = this.mothersName;
+  }
+  
+  // Set legacy parent phone for backward compatibility
+  if (this.parentsMobileNumber && !this.mother.phone) {
+    this.mother.phone = this.parentsMobileNumber;
+  }
+  
+  // Set legacy address for backward compatibility
+  if (this.currentAddress && !this.address.street) {
+    this.address.street = this.currentAddress;
+  }
+  
   next();
 });
 
@@ -250,24 +316,9 @@ studentSchema.methods.getAttendance = async function (startDate, endDate) {
 studentSchema.methods.getGrades = async function (academicYear) {
   const Grade = mongoose.model("Grade");
   return await Grade.find({
-    student: this._id,
-    academicYear: academicYear || this.academicYear,
-  }).populate("subject");
-};
-
-// Static method to find students by class
-studentSchema.statics.findByClass = function (classId) {
-  return this.find({ class: classId, isActive: true }).sort({ rollNumber: 1 });
-};
-
-// Static method to find students by status
-studentSchema.statics.findByStatus = function (status) {
-  return this.find({ status, isActive: true }).sort({ name: 1 });
-};
-
-// Static method to get student count by class
-studentSchema.statics.getCountByClass = function (classId) {
-  return this.countDocuments({ class: classId, isActive: true });
+    student_id: this._id,
+    academic_year: academicYear,
+  }).populate("examination_id");
 };
 
 module.exports = mongoose.model("Student", studentSchema); 

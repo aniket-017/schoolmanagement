@@ -20,6 +20,8 @@
     "axios": "^1.6.2",
     "date-fns": "^4.1.0",
     "expo": "^53.0.17",
+    "expo-document-picker": "^13.1.6",
+    "expo-file-system": "^18.1.11",
     "expo-linear-gradient": "~14.1.5",
     "expo-splash-screen": "^0.30.10",
     "expo-status-bar": "~2.2.3",
