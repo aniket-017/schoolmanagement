@@ -1,17 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import {
-  Users,
-  BookOpen,
-  Calendar,
-  Plus,
-  Upload,
-  UserPlus,
-  Download,
-  Eye,
-  Trash2,
-} from "lucide-react";
+import { Users, BookOpen, Calendar, Plus, Upload, UserPlus, Download, Eye, Trash2 } from "lucide-react";
 import Layout from "../components/Layout";
 import { cn } from "../utils/cn";
 import appConfig from "../config/environment";
@@ -86,9 +76,15 @@ const ClassDetails = () => {
       const token = localStorage.getItem("token");
       const [classRes, studentsRes, subjectsRes, teachersRes] = await Promise.all([
         fetch(`${appConfig.API_BASE_URL}/classes/${classId}`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${appConfig.API_BASE_URL}/classes/${classId}/students`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${appConfig.API_BASE_URL}/classes/${classId}/subjects`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${appConfig.API_BASE_URL}/users?role=teacher&status=approved`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${appConfig.API_BASE_URL}/classes/${classId}/students`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${appConfig.API_BASE_URL}/classes/${classId}/subjects`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${appConfig.API_BASE_URL}/users?role=teacher&status=approved`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
       ]);
       const classData = await classRes.json();
       const studentsData = await studentsRes.json();
@@ -110,10 +106,9 @@ const ClassDetails = () => {
     try {
       const token = localStorage.getItem("token");
       const dateString = attendanceDate.toISOString().split("T")[0];
-      const res = await fetch(
-        `${appConfig.API_BASE_URL}/attendances/class-attendance/${classId}/${dateString}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await fetch(`${appConfig.API_BASE_URL}/attendance/class-attendance/${classId}/${dateString}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await res.json();
       if (data.success) {
         setAttendanceSummary(data.data.summary);
@@ -130,14 +125,16 @@ const ClassDetails = () => {
   };
 
   // Filtering
-  const filteredStudents = students.filter(s =>
-    (s.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (s.email || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (s.rollNumber && s.rollNumber.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredStudents = students.filter(
+    (s) =>
+      (s.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.email || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.rollNumber && s.rollNumber.toLowerCase().includes(searchTerm.toLowerCase()))
   );
-  const filteredSubjects = subjects.filter(s =>
-    (s.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (s.code || "").toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredSubjects = subjects.filter(
+    (s) =>
+      (s.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.code || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Handlers (add/remove student/subject, upload, etc.)
@@ -211,7 +208,7 @@ const ClassDetails = () => {
         setShowBulkUploadModal(false);
         setUploadFile(null);
         fetchClassDetails();
-        
+
         // Show detailed results if available
         if (data.results) {
           setUploadResults(data.results);
@@ -346,10 +343,8 @@ const ClassDetails = () => {
     setShowStudentDetailModal(false);
   };
 
-
-
   const handleStudentSave = (updatedStudent) => {
-    setStudents(prev => prev.map(s => s._id === updatedStudent._id ? updatedStudent : s));
+    setStudents((prev) => prev.map((s) => (s._id === updatedStudent._id ? updatedStudent : s)));
   };
 
   // UI
@@ -360,7 +355,8 @@ const ClassDetails = () => {
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-1">
-              {classData?.grade}{getOrdinalSuffix(classData?.grade)} Class - {classData?.division}
+              {classData?.grade}
+              {getOrdinalSuffix(classData?.grade)} Class - {classData?.division}
             </h1>
             <p className="text-gray-500">
               {classData?.classTeacher ? `Teacher: ${classData.classTeacher.name}` : "No teacher assigned"}
@@ -387,15 +383,13 @@ const ClassDetails = () => {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             {/* Tabs */}
             <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
-              {TABS.map(tab => (
+              {TABS.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={cn(
                     "flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors",
-                    activeTab === tab.id
-                      ? "bg-white text-blue-600 shadow"
-                      : "text-gray-600 hover:text-gray-900"
+                    activeTab === tab.id ? "bg-white text-blue-600 shadow" : "text-gray-600 hover:text-gray-900"
                   )}
                 >
                   <tab.icon className="w-4 h-4 mr-2" />
@@ -409,7 +403,7 @@ const ClassDetails = () => {
                 type="text"
                 placeholder={`Search ${activeTab}...`}
                 value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-[220px] bg-gray-50"
               />
               {activeTab === "students" && (
@@ -418,13 +412,15 @@ const ClassDetails = () => {
                     onClick={() => setShowAddStudentModal(true)}
                     className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium shadow"
                   >
-                    <UserPlus className="w-4 h-4 mr-2" />Add Student
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Add Student
                   </button>
                   <button
                     onClick={() => setShowBulkUploadModal(true)}
                     className="flex items-center px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium shadow"
                   >
-                    <Upload className="w-4 h-4 mr-2" />Bulk Upload
+                    <Upload className="w-4 h-4 mr-2" />
+                    Bulk Upload
                   </button>
                 </>
               )}
@@ -433,7 +429,8 @@ const ClassDetails = () => {
                   onClick={() => setShowAddSubjectModal(true)}
                   className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium shadow"
                 >
-                  <Plus className="w-4 h-4 mr-2" />Add Subject
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Subject
                 </button>
               )}
             </div>
@@ -481,18 +478,25 @@ const ClassDetails = () => {
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {filteredStudents.map((student, index) => (
-                          <tr key={student._id} className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100 cursor-pointer transition-colors`} onClick={() => handleStudentClick(student)}>
+                          <tr
+                            key={student._id}
+                            className={`${
+                              index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                            } hover:bg-gray-100 cursor-pointer transition-colors`}
+                            onClick={() => handleStudentClick(student)}
+                          >
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex items-center">
                                 <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm mr-3">
-                                  {(student.firstName || student.name || 'S').charAt(0)}
+                                  {(student.firstName || student.name || "S").charAt(0)}
                                 </div>
                                 <div>
                                   <div className="text-sm font-medium text-gray-900">
-                                    {student.firstName && student.lastName 
-                                      ? `${student.firstName} ${student.middleName ? student.middleName + ' ' : ''}${student.lastName}`.trim()
-                                      : student.name || 'N/A'
-                                    }
+                                    {student.firstName && student.lastName
+                                      ? `${student.firstName} ${student.middleName ? student.middleName + " " : ""}${
+                                          student.lastName
+                                        }`.trim()
+                                      : student.name || "N/A"}
                                   </div>
                                   <div className="text-sm text-gray-500">{student.email}</div>
                                 </div>
@@ -511,14 +515,16 @@ const ClassDetails = () => {
                               {student.studentId || "N/A"}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                student.status === 'active' 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : student.status === 'inactive'
-                                  ? 'bg-red-100 text-red-800'
-                                  : 'bg-yellow-100 text-yellow-800'
-                              }`}>
-                                {student.status || 'active'}
+                              <span
+                                className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                  student.status === "active"
+                                    ? "bg-green-100 text-green-800"
+                                    : student.status === "inactive"
+                                    ? "bg-red-100 text-red-800"
+                                    : "bg-yellow-100 text-yellow-800"
+                                }`}
+                              >
+                                {student.status || "active"}
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -553,7 +559,7 @@ const ClassDetails = () => {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredSubjects.map(subject => (
+                  {filteredSubjects.map((subject) => (
                     <div key={subject._id} className="bg-white border rounded-2xl shadow-sm p-5 flex flex-col gap-2">
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center text-white">
@@ -566,13 +572,19 @@ const ClassDetails = () => {
                       </div>
                       <div className="flex flex-col gap-1 mt-2">
                         <div className="text-xs text-gray-500">{subject.description}</div>
-                        <div className="text-xs text-gray-500">Teacher: <span className="text-gray-900">{subject.teacher ? subject.teacher.name : "Not assigned"}</span></div>
+                        <div className="text-xs text-gray-500">
+                          Teacher:{" "}
+                          <span className="text-gray-900">
+                            {subject.teacher ? subject.teacher.name : "Not assigned"}
+                          </span>
+                        </div>
                       </div>
                       <button
                         onClick={() => handleRemoveSubject(subject._id)}
                         className="mt-2 text-error-600 hover:underline text-xs self-end"
                       >
-                        <Trash2 className="w-4 h-4 inline mr-1" />Remove
+                        <Trash2 className="w-4 h-4 inline mr-1" />
+                        Remove
                       </button>
                     </div>
                   ))}
@@ -627,22 +639,33 @@ const ClassDetails = () => {
                   <table className="w-full">
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roll No</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Roll No
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Name
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {attendanceList.length === 0 ? (
                         <tr>
-                          <td colSpan={3} className="text-center text-gray-400 py-8">No attendance data for this date.</td>
+                          <td colSpan={3} className="text-center text-gray-400 py-8">
+                            No attendance data for this date.
+                          </td>
                         </tr>
                       ) : (
                         attendanceList.map(({ student, status }) => (
                           <tr key={student._id}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{student.rollNumber || "N/A"}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {student.rollNumber || "N/A"}
+                            </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{student.name}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold"
+                            <td
+                              className="px-6 py-4 whitespace-nowrap text-sm font-semibold"
                               style={{
                                 color:
                                   status === "present"
@@ -651,7 +674,7 @@ const ClassDetails = () => {
                                     ? "#dc2626"
                                     : status === "leave"
                                     ? "#f59e42"
-                                    : "#6b7280"
+                                    : "#6b7280",
                               }}
                             >
                               {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -709,7 +732,7 @@ const ClassDetails = () => {
                     />
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label>
@@ -835,7 +858,7 @@ const ClassDetails = () => {
               className="bg-white rounded-2xl w-full max-w-lg mx-4 shadow-2xl p-8 max-h-[90vh] overflow-y-auto border border-gray-200"
             >
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Bulk Upload Students</h2>
-              
+
               {/* Download Template Section */}
               <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <h3 className="text-lg font-medium text-blue-900 mb-2">Step 1: Download Template</h3>
@@ -865,7 +888,8 @@ const ClassDetails = () => {
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                   <p className="text-xs text-gray-600 mt-1">
-                    File should contain columns: FirstName, MiddleName, LastName, Email, MobileNumber, DateOfBirth, Gender, CurrentAddress, MothersName, ParentsMobileNumber, RollNumber
+                    File should contain columns: FirstName, MiddleName, LastName, Email, MobileNumber, DateOfBirth,
+                    Gender, CurrentAddress, MothersName, ParentsMobileNumber, RollNumber
                   </p>
                 </div>
                 <div className="flex space-x-3 pt-4">
@@ -899,10 +923,7 @@ const ClassDetails = () => {
             >
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-gray-900">Upload Results</h2>
-                <button
-                  onClick={() => setUploadResults(null)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
+                <button onClick={() => setUploadResults(null)} className="text-gray-400 hover:text-gray-600">
                   <Plus className="w-6 h-6 transform rotate-45" />
                 </button>
               </div>
@@ -921,9 +942,9 @@ const ClassDetails = () => {
                             <div>
                               <div className="font-medium text-green-900">{item.student.name}</div>
                               <div className="text-sm text-green-700">{item.student.email}</div>
-                                                             <div className="text-xs text-green-600 mt-1">
-                                 Student ID: {item.student.studentId} | Roll No: {item.student.rollNumber}
-                               </div>
+                              <div className="text-xs text-green-600 mt-1">
+                                Student ID: {item.student.studentId} | Roll No: {item.student.rollNumber}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1073,11 +1094,12 @@ const ClassDetails = () => {
 };
 
 function getOrdinalSuffix(num) {
-  const j = num % 10, k = num % 100;
+  const j = num % 10,
+    k = num % 100;
   if (j === 1 && k !== 11) return "st";
   if (j === 2 && k !== 12) return "nd";
   if (j === 3 && k !== 13) return "rd";
   return "th";
 }
 
-export default ClassDetails; 
+export default ClassDetails;

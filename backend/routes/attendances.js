@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const {
   markAttendance,
-  getUserAttendance,
+  getStudentAttendance,
   getClassAttendance,
   updateAttendance,
   deleteAttendance,
@@ -11,7 +11,6 @@ const {
   getTeacherClasses,
   getClassStudents,
   getClassAttendanceByDate,
-  bulkMarkClassAttendance,
 } = require("../controllers/attendanceController");
 const { auth } = require("../middleware/auth");
 
@@ -21,8 +20,8 @@ router.post("/mark", auth, markAttendance);
 // Bulk mark attendance (teachers and admins)
 router.post("/bulk-mark", auth, bulkMarkAttendance);
 
-// Get user attendance history
-router.get("/user/:userId", auth, getUserAttendance);
+// Get student attendance history
+router.get("/student/:studentId", auth, getStudentAttendance);
 
 // Get class attendance for a specific date
 router.get("/class/:classId/:date", auth, getClassAttendance);
@@ -31,10 +30,10 @@ router.get("/class/:classId/:date", auth, getClassAttendance);
 router.get("/stats", auth, getAttendanceStats);
 
 // Update attendance record
-router.put("/:id", auth, updateAttendance);
+router.put("/:studentId/:date", auth, updateAttendance);
 
 // Delete attendance record
-router.delete("/:id", auth, deleteAttendance);
+router.delete("/:studentId/:date", auth, deleteAttendance);
 
 // Mobile app specific routes
 // Get classes for a teacher
@@ -45,8 +44,5 @@ router.get("/class-students/:classId", auth, getClassStudents);
 
 // Get attendance for a class on a specific date
 router.get("/class-attendance/:classId/:date", auth, getClassAttendanceByDate);
-
-// Bulk mark attendance for a class
-router.post("/bulk-mark-class", auth, bulkMarkClassAttendance);
 
 module.exports = router;

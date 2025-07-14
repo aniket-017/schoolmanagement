@@ -100,35 +100,35 @@ export const apiService = {
   // Attendance Services
   attendance: {
     getStudentAttendance: async (studentId, params = {}) => {
-      const response = await api.get(`/attendances/student/${studentId}`, { params });
+      const response = await api.get(`/attendance/student/${studentId}`, { params });
       return response.data;
     },
-    getClassAttendance: async (classId, params = {}) => {
-      const response = await api.get(`/attendances/class/${classId}`, { params });
+    getClassAttendance: async (classId, date) => {
+      const response = await api.get(`/attendance/class/${classId}/${date}`);
       return response.data;
     },
     markAttendance: async (attendanceData) => {
-      const response = await api.post("/attendances/mark", attendanceData);
+      const response = await api.post("/attendance", attendanceData);
       return response.data;
     },
     // Mobile attendance management
     getTeacherClasses: async () => {
-      const response = await api.get("/attendances/teacher-classes");
+      const response = await api.get("/attendance/teacher/classes");
       return response.data;
     },
     getClassStudents: async (classId) => {
-      const response = await api.get(`/attendances/class-students/${classId}`);
+      const response = await api.get(`/attendance/class/${classId}/students`);
       return response.data;
     },
     getClassAttendanceByDate: async (classId, date) => {
-      const response = await api.get(`/attendances/class-attendance/${classId}/${date}`);
+      const response = await api.get(`/attendance/class-attendance/${classId}/${date}`);
       return response.data;
     },
     bulkMarkClassAttendance: async (classId, date, attendanceData) => {
-      const response = await api.post("/attendances/bulk-mark-class", {
+      const response = await api.post("/attendance/bulk", {
         classId,
         date,
-        attendanceData
+        attendanceData,
       });
       return response.data;
     },

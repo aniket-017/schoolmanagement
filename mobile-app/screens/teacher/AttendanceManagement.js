@@ -1,14 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
-  TouchableOpacity,
-  Modal,
-} from "react-native";
+import { View, Text, StyleSheet, ScrollView, Alert, ActivityIndicator, TouchableOpacity, Modal } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
@@ -19,8 +10,10 @@ import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import { apiService } from "../../services/apiService";
 import theme from "../../utils/theme";
+import { useAuth } from "../../context/AuthContext";
 
 export default function AttendanceManagement({ navigation }) {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -67,8 +60,12 @@ export default function AttendanceManagement({ navigation }) {
   const loadClassStudents = async () => {
     try {
       setLoading(true);
+      // console.log("Loading students for class:", selectedClass);
       const response = await apiService.attendance.getClassStudents(selectedClass);
-      if (response.success) {
+      // console.log("Students response:", JSON.stringify(response, null, 2));
+
+      if (response.success && response.data && response.data.students) {
+        console.log("Found", response.data.students.length, "students");
         setStudents(response.data.students);
         // Initialize attendance data
         const initialAttendance = {};
@@ -83,6 +80,9 @@ export default function AttendanceManagement({ navigation }) {
           leave: 0,
           unmarked: response.data.students.length,
         });
+      } else {
+        console.error("Invalid response format:", response);
+        Alert.alert("Error", "Invalid response format from server");
       }
     } catch (error) {
       console.error("Error loading students:", error);
@@ -98,17 +98,18 @@ export default function AttendanceManagement({ navigation }) {
     try {
       setLoading(true);
       const dateString = selectedDate.toISOString().split("T")[0];
-      const response = await apiService.attendance.getClassAttendanceByDate(
-        selectedClass,
-        dateString
-      );
-      if (response.success) {
+      const response = await apiService.attendance.getClassAttendanceByDate(selectedClass, dateString);
+      if (response.success && response.data && response.data.attendance) {
         const existingData = {};
         response.data.attendance.forEach((item) => {
-          existingData[item.student._id] = item.status;
+          if (item.student && item.student._id) {
+            existingData[item.student._id] = item.status;
+          }
         });
         setAttendanceData(existingData);
-        setSummary(response.data.summary);
+        if (response.data.summary) {
+          setSummary(response.data.summary);
+        }
       }
     } catch (error) {
       console.error("Error loading existing attendance:", error);
@@ -148,21 +149,21 @@ export default function AttendanceManagement({ navigation }) {
     // Update summary
     const newSummary = { ...summary };
     const oldStatus = attendanceData[studentId] || "unmarked";
-    
+
     // Decrease old status count
     if (oldStatus !== "unmarked") {
       newSummary[oldStatus]--;
     } else {
       newSummary.unmarked--;
     }
-    
+
     // Increase new status count
     if (status !== "unmarked") {
       newSummary[status]++;
     } else {
       newSummary.unmarked++;
     }
-    
+
     setSummary(newSummary);
   };
 
@@ -172,9 +173,7 @@ export default function AttendanceManagement({ navigation }) {
       return;
     }
 
-    const markedStudents = Object.entries(attendanceData).filter(
-      ([_, status]) => status !== "unmarked"
-    );
+    const markedStudents = Object.entries(attendanceData).filter(([_, status]) => status !== "unmarked");
 
     if (markedStudents.length === 0) {
       Alert.alert("Error", "Please mark attendance for at least one student.");
@@ -184,10 +183,16 @@ export default function AttendanceManagement({ navigation }) {
     try {
       setSaving(true);
       const dateString = selectedDate.toISOString().split("T")[0];
-      const attendancePayload = markedStudents.map(([studentId, status]) => ({
-        studentId,
-        status,
-      }));
+
+      // Convert to the format expected by the new API
+      const attendancePayload = {};
+      markedStudents.forEach(([studentId, status]) => {
+        attendancePayload[studentId] = {
+          status,
+          markedBy: user.id,
+          attendanceType: "daily",
+        };
+      });
 
       const response = await apiService.attendance.bulkMarkClassAttendance(
         selectedClass,
@@ -198,9 +203,11 @@ export default function AttendanceManagement({ navigation }) {
       if (response.success) {
         Alert.alert(
           "Success",
-          `Attendance saved successfully!\n\nSummary:\nPresent: ${response.data.summary.present}\nAbsent: ${response.data.summary.absent}\nLeave: ${response.data.summary.leave}`,
+          `Attendance saved successfully!\n\nMarked attendance for ${markedStudents.length} students.`,
           [{ text: "OK" }]
         );
+        // Refresh the attendance data
+        loadExistingAttendance();
       }
     } catch (error) {
       console.error("Error saving attendance:", error);
@@ -255,10 +262,7 @@ export default function AttendanceManagement({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
-      >
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Header */}
         <Card style={styles.headerCard}>
           <View style={styles.headerRow}>
@@ -273,10 +277,7 @@ export default function AttendanceManagement({ navigation }) {
         {/* Date Picker */}
         <Card style={styles.dateCard}>
           <Text style={styles.sectionTitle}>Select Date</Text>
-          <TouchableOpacity
-            style={styles.dateButton}
-            onPress={() => setShowDatePicker(true)}
-          >
+          <TouchableOpacity style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
             <Ionicons name="calendar" size={24} color={theme.colors.primary} />
             <Text style={styles.dateText}>{formatDate(selectedDate)}</Text>
             <Ionicons name="chevron-down" size={20} color={theme.colors.textSecondary} />
@@ -295,11 +296,7 @@ export default function AttendanceManagement({ navigation }) {
             >
               <Picker.Item label="Select a class..." value={null} />
               {classes.map((classItem) => (
-                <Picker.Item
-                  key={classItem._id}
-                  label={classItem.fullName}
-                  value={classItem._id}
-                />
+                <Picker.Item key={classItem._id} label={classItem.fullName} value={classItem._id} />
               ))}
             </Picker>
           </View>
@@ -314,12 +311,7 @@ export default function AttendanceManagement({ navigation }) {
             </Text>
 
             {students.map((student, index) => (
-              <Animatable.View
-                key={student._id}
-                animation="fadeInUp"
-                delay={index * 50}
-                style={styles.studentRow}
-              >
+              <Animatable.View key={student._id} animation="fadeInUp" delay={index * 50} style={styles.studentRow}>
                 <View style={styles.studentInfo}>
                   <Text style={styles.rollNumber}>{student.rollNumber}</Text>
                   <Text style={styles.studentName}>{student.name}</Text>
@@ -336,11 +328,7 @@ export default function AttendanceManagement({ navigation }) {
                     <Ionicons
                       name="checkmark-circle"
                       size={20}
-                      color={
-                        attendanceData[student._id] === "present"
-                          ? theme.colors.textLight
-                          : theme.colors.success
-                      }
+                      color={attendanceData[student._id] === "present" ? theme.colors.textLight : theme.colors.success}
                     />
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -354,11 +342,7 @@ export default function AttendanceManagement({ navigation }) {
                     <Ionicons
                       name="close-circle"
                       size={20}
-                      color={
-                        attendanceData[student._id] === "absent"
-                          ? theme.colors.textLight
-                          : theme.colors.error
-                      }
+                      color={attendanceData[student._id] === "absent" ? theme.colors.textLight : theme.colors.error}
                     />
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -372,11 +356,7 @@ export default function AttendanceManagement({ navigation }) {
                     <Ionicons
                       name="time"
                       size={20}
-                      color={
-                        attendanceData[student._id] === "leave"
-                          ? theme.colors.textLight
-                          : theme.colors.warning
-                      }
+                      color={attendanceData[student._id] === "leave" ? theme.colors.textLight : theme.colors.warning}
                     />
                   </TouchableOpacity>
                 </View>
@@ -391,27 +371,19 @@ export default function AttendanceManagement({ navigation }) {
             <Text style={styles.sectionTitle}>Summary</Text>
             <View style={styles.summaryGrid}>
               <View style={styles.summaryItem}>
-                <Text style={[styles.summaryNumber, { color: theme.colors.success }]}>
-                  {summary.present}
-                </Text>
+                <Text style={[styles.summaryNumber, { color: theme.colors.success }]}>{summary.present}</Text>
                 <Text style={styles.summaryLabel}>Present</Text>
               </View>
               <View style={styles.summaryItem}>
-                <Text style={[styles.summaryNumber, { color: theme.colors.error }]}>
-                  {summary.absent}
-                </Text>
+                <Text style={[styles.summaryNumber, { color: theme.colors.error }]}>{summary.absent}</Text>
                 <Text style={styles.summaryLabel}>Absent</Text>
               </View>
               <View style={styles.summaryItem}>
-                <Text style={[styles.summaryNumber, { color: theme.colors.warning }]}>
-                  {summary.leave}
-                </Text>
+                <Text style={[styles.summaryNumber, { color: theme.colors.warning }]}>{summary.leave}</Text>
                 <Text style={styles.summaryLabel}>Leave</Text>
               </View>
               <View style={styles.summaryItem}>
-                <Text style={[styles.summaryNumber, { color: theme.colors.textSecondary }]}>
-                  {summary.unmarked}
-                </Text>
+                <Text style={[styles.summaryNumber, { color: theme.colors.textSecondary }]}>{summary.unmarked}</Text>
                 <Text style={styles.summaryLabel}>Unmarked</Text>
               </View>
             </View>
