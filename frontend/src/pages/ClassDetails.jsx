@@ -10,6 +10,7 @@ import {
   UserPlus,
   Download,
   Eye,
+  Trash2,
 } from "lucide-react";
 import Layout from "../components/Layout";
 import { cn } from "../utils/cn";
@@ -17,6 +18,8 @@ import appConfig from "../config/environment";
 import { toast } from "react-toastify";
 import StudentDetailModal from "../components/StudentDetailModal";
 import StudentEditModal from "../components/StudentEditModal";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 const TABS = [
   { id: "students", name: "Students", icon: Users },
@@ -61,10 +64,21 @@ const ClassDetails = () => {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [showStudentDetailModal, setShowStudentDetailModal] = useState(false);
   const [showStudentEditModal, setShowStudentEditModal] = useState(false);
+  const [attendanceDate, setAttendanceDate] = useState(new Date());
+  const [attendanceSummary, setAttendanceSummary] = useState(null);
+  const [attendanceList, setAttendanceList] = useState([]);
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
 
   useEffect(() => {
     fetchClassDetails();
   }, [classId]);
+
+  useEffect(() => {
+    if (activeTab === "attendance") {
+      fetchAttendance();
+    }
+    // eslint-disable-next-line
+  }, [attendanceDate, activeTab, classId]);
 
   const fetchClassDetails = async () => {
     try {
@@ -89,6 +103,30 @@ const ClassDetails = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchAttendance = async () => {
+    setAttendanceLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const dateString = attendanceDate.toISOString().split("T")[0];
+      const res = await fetch(
+        `${appConfig.API_BASE_URL}/attendances/class-attendance/${classId}/${dateString}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+      if (data.success) {
+        setAttendanceSummary(data.data.summary);
+        setAttendanceList(data.data.attendance);
+      } else {
+        setAttendanceSummary(null);
+        setAttendanceList([]);
+      }
+    } catch (e) {
+      setAttendanceSummary(null);
+      setAttendanceList([]);
+    }
+    setAttendanceLoading(false);
   };
 
   // Filtering
@@ -543,11 +581,88 @@ const ClassDetails = () => {
             </div>
           )}
           {activeTab === "attendance" && (
-            <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl shadow-sm">
-              <Calendar className="w-16 h-16 text-gray-300 mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Attendance Management</h3>
-              <p className="text-gray-600 mb-4">Take and manage attendance for this class</p>
-              {/* Add attendance actions here */}
+            <div className="bg-white rounded-2xl shadow-sm p-8 w-full">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+                <div className="flex items-center gap-3">
+                  <label className="font-medium">Select Date:</label>
+                  <DatePicker
+                    selected={attendanceDate}
+                    onChange={setAttendanceDate}
+                    maxDate={new Date()}
+                    dateFormat="yyyy-MM-dd"
+                    className="border border-gray-200 rounded-lg px-3 py-2"
+                  />
+                  <button
+                    onClick={fetchAttendance}
+                    className="ml-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium shadow"
+                  >
+                    Refresh
+                  </button>
+                </div>
+                {attendanceSummary && (
+                  <div className="flex gap-6 mt-4 md:mt-0">
+                    <div>
+                      <span className="font-bold text-green-600">{attendanceSummary.present}</span>
+                      <span className="ml-1 text-gray-600">Present</span>
+                    </div>
+                    <div>
+                      <span className="font-bold text-red-600">{attendanceSummary.absent}</span>
+                      <span className="ml-1 text-gray-600">Absent</span>
+                    </div>
+                    <div>
+                      <span className="font-bold text-yellow-600">{attendanceSummary.leave}</span>
+                      <span className="ml-1 text-gray-600">Leave</span>
+                    </div>
+                    <div>
+                      <span className="font-bold text-gray-500">{attendanceSummary.unmarked}</span>
+                      <span className="ml-1 text-gray-600">Unmarked</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              {attendanceLoading ? (
+                <div className="text-center text-gray-500 py-8">Loading attendance...</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roll No</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {attendanceList.length === 0 ? (
+                        <tr>
+                          <td colSpan={3} className="text-center text-gray-400 py-8">No attendance data for this date.</td>
+                        </tr>
+                      ) : (
+                        attendanceList.map(({ student, status }) => (
+                          <tr key={student._id}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{student.rollNumber || "N/A"}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{student.name}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold"
+                              style={{
+                                color:
+                                  status === "present"
+                                    ? "#16a34a"
+                                    : status === "absent"
+                                    ? "#dc2626"
+                                    : status === "leave"
+                                    ? "#f59e42"
+                                    : "#6b7280"
+                              }}
+                            >
+                              {status.charAt(0).toUpperCase() + status.slice(1)}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
         </div>

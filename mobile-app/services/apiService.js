@@ -111,6 +111,27 @@ export const apiService = {
       const response = await api.post("/attendances/mark", attendanceData);
       return response.data;
     },
+    // Mobile attendance management
+    getTeacherClasses: async () => {
+      const response = await api.get("/attendances/teacher-classes");
+      return response.data;
+    },
+    getClassStudents: async (classId) => {
+      const response = await api.get(`/attendances/class-students/${classId}`);
+      return response.data;
+    },
+    getClassAttendanceByDate: async (classId, date) => {
+      const response = await api.get(`/attendances/class-attendance/${classId}/${date}`);
+      return response.data;
+    },
+    bulkMarkClassAttendance: async (classId, date, attendanceData) => {
+      const response = await api.post("/attendances/bulk-mark-class", {
+        classId,
+        date,
+        attendanceData
+      });
+      return response.data;
+    },
   },
 
   // Assignment Services

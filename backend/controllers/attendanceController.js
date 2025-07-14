@@ -371,12 +371,278 @@ const bulkMarkAttendance = async (req, res) => {
   }
 };
 
+// @desc    Get classes for a teacher
+// @route   GET /api/attendances/teacher-classes
+// @access  Private (Teacher)
+const getTeacherClasses = async (req, res) => {
+  try {
+    const teacherId = req.user.id;
+
+    // Find classes where the teacher is either class teacher or subject teacher
+    const classes = await Class.find({
+      $or: [
+        { classTeacher: teacherId },
+        { "subjects.teacher": teacherId }
+      ],
+      isActive: true
+    })
+    .populate("subjects.subject", "name")
+    .populate("subjects.teacher", "name")
+    .select("name grade division academicYear subjects")
+    .sort({ grade: 1, division: 1 });
+
+    // Remove duplicate classes and format response
+    const uniqueClasses = classes.reduce((acc, classItem) => {
+      const existingClass = acc.find(c => c._id.toString() === classItem._id.toString());
+      if (!existingClass) {
+        acc.push({
+          _id: classItem._id,
+          name: classItem.name,
+          grade: classItem.grade,
+          division: classItem.division,
+          academicYear: classItem.academicYear,
+          fullName: `${classItem.grade}${classItem.getOrdinalSuffix(classItem.grade)} Class - ${classItem.division}`,
+          subjects: classItem.subjects.filter(subject => 
+            subject.teacher && subject.teacher._id.toString() === teacherId
+          )
+        });
+      }
+      return acc;
+    }, []);
+
+    res.json({
+      success: true,
+      data: uniqueClasses,
+    });
+  } catch (error) {
+    console.error("Get teacher classes error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching teacher classes",
+    });
+  }
+};
+
+// @desc    Get students by class
+// @route   GET /api/attendances/class-students/:classId
+// @access  Private (Teacher/Admin)
+const getClassStudents = async (req, res) => {
+  try {
+    const { classId } = req.params;
+
+    const classData = await Class.findById(classId)
+      .populate({
+        path: "students",
+        select: "firstName lastName middleName rollNumber studentId",
+        match: { isActive: true, status: "active" },
+        options: { sort: { rollNumber: 1 } }
+      });
+
+    if (!classData) {
+      return res.status(404).json({
+        success: false,
+        message: "Class not found",
+      });
+    }
+
+    // Format student data
+    const students = classData.students.map(student => ({
+      _id: student._id,
+      name: `${student.firstName} ${student.middleName ? student.middleName + ' ' : ''}${student.lastName}`.trim(),
+      rollNumber: student.rollNumber || student.studentId,
+      studentId: student.studentId
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        class: {
+          _id: classData._id,
+          name: classData.name,
+          grade: classData.grade,
+          division: classData.division,
+          fullName: `${classData.grade}${classData.getOrdinalSuffix(classData.grade)} Class - ${classData.division}`
+        },
+        students
+      },
+    });
+  } catch (error) {
+    console.error("Get class students error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching class students",
+    });
+  }
+};
+
+// @desc    Get attendance for a class on a specific date
+// @route   GET /api/attendances/class-attendance/:classId/:date
+// @access  Private (Teacher/Admin)
+const getClassAttendanceByDate = async (req, res) => {
+  try {
+    const { classId, date } = req.params;
+
+    // Get all students in the class
+    const classData = await Class.findById(classId)
+      .populate({
+        path: "students",
+        select: "firstName lastName middleName rollNumber studentId",
+        match: { isActive: true, status: "active" },
+        options: { sort: { rollNumber: 1 } }
+      });
+
+    if (!classData) {
+      return res.status(404).json({
+        success: false,
+        message: "Class not found",
+      });
+    }
+
+    // Get existing attendance for the date
+    const existingAttendance = await Attendance.find({
+      userId: { $in: classData.students.map(s => s._id) },
+      date: new Date(date)
+    });
+
+    // Create attendance map
+    const attendanceMap = new Map();
+    existingAttendance.forEach(att => {
+      attendanceMap.set(att.userId.toString(), att.status);
+    });
+
+    // Build complete attendance list
+    const attendanceList = classData.students.map(student => ({
+      student: {
+        _id: student._id,
+        name: `${student.firstName} ${student.middleName ? student.middleName + ' ' : ''}${student.lastName}`.trim(),
+        rollNumber: student.rollNumber || student.studentId,
+        studentId: student.studentId
+      },
+      status: attendanceMap.get(student._id.toString()) || "unmarked"
+    }));
+
+    // Calculate summary
+    const summary = {
+      total: attendanceList.length,
+      present: attendanceList.filter(item => item.status === "present").length,
+      absent: attendanceList.filter(item => item.status === "absent").length,
+      leave: attendanceList.filter(item => item.status === "leave").length,
+      unmarked: attendanceList.filter(item => item.status === "unmarked").length
+    };
+
+    res.json({
+      success: true,
+      data: {
+        class: {
+          _id: classData._id,
+          name: classData.name,
+          grade: classData.grade,
+          division: classData.division,
+          fullName: `${classData.grade}${classData.getOrdinalSuffix(classData.grade)} Class - ${classData.division}`
+        },
+        date,
+        attendance: attendanceList,
+        summary
+      },
+    });
+  } catch (error) {
+    console.error("Get class attendance by date error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching class attendance",
+    });
+  }
+};
+
+// @desc    Bulk mark attendance for a class
+// @route   POST /api/attendances/bulk-mark-class
+// @access  Private (Teacher/Admin)
+const bulkMarkClassAttendance = async (req, res) => {
+  try {
+    const { classId, date, attendanceData } = req.body;
+
+    if (!classId || !date || !attendanceData || !Array.isArray(attendanceData)) {
+      return res.status(400).json({
+        success: false,
+        message: "Class ID, date, and attendance data are required",
+      });
+    }
+
+    // Validate attendance data
+    const validStatuses = ["present", "absent", "leave"];
+    for (const item of attendanceData) {
+      if (!item.studentId || !validStatuses.includes(item.status)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid attendance data format",
+        });
+      }
+    }
+
+    const attendanceDate = new Date(date);
+    const markedBy = req.user.id;
+
+    // Delete existing attendance for this class and date
+    const classData = await Class.findById(classId);
+    if (!classData) {
+      return res.status(404).json({
+        success: false,
+        message: "Class not found",
+      });
+    }
+
+    await Attendance.deleteMany({
+      userId: { $in: classData.students },
+      date: attendanceDate
+    });
+
+    // Create new attendance records
+    const attendanceRecords = attendanceData.map(item => ({
+      userId: item.studentId,
+      classId,
+      date: attendanceDate,
+      status: item.status,
+      markedBy,
+      attendanceType: "daily"
+    }));
+
+    const createdAttendance = await Attendance.insertMany(attendanceRecords);
+
+    // Calculate summary
+    const summary = {
+      total: attendanceData.length,
+      present: attendanceData.filter(item => item.status === "present").length,
+      absent: attendanceData.filter(item => item.status === "absent").length,
+      leave: attendanceData.filter(item => item.status === "leave").length
+    };
+
+    res.status(201).json({
+      success: true,
+      message: "Attendance marked successfully",
+      data: {
+        markedRecords: createdAttendance.length,
+        summary
+      },
+    });
+  } catch (error) {
+    console.error("Bulk mark class attendance error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while marking attendance",
+    });
+  }
+};
+
 module.exports = {
   markAttendance,
   getUserAttendance,
   getClassAttendance,
   updateAttendance,
   deleteAttendance,
-  getAttendanceStats,
   bulkMarkAttendance,
+  getAttendanceStats,
+  getTeacherClasses,
+  getClassStudents,
+  getClassAttendanceByDate,
+  bulkMarkClassAttendance,
 };

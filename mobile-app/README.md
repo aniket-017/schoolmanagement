@@ -1,100 +1,134 @@
 # School Management Mobile App
 
-React Native mobile application for students, parents, and teachers to access school management features.
+A comprehensive mobile application for school management built with React Native and Expo.
 
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Node.js (v16 or higher)
-- npm or yarn
-- Expo CLI: `npm install -g @expo/cli`
-- Expo Go app on your mobile device (for testing)
-
-### Installation
-
-1. Install dependencies:
-
-```bash
-npm install
-```
-
-2. Start the development server:
-
-```bash
-npm start
-```
-
-3. Scan the QR code with Expo Go app to test on your device
-
-## 📱 Features
-
-### Student/Parent Features
-
-- Dashboard with attendance, assignments, and grades overview
-- Timetable view
-- Assignments tracking
-- Attendance records
-- Grade reports
+## Features
 
 ### Teacher Features
+- **Dashboard**: Overview of classes, schedule, and notifications
+- **Class Management**: View and manage assigned classes
+- **Attendance Management**: Mark daily attendance for students
+  - Date picker with today's date as default
+  - Class and section selection
+  - Student list with roll numbers and names
+  - Quick attendance marking (Present ✅, Absent ❌, Leave 🟡)
+  - Real-time attendance summary
+  - Save attendance data to backend
+- **Grade Management**: Manage student grades and assessments
+- **Profile Management**: Update personal information
 
-- Teacher dashboard with class statistics
-- Class management
+### Student Features
+- **Dashboard**: View schedule, assignments, and grades
+- **Attendance Tracking**: View personal attendance history
+- **Assignment Management**: Submit and track assignments
+- **Grade Viewing**: Access academic performance
+
+### Admin Features
+- **User Management**: Manage teachers, students, and staff
+- **Class Management**: Create and manage classes
+- **Fee Management**: Handle student fees
+- **Reports**: Generate various reports
+
+## Installation
+
+1. **Install Dependencies**
+   ```bash
+   npm install
+   ```
+
+2. **Install Additional Dependencies for Attendance Management**
+   ```bash
+   npx expo install @react-native-community/datetimepicker @react-native-picker/picker
+   ```
+
+3. **Start the Development Server**
+   ```bash
+   npm start
+   ```
+
+4. **Run on Device/Simulator**
+   ```bash
+   # For Android
+   npm run android
+   
+   # For iOS
+   npm run ios
+   ```
+
+## Backend API
+
+Make sure the backend server is running and accessible. The mobile app connects to the backend API for:
+- User authentication
+- Data synchronization
 - Attendance management
 - Grade management
+- Assignment management
 
-## 🏗️ Project Structure
+## Attendance Management
 
-```
-mobile-app/
-├── assets/           # Images, fonts, and other static assets
-├── components/       # Reusable UI components
-├── context/          # React Context for state management
-├── navigation/       # Navigation configuration
-├── screens/          # App screens organized by role
-│   ├── auth/        # Authentication screens
-│   ├── student/     # Student-specific screens
-│   └── teacher/     # Teacher-specific screens
-├── services/         # API service functions
-├── utils/           # Utility functions
-├── App.js           # Main app component
-└── package.json     # Dependencies and scripts
-```
+The attendance management feature includes:
 
-## 🔧 Configuration
+### For Teachers:
+- **Date Selection**: Pick any date (defaults to today)
+- **Class Selection**: Choose from assigned classes
+- **Student Loading**: Load all students in the selected class
+- **Attendance Marking**: Mark students as Present, Absent, or Leave
+- **Real-time Summary**: See counts of present, absent, leave, and unmarked students
+- **Data Persistence**: Save attendance to backend database
 
-### Backend Connection
+### Features:
+- ✅ Intuitive touch-friendly interface
+- ✅ Color-coded attendance status (Green=Present, Red=Absent, Yellow=Leave)
+- ✅ Real-time attendance summary
+- ✅ Load existing attendance for previous dates
+- ✅ Bulk attendance saving
+- ✅ Error handling and validation
 
-Update the API base URL in `services/authService.js`:
+## Configuration
+
+Update the API configuration in `config/index.js` to point to your backend server:
 
 ```javascript
-const API_BASE_URL = "http://your-backend-url:3000/api";
+export default {
+  API_BASE_URL: 'http://your-backend-url:port/api',
+  // ... other config
+};
 ```
 
-## 🎨 User Roles
+## Development
 
-- **Student**: Access personal dashboard, view timetable, assignments, grades
-- **Parent**: Similar to student but for monitoring child's progress
-- **Teacher**: Manage classes, take attendance, assign grades
+### Project Structure
+```
+mobile-app/
+├── components/          # Reusable UI components
+├── screens/            # Screen components
+│   ├── teacher/        # Teacher-specific screens
+│   ├── student/        # Student-specific screens
+│   └── admin/          # Admin-specific screens
+├── navigation/         # Navigation configuration
+├── services/           # API services
+├── context/            # React Context providers
+├── utils/              # Utility functions and theme
+└── config/             # Configuration files
+```
 
-## 🛠️ Development
+### Key Dependencies
+- React Native & Expo
+- React Navigation
+- Axios for API calls
+- AsyncStorage for local storage
+- React Native Animatable for animations
+- Expo Linear Gradient for gradients
+- React Native Vector Icons for icons
 
-### Running on Specific Platforms
+## Contributing
 
-- iOS: `npm run ios`
-- Android: `npm run android`
-- Web: `npm run web`
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
-### Available Scripts
+## License
 
-- `npm start`: Start development server
-- `npm run android`: Run on Android device/emulator
-- `npm run ios`: Run on iOS device/simulator
-- `npm run web`: Run in web browser
-
-## 📝 Notes
-
-- This app requires a backend API to be running for authentication and data
-- Default backend URL is set to `http://localhost:3000/api`
-- Make sure your backend server is running before testing the app
+This project is licensed under the MIT License.
