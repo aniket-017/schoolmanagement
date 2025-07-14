@@ -174,7 +174,7 @@ export default function ClassDetails({ navigation, route }) {
               <View style={styles.detailSection}>
                 <Text style={styles.sectionTitle}>Parent Information</Text>
                 <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Parent Name:</Text>
+                  <Text style={styles.detailLabel}>Mother's Name:</Text>
                   <Text style={styles.detailValue}>
                     {selectedStudent.mother?.name || selectedStudent.mothersName || "N/A"}
                   </Text>

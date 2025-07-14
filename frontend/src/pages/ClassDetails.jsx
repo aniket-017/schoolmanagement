@@ -7,14 +7,16 @@ import {
   Calendar,
   Plus,
   Upload,
-  Trash2,
   UserPlus,
   Download,
+  Eye,
 } from "lucide-react";
 import Layout from "../components/Layout";
 import { cn } from "../utils/cn";
 import appConfig from "../config/environment";
 import { toast } from "react-toastify";
+import StudentDetailModal from "../components/StudentDetailModal";
+import StudentEditModal from "../components/StudentEditModal";
 
 const TABS = [
   { id: "students", name: "Students", icon: Users },
@@ -56,6 +58,9 @@ const ClassDetails = () => {
   const [availableTeachers, setAvailableTeachers] = useState([]);
   const [uploadResults, setUploadResults] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [showStudentDetailModal, setShowStudentDetailModal] = useState(false);
+  const [showStudentEditModal, setShowStudentEditModal] = useState(false);
 
   useEffect(() => {
     fetchClassDetails();
@@ -292,6 +297,23 @@ const ClassDetails = () => {
     }
   };
 
+  const handleStudentClick = (student) => {
+    setSelectedStudent(student);
+    setShowStudentDetailModal(true);
+  };
+
+  const handleStudentEdit = (student) => {
+    setSelectedStudent(student);
+    setShowStudentEditModal(true);
+    setShowStudentDetailModal(false);
+  };
+
+
+
+  const handleStudentSave = (updatedStudent) => {
+    setStudents(prev => prev.map(s => s._id === updatedStudent._id ? updatedStudent : s));
+  };
+
   // UI
   return (
     <Layout>
@@ -421,7 +443,7 @@ const ClassDetails = () => {
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {filteredStudents.map((student, index) => (
-                          <tr key={student._id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <tr key={student._id} className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100 cursor-pointer transition-colors`} onClick={() => handleStudentClick(student)}>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex items-center">
                                 <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm mr-3">
@@ -463,11 +485,15 @@ const ClassDetails = () => {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                               <button
-                                onClick={() => handleRemoveStudent(student._id)}
-                                className="text-red-600 hover:text-red-900 flex items-center justify-end"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleStudentClick(student);
+                                }}
+                                className="text-blue-600 hover:text-blue-900 flex items-center"
+                                title="View Details"
                               >
-                                <Trash2 className="w-4 h-4 mr-1" />
-                                Remove
+                                <Eye className="w-4 h-4 mr-1" />
+                                View
                               </button>
                             </td>
                           </tr>
@@ -908,6 +934,24 @@ const ClassDetails = () => {
             </motion.div>
           </div>
         )}
+
+        {/* Student Detail Modal */}
+        <StudentDetailModal
+          student={selectedStudent}
+          isOpen={showStudentDetailModal}
+          onClose={() => setShowStudentDetailModal(false)}
+          onEdit={handleStudentEdit}
+          onRefresh={fetchClassDetails}
+        />
+
+        {/* Student Edit Modal */}
+        <StudentEditModal
+          student={selectedStudent}
+          isOpen={showStudentEditModal}
+          onClose={() => setShowStudentEditModal(false)}
+          onSave={handleStudentSave}
+          onRefresh={fetchClassDetails}
+        />
       </div>
     </Layout>
   );
