@@ -7,6 +7,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import UserManagement from "./pages/UserManagement";
 import ClassManagement from "./pages/ClassManagement";
 import ClassDetails from "./pages/ClassDetails";
+import AddStudent from "./pages/AddStudent";
 import FeeManagement from "./pages/FeeManagement";
 import Announcements from "./pages/Announcements";
 
@@ -69,6 +70,14 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <ClassDetails />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/classes/:classId/add-student"
+          element={
+            <ProtectedRoute>
+              <AddStudent />
             </ProtectedRoute>
           }
         />

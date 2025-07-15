@@ -33,8 +33,52 @@ const studentSchema = new mongoose.Schema(
       enum: ["male", "female", "other"],
       required: [true, "Gender is required"],
     },
+    nationality: {
+      type: String,
+      trim: true,
+    },
+    religion: {
+      type: String,
+      trim: true,
+    },
+    caste: {
+      type: String,
+      trim: true,
+    },
+    motherTongue: {
+      type: String,
+      trim: true,
+    },
+    bloodGroup: {
+      type: String,
+      enum: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],
+    },
+    photo: {
+      type: String, // URL to photo
+    },
 
-    // Contact Information
+    // Contact & Address Details
+    currentAddress: {
+      type: String,
+      required: [true, "Current address is required"],
+      trim: true,
+    },
+    permanentAddress: {
+      type: String,
+      trim: true,
+    },
+    city: {
+      type: String,
+      trim: true,
+    },
+    state: {
+      type: String,
+      trim: true,
+    },
+    pinCode: {
+      type: String,
+      trim: true,
+    },
     mobileNumber: {
       type: String,
       required: [true, "Mobile number is required"],
@@ -46,13 +90,411 @@ const studentSchema = new mongoose.Schema(
       lowercase: true,
       match: [/^\S+@\S+\.\S+$/, "Please enter a valid email"],
     },
+
+    // Parent/Guardian Information
+    father: {
+      name: {
+        type: String,
+        trim: true,
+      },
+      occupation: {
+        type: String,
+        trim: true,
+      },
+      phone: {
+        type: String,
+        match: [/^[\+]?[\d\s\-\(\)]{7,15}$/, "Please enter a valid mobile number"],
+      },
+      email: {
+        type: String,
+        lowercase: true,
+        match: [/^\S+@\S+\.\S+$/, "Please enter a valid email"],
+      },
+      annualIncome: {
+        type: Number,
+        min: 0,
+      },
+    },
+    mother: {
+      name: {
+        type: String,
+        required: [true, "Mother's name is required"],
+        trim: true,
+        maxlength: [100, "Mother's name cannot exceed 100 characters"],
+      },
+      occupation: {
+        type: String,
+        trim: true,
+      },
+      phone: {
+        type: String,
+        required: [true, "Parent's mobile number is required"],
+        match: [/^[\+]?[\d\s\-\(\)]{7,15}$/, "Please enter a valid mobile number"],
+      },
+      email: {
+        type: String,
+        lowercase: true,
+        match: [/^\S+@\S+\.\S+$/, "Please enter a valid email"],
+      },
+      annualIncome: {
+        type: Number,
+        min: 0,
+      },
+    },
+    guardian: {
+      name: {
+        type: String,
+        trim: true,
+      },
+      relation: {
+        type: String,
+        trim: true,
+      },
+      phone: {
+        type: String,
+        match: [/^[\+]?[\d\s\-\(\)]{7,15}$/, "Please enter a valid mobile number"],
+      },
+      email: {
+        type: String,
+        lowercase: true,
+        match: [/^\S+@\S+\.\S+$/, "Please enter a valid email"],
+      },
+    },
+
+    // Academic Information
+    admissionNumber: {
+      type: String,
+      unique: true,
+    },
+    rollNumber: {
+      type: String,
+    },
+    class: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Class",
+      required: [true, "Class is required"],
+    },
+    grade: {
+      type: String,
+      required: [true, "Grade is required"],
+    },
+    section: {
+      type: String,
+      trim: true,
+    },
+    academicYear: {
+      type: String,
+    },
+    previousSchool: {
+      type: String,
+      trim: true,
+    },
+    transferCertificateNumber: {
+      type: String,
+      trim: true,
+    },
+    scholarships: [
+      {
+        name: String,
+        amount: Number,
+        year: String,
+      },
+    ],
+    learningDisabilities: [
+      {
+        type: String,
+        description: String,
+      },
+    ],
+    specialNeeds: {
+      type: String,
+      trim: true,
+    },
+
+    // Fees & Finance
+    feeStructure: {
+      type: String,
+      enum: ["regular", "scholarship", "concession", "free"],
+      default: "regular",
+    },
+    feeDiscount: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+    paymentStatus: {
+      type: String,
+      enum: ["paid", "pending", "overdue"],
+      default: "pending",
+    },
+    lateFees: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    // Attendance & Timetable
+    attendancePercentage: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 0,
+    },
+    leaveRecords: [
+      {
+        date: Date,
+        type: {
+          type: String,
+          enum: ["medical", "vacation", "personal", "other"],
+        },
+        reason: String,
+        approved: {
+          type: Boolean,
+          default: false,
+        },
+      },
+    ],
+
+    // Exam & Assessment Records
+    internalAssessments: [
+      {
+        subject: String,
+        score: Number,
+        totalMarks: Number,
+        date: Date,
+      },
+    ],
+    externalExams: [
+      {
+        examName: String,
+        subject: String,
+        score: Number,
+        totalMarks: Number,
+        date: Date,
+      },
+    ],
+    progressReports: [
+      {
+        term: String,
+        year: String,
+        overallGrade: String,
+        remarks: String,
+        date: Date,
+      },
+    ],
+
+    // Behavior, Health & Psychological Records
+    disciplineRecords: [
+      {
+        date: Date,
+        incident: String,
+        action: String,
+        severity: {
+          type: String,
+          enum: ["minor", "major", "critical"],
+        },
+      },
+    ],
+    counselingReports: [
+      {
+        date: Date,
+        counselor: String,
+        reason: String,
+        notes: String,
+        followUpRequired: Boolean,
+      },
+    ],
+    medicalHistory: {
+      allergies: [String],
+      medicalConditions: [String],
+      medications: [String],
+      emergencyInstructions: String,
+      vaccinationStatus: {
+        type: String,
+        enum: ["complete", "incomplete", "exempt"],
+        default: "complete",
+      },
+    },
+    emergencyContact: {
+      name: String,
+      relation: String,
+      phone: String,
+      email: String,
+    },
+
+    // Teacher & School Interaction
+    teacherRemarks: [
+      {
+        teacher: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        date: Date,
+        remark: String,
+        type: {
+          type: String,
+          enum: ["academic", "behavior", "general"],
+        },
+      },
+    ],
+    ptmNotes: [
+      {
+        date: Date,
+        teacher: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        parent: String,
+        discussion: String,
+        actionItems: [String],
+      },
+    ],
+    extraHelpRequired: [
+      {
+        subject: String,
+        reason: String,
+        status: {
+          type: String,
+          enum: ["pending", "in-progress", "completed"],
+          default: "pending",
+        },
+      },
+    ],
+
+    // Co-curricular & Extracurricular
+    sportsParticipation: [
+      {
+        sport: String,
+        level: {
+          type: String,
+          enum: ["school", "district", "state", "national"],
+        },
+        position: String,
+        achievements: [String],
+      },
+    ],
+    clubs: [
+      {
+        name: String,
+        role: String,
+        achievements: [String],
+      },
+    ],
+    eventsParticipation: [
+      {
+        event: String,
+        year: String,
+        role: String,
+        achievement: String,
+      },
+    ],
+    certificates: [
+      {
+        name: String,
+        issuingAuthority: String,
+        date: Date,
+        description: String,
+      },
+    ],
+
+    // Documents & Certificates
+    documents: {
+      birthCertificate: String,
+      transferCertificate: String,
+      characterCertificate: String,
+      medicalCertificate: String,
+      photograph: String,
+      aadharCard: String,
+      casteCertificate: String,
+      incomeCertificate: String,
+      passport: String,
+    },
+
+    // Physical & Health Metrics
+    physicalMetrics: {
+      height: {
+        type: Number, // in cm
+        min: 0,
+      },
+      weight: {
+        type: Number, // in kg
+        min: 0,
+      },
+      bmi: {
+        type: Number,
+        min: 0,
+      },
+      visionTest: {
+        leftEye: String,
+        rightEye: String,
+        date: Date,
+      },
+      hearingTest: {
+        leftEar: String,
+        rightEar: String,
+        date: Date,
+      },
+      dentalRecords: [
+        {
+          date: Date,
+          findings: String,
+          recommendations: String,
+        },
+      ],
+      fitnessScore: {
+        type: Number,
+        min: 0,
+        max: 100,
+      },
+    },
+
+    // System & Access Information
+    loginCredentials: {
+      username: String,
+      password: String,
+      lastLogin: Date,
+    },
+    rfidCardNumber: {
+      type: String,
+      trim: true,
+    },
+    libraryCardNumber: {
+      type: String,
+      trim: true,
+    },
+    hostelInformation: {
+      roomNumber: String,
+      wardenName: String,
+      wardenPhone: String,
+    },
+    transportDetails: {
+      required: {
+        type: Boolean,
+        default: false,
+      },
+      route: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Transport",
+      },
+      pickupPoint: String,
+      dropPoint: String,
+      busNumber: String,
+      driverName: String,
+      driverPhone: String,
+    },
+
+    // Legacy fields for backward compatibility
+    name: {
+      type: String,
+      trim: true,
+    },
+    phone: String,
     currentAddress: {
       type: String,
       required: [true, "Current address is required"],
       trim: true,
     },
-
-    // Parent/Guardian Information
     mothersName: {
       type: String,
       required: [true, "Mother's name is required"],
@@ -63,61 +505,6 @@ const studentSchema = new mongoose.Schema(
       type: String,
       required: [true, "Parent's mobile number is required"],
       match: [/^[\+]?[\d\s\-\(\)]{7,15}$/, "Please enter a valid mobile number"],
-    },
-
-    // Academic Information
-    class: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Class",
-      required: [true, "Class is required"],
-    },
-    grade: {
-      type: String,
-      required: [true, "Grade is required"],
-    },
-
-    // Legacy fields for backward compatibility
-    name: {
-      type: String,
-      trim: true,
-    },
-    phone: String,
-    rollNumber: {
-      type: String,
-    },
-    academicYear: {
-      type: String,
-    },
-    admissionDate: {
-      type: Date,
-      default: Date.now,
-    },
-    currentGrade: {
-      type: String,
-    },
-
-    // Family Information (legacy)
-    father: {
-      name: {
-        type: String,
-      },
-      occupation: String,
-      phone: String,
-      email: String,
-    },
-    mother: {
-      name: {
-        type: String,
-      },
-      occupation: String,
-      phone: String,
-      email: String,
-    },
-    guardian: {
-      name: String,
-      relation: String,
-      phone: String,
-      email: String,
     },
 
     // Address Information (legacy)
@@ -138,35 +525,6 @@ const studentSchema = new mongoose.Schema(
       },
     },
 
-    // Additional fields
-    bloodGroup: String,
-    nationality: String,
-    religion: String,
-
-    // Emergency Contact
-    emergencyContact: {
-      name: String,
-      relation: String,
-      phone: String,
-      email: String,
-    },
-
-    // Medical Information
-    medicalInfo: {
-      allergies: [String],
-      medicalConditions: [String],
-      medications: [String],
-      emergencyInstructions: String,
-    },
-
-    // Academic Performance
-    academicPerformance: {
-      previousSchool: String,
-      previousGrade: String,
-      achievements: [String],
-      specialNeeds: String,
-    },
-
     // System Information
     isActive: {
       type: Boolean,
@@ -181,40 +539,6 @@ const studentSchema = new mongoose.Schema(
       type: String,
       enum: ["enrolled", "pending", "withdrawn"],
       default: "enrolled",
-    },
-
-    // Fee Information
-    feeCategory: {
-      type: String,
-      enum: ["regular", "scholarship", "concession"],
-      default: "regular",
-    },
-    feeDiscount: {
-      type: Number,
-      default: 0,
-      min: 0,
-      max: 100,
-    },
-
-    // Transport Information
-    transportRequired: {
-      type: Boolean,
-      default: false,
-    },
-    transportRoute: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Transport",
-    },
-    pickupPoint: String,
-    dropPoint: String,
-
-    // Documents
-    documents: {
-      birthCertificate: String,
-      transferCertificate: String,
-      characterCertificate: String,
-      medicalCertificate: String,
-      photograph: String,
     },
 
     // Remarks
@@ -242,13 +566,16 @@ studentSchema.index({ rollNumber: 1 });
 studentSchema.index({ class: 1 });
 studentSchema.index({ status: 1 });
 studentSchema.index({ isActive: 1 });
+studentSchema.index({ admissionNumber: 1 });
+studentSchema.index({ rfidCardNumber: 1 });
+studentSchema.index({ libraryCardNumber: 1 });
 
 // Virtual for full name
 studentSchema.virtual("fullName").get(function () {
   if (this.firstName && this.lastName) {
-    return `${this.firstName} ${this.middleName ? this.middleName + ' ' : ''}${this.lastName}`.trim();
+    return `${this.firstName} ${this.middleName ? this.middleName + " " : ""}${this.lastName}`.trim();
   }
-  return this.name || '';
+  return this.name || "";
 });
 
 // Virtual for age
@@ -269,32 +596,42 @@ studentSchema.pre("save", function (next) {
   if (!this.studentId) {
     this.studentId = `STU${Date.now()}`;
   }
-  
+
+  if (!this.admissionNumber) {
+    this.admissionNumber = `ADM${Date.now()}`;
+  }
+
+  // Calculate BMI if height and weight are provided
+  if (this.physicalMetrics && this.physicalMetrics.height && this.physicalMetrics.weight) {
+    const heightInMeters = this.physicalMetrics.height / 100;
+    this.physicalMetrics.bmi = (this.physicalMetrics.weight / (heightInMeters * heightInMeters)).toFixed(2);
+  }
+
   // Set legacy name field for backward compatibility
   if (this.firstName && this.lastName) {
-    this.name = `${this.firstName} ${this.middleName ? this.middleName + ' ' : ''}${this.lastName}`.trim();
+    this.name = `${this.firstName} ${this.middleName ? this.middleName + " " : ""}${this.lastName}`.trim();
   }
-  
+
   // Set legacy phone field for backward compatibility
   if (this.mobileNumber && !this.phone) {
     this.phone = this.mobileNumber;
   }
-  
+
   // Set legacy mother name for backward compatibility
-  if (this.mothersName && !this.mother.name) {
-    this.mother.name = this.mothersName;
+  if (this.mother && this.mother.name && !this.mothersName) {
+    this.mothersName = this.mother.name;
   }
-  
+
   // Set legacy parent phone for backward compatibility
-  if (this.parentsMobileNumber && !this.mother.phone) {
-    this.mother.phone = this.parentsMobileNumber;
+  if (this.mother && this.mother.phone && !this.parentsMobileNumber) {
+    this.parentsMobileNumber = this.mother.phone;
   }
-  
+
   // Set legacy address for backward compatibility
   if (this.currentAddress && !this.address.street) {
     this.address.street = this.currentAddress;
   }
-  
+
   next();
 });
 
@@ -321,4 +658,4 @@ studentSchema.methods.getGrades = async function (academicYear) {
   }).populate("examination_id");
 };
 
-module.exports = mongoose.model("Student", studentSchema); 
+module.exports = mongoose.model("Student", studentSchema);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Users, BookOpen, Calendar, Plus, Upload, UserPlus, Download, Eye, Trash2 } from "lucide-react";
 import Layout from "../components/Layout";
@@ -8,6 +8,7 @@ import appConfig from "../config/environment";
 import { toast } from "react-toastify";
 import StudentDetailModal from "../components/StudentDetailModal";
 import StudentEditModal from "../components/StudentEditModal";
+
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
@@ -19,28 +20,17 @@ const TABS = [
 
 const ClassDetails = () => {
   const { classId } = useParams();
+  const navigate = useNavigate();
   const [classData, setClassData] = useState(null);
   const [students, setStudents] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("students");
   const [searchTerm, setSearchTerm] = useState("");
-  const [showAddStudentModal, setShowAddStudentModal] = useState(false);
+
   const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
   const [showAddSubjectModal, setShowAddSubjectModal] = useState(false);
-  const [studentForm, setStudentForm] = useState({
-    firstName: "",
-    middleName: "",
-    lastName: "",
-    email: "",
-    mobileNumber: "",
-    dateOfBirth: "",
-    gender: "",
-    currentAddress: "",
-    mothersName: "",
-    parentsMobileNumber: "",
-    rollNumber: "",
-  });
+
   const [subjectForm, setSubjectForm] = useState({
     name: "",
     code: "",
@@ -136,50 +126,6 @@ const ClassDetails = () => {
       (s.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (s.code || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  // Handlers (add/remove student/subject, upload, etc.)
-  const handleAddStudent = async (e) => {
-    e.preventDefault();
-    try {
-      const token = localStorage.getItem("token");
-      const payload = {
-        ...studentForm,
-      };
-      const response = await fetch(`${appConfig.API_BASE_URL}/classes/${classId}/students`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        toast.success("Student added successfully");
-        setShowAddStudentModal(false);
-        setStudentForm({
-          firstName: "",
-          middleName: "",
-          lastName: "",
-          email: "",
-          mobileNumber: "",
-          dateOfBirth: "",
-          gender: "",
-          currentAddress: "",
-          mothersName: "",
-          parentsMobileNumber: "",
-          rollNumber: "",
-        });
-        fetchClassDetails();
-      } else {
-        toast.error(data.message || "Error adding student");
-      }
-    } catch (error) {
-      console.error("Error adding student:", error);
-      toast.error("Error adding student");
-    }
-  };
 
   const handleBulkUpload = async (e) => {
     e.preventDefault();
@@ -409,7 +355,7 @@ const ClassDetails = () => {
               {activeTab === "students" && (
                 <>
                   <button
-                    onClick={() => setShowAddStudentModal(true)}
+                    onClick={() => navigate(`/classes/${classId}/add-student`)}
                     className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium shadow"
                   >
                     <UserPlus className="w-4 h-4 mr-2" />
@@ -690,166 +636,6 @@ const ClassDetails = () => {
           )}
         </div>
 
-        {/* Modals for Add Student, Bulk Upload, Add Subject (reuse your existing modal code here) */}
-        {showAddStudentModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-90">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="bg-white rounded-2xl w-full max-w-lg mx-4 shadow-2xl p-8 max-h-[90vh] overflow-y-auto border border-gray-200"
-            >
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Add Student</h2>
-              <form onSubmit={handleAddStudent} className="space-y-4">
-                {/* Basic Information */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
-                    <input
-                      type="text"
-                      required
-                      value={studentForm.firstName}
-                      onChange={(e) => setStudentForm({ ...studentForm, firstName: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
-                    <input
-                      type="text"
-                      value={studentForm.middleName}
-                      onChange={(e) => setStudentForm({ ...studentForm, middleName: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
-                    <input
-                      type="text"
-                      required
-                      value={studentForm.lastName}
-                      onChange={(e) => setStudentForm({ ...studentForm, lastName: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label>
-                    <input
-                      type="date"
-                      required
-                      value={studentForm.dateOfBirth}
-                      onChange={(e) => setStudentForm({ ...studentForm, dateOfBirth: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Gender *</label>
-                    <select
-                      required
-                      value={studentForm.gender}
-                      onChange={(e) => setStudentForm({ ...studentForm, gender: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="">Select Gender</option>
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Contact Information */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email Address *</label>
-                    <input
-                      type="email"
-                      required
-                      value={studentForm.email}
-                      onChange={(e) => setStudentForm({ ...studentForm, email: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number *</label>
-                    <input
-                      type="tel"
-                      required
-                      value={studentForm.mobileNumber}
-                      onChange={(e) => setStudentForm({ ...studentForm, mobileNumber: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Current Address *</label>
-                  <textarea
-                    required
-                    value={studentForm.currentAddress}
-                    onChange={(e) => setStudentForm({ ...studentForm, currentAddress: e.target.value })}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                {/* Parent/Guardian Information */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Mother's Name *</label>
-                    <input
-                      type="text"
-                      required
-                      value={studentForm.mothersName}
-                      onChange={(e) => setStudentForm({ ...studentForm, mothersName: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Parent's Mobile Number *</label>
-                    <input
-                      type="tel"
-                      required
-                      value={studentForm.parentsMobileNumber}
-                      onChange={(e) => setStudentForm({ ...studentForm, parentsMobileNumber: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-
-                {/* Academic Information */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Roll Number *</label>
-                  <input
-                    type="text"
-                    required
-                    value={studentForm.rollNumber}
-                    onChange={(e) => setStudentForm({ ...studentForm, rollNumber: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div className="flex space-x-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddStudentModal(false)}
-                    className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Add Student
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-
         {showBulkUploadModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-90">
             <motion.div
@@ -889,7 +675,8 @@ const ClassDetails = () => {
                   />
                   <p className="text-xs text-gray-600 mt-1">
                     File should contain columns: FirstName, MiddleName, LastName, Email, MobileNumber, DateOfBirth,
-                    Gender, CurrentAddress, MothersName, ParentsMobileNumber, RollNumber
+                    Gender, CurrentAddress, MothersName, ParentsMobileNumber, RollNumber. Download the template for
+                    complete column list.
                   </p>
                 </div>
                 <div className="flex space-x-3 pt-4">

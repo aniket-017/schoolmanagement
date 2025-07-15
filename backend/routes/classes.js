@@ -96,9 +96,9 @@ router.get("/teacher/assigned", auth, teacherOnly, getTeacherAssignedClasses);
 router.get("/:id/students", auth, teacherOrAdmin, async (req, res) => {
   try {
     const Student = require("../models/Student");
-    const students = await Student.find({ 
-      class: req.params.id, 
-      isActive: true 
+    const students = await Student.find({
+      class: req.params.id,
+      isActive: true,
     }).sort({ rollNumber: 1 });
 
     res.json({
@@ -122,22 +122,6 @@ router.post("/:id/students", auth, adminOnly, async (req, res) => {
   try {
     const Class = require("../models/Class");
     const Student = require("../models/Student");
-    const { 
-      firstName, 
-      middleName, 
-      lastName, 
-      email, 
-      mobileNumber, 
-      rollNumber, 
-      dateOfBirth, 
-      gender,
-      currentAddress,
-      mothersName,
-      parentsMobileNumber,
-      address 
-    } = req.body;
-
-    // Check if class exists
     const classData = await Class.findById(req.params.id);
     if (!classData) {
       return res.status(404).json({
@@ -145,16 +129,30 @@ router.post("/:id/students", auth, adminOnly, async (req, res) => {
         message: "Class not found",
       });
     }
-
-    // Check if class is full
     if (classData.currentStrength >= classData.maxStudents) {
       return res.status(400).json({
         success: false,
         message: "Class is at maximum capacity",
       });
     }
-
-    // Check if student already exists with same email
+    const {
+      firstName,
+      lastName,
+      dateOfBirth,
+      gender,
+      email,
+      mobileNumber,
+      rollNumber,
+      grade,
+      // Accept all other possible fields
+      ...otherFields
+    } = req.body;
+    if (!firstName || !lastName || !dateOfBirth || !gender || !email || !mobileNumber || !rollNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields",
+      });
+    }
     const existingStudent = await Student.findOne({ email });
     if (existingStudent) {
       return res.status(400).json({
@@ -162,11 +160,9 @@ router.post("/:id/students", auth, adminOnly, async (req, res) => {
         message: "Student with this email already exists",
       });
     }
-
-    // Check if roll number already exists in the class
-    const existingRollNumber = await Student.findOne({ 
-      class: req.params.id, 
-      rollNumber: rollNumber 
+    const existingRollNumber = await Student.findOne({
+      class: req.params.id,
+      rollNumber: rollNumber,
     });
     if (existingRollNumber) {
       return res.status(400).json({
@@ -174,50 +170,27 @@ router.post("/:id/students", auth, adminOnly, async (req, res) => {
         message: "Roll number already exists in this class",
       });
     }
-
-    // Generate student ID
     const studentId = generateStudentId();
-
-    // Create student
-    const student = await Student.create({
+    // Compose the student data
+    const studentData = {
       firstName,
-      middleName,
       lastName,
+      dateOfBirth,
+      gender,
       email,
       mobileNumber,
       rollNumber,
-      dateOfBirth,
-      gender,
-      currentAddress,
-      mothersName,
-      parentsMobileNumber,
-      grade: `${classData.grade}${classData.getOrdinalSuffix(classData.grade)}`,
+      grade: grade || `${classData.grade}${classData.getOrdinalSuffix(classData.grade)}`,
       class: req.params.id,
       academicYear: classData.academicYear,
-      currentGrade: `${classData.grade}${classData.getOrdinalSuffix(classData.grade)}`,
-      // Legacy fields for backward compatibility
-      father: { 
-        name: mothersName, 
-        phone: parentsMobileNumber 
-      },
-      mother: { 
-        name: mothersName, 
-        phone: parentsMobileNumber 
-      },
-      address: { 
-        street: currentAddress || "",
-        city: "",
-        state: "",
-        country: "India"
-      },
+      currentGrade: grade || `${classData.grade}${classData.getOrdinalSuffix(classData.grade)}`,
+      ...otherFields,
       createdBy: req.user.id,
-    });
-
-    // Add student to class
+    };
+    const student = await Student.create(studentData);
     classData.students.push(student._id);
     classData.currentStrength += 1;
     await classData.save();
-
     res.status(201).json({
       success: true,
       message: "Student added successfully",
@@ -231,7 +204,6 @@ router.post("/:id/students", auth, adminOnly, async (req, res) => {
     });
   } catch (error) {
     console.error("Error adding student:", error);
-
     if (error.code === 11000) {
       const field = Object.keys(error.keyValue)[0];
       return res.status(400).json({
@@ -239,7 +211,6 @@ router.post("/:id/students", auth, adminOnly, async (req, res) => {
         message: `${field} already exists`,
       });
     }
-
     res.status(500).json({
       success: false,
       message: "Error adding student",
@@ -254,7 +225,7 @@ router.post("/:id/students", auth, adminOnly, async (req, res) => {
 router.get("/:id/students/excel-template", auth, adminOnly, async (req, res) => {
   try {
     const Class = require("../models/Class");
-    
+
     // Check if class exists
     const classData = await Class.findById(req.params.id);
     if (!classData) {
@@ -267,39 +238,221 @@ router.get("/:id/students/excel-template", auth, adminOnly, async (req, res) => 
     // Create template data
     const templateData = [
       {
+        // Basic Information (Required)
         FirstName: "John",
         MiddleName: "Michael",
         LastName: "Doe",
-        Email: "john.doe@example.com",
-        MobileNumber: "+1234567890",
         DateOfBirth: "2010-05-15",
         Gender: "male",
+        Email: "john.doe@example.com",
+        MobileNumber: "+1234567890",
+        RollNumber: "001",
+
+        // Personal Information (Optional)
+        Nationality: "Indian",
+        Religion: "Hindu",
+        Caste: "General",
+        MotherTongue: "Hindi",
+        BloodGroup: "A+",
+        Photo: "photo_url_here",
+
+        // Contact & Address Details
         CurrentAddress: "123 Main Street, City, State",
+        PermanentAddress: "123 Main Street, City, State",
+        City: "Mumbai",
+        State: "Maharashtra",
+        PinCode: "400001",
+
+        // Parent/Guardian Information
+        FatherName: "Robert Doe",
+        FatherOccupation: "Engineer",
+        FatherPhone: "+1234567891",
+        FatherEmail: "robert.doe@example.com",
+        FatherIncome: "800000",
         MothersName: "Jane Doe",
-        ParentsMobileNumber: "+1234567891",
-        RollNumber: "001"
-      }
+        MotherOccupation: "Teacher",
+        ParentsMobileNumber: "+1234567892",
+        MotherEmail: "jane.doe@example.com",
+        MotherIncome: "600000",
+        GuardianName: "",
+        GuardianRelation: "",
+        GuardianPhone: "",
+        GuardianEmail: "",
+
+        // Academic Information
+        AdmissionNumber: "ADM2024001",
+        Section: "A",
+        PreviousSchool: "Previous School Name",
+        TransferCertificateNumber: "TC123456",
+        SpecialNeeds: "",
+
+        // Fees & Finance
+        FeeStructure: "regular",
+        FeeDiscount: "0",
+        PaymentStatus: "pending",
+        LateFees: "0",
+
+        // Physical & Health Metrics
+        Height: "150",
+        Weight: "45",
+        VisionTestLeftEye: "6/6",
+        VisionTestRightEye: "6/6",
+        VisionTestDate: "2024-01-15",
+        HearingTestLeftEar: "Normal",
+        HearingTestRightEar: "Normal",
+        HearingTestDate: "2024-01-15",
+        FitnessScore: "85",
+
+        // Medical Information
+        Allergies: "Dust, Pollen",
+        MedicalConditions: "None",
+        Medications: "None",
+        EmergencyInstructions: "Contact parents immediately",
+        VaccinationStatus: "complete",
+
+        // Emergency Contact
+        EmergencyContactName: "Robert Doe",
+        EmergencyContactRelation: "Father",
+        EmergencyContactPhone: "+1234567891",
+        EmergencyContactEmail: "robert.doe@example.com",
+
+        // System & Access Information
+        RFIDCardNumber: "RFID001",
+        LibraryCardNumber: "LIB001",
+        HostelRoomNumber: "",
+        HostelWardenName: "",
+        HostelWardenPhone: "",
+
+        // Transport Details
+        TransportRequired: "false",
+        PickupPoint: "",
+        DropPoint: "",
+        BusNumber: "",
+        DriverName: "",
+        DriverPhone: "",
+
+        // Documents
+        BirthCertificate: "birth_cert_url",
+        TransferCertificate: "tc_url",
+        CharacterCertificate: "character_cert_url",
+        MedicalCertificate: "medical_cert_url",
+        AadharCard: "aadhar_url",
+        CasteCertificate: "",
+        IncomeCertificate: "",
+        Passport: "",
+      },
     ];
 
     // Create workbook and worksheet
     const workbook = xlsx.utils.book_new();
     const worksheet = xlsx.utils.json_to_sheet(templateData);
 
-    // Set column widths
+    // Set column widths for all fields
     const columnWidths = [
+      // Basic Information
       { wch: 15 }, // FirstName
       { wch: 15 }, // MiddleName
       { wch: 15 }, // LastName
-      { wch: 25 }, // Email
-      { wch: 15 }, // MobileNumber
       { wch: 12 }, // DateOfBirth
       { wch: 10 }, // Gender
-      { wch: 40 }, // CurrentAddress
-      { wch: 20 }, // MothersName
-      { wch: 15 }, // ParentsMobileNumber
+      { wch: 25 }, // Email
+      { wch: 15 }, // MobileNumber
       { wch: 10 }, // RollNumber
+
+      // Personal Information
+      { wch: 12 }, // Nationality
+      { wch: 12 }, // Religion
+      { wch: 12 }, // Caste
+      { wch: 15 }, // MotherTongue
+      { wch: 10 }, // BloodGroup
+      { wch: 20 }, // Photo
+
+      // Contact & Address
+      { wch: 40 }, // CurrentAddress
+      { wch: 40 }, // PermanentAddress
+      { wch: 15 }, // City
+      { wch: 15 }, // State
+      { wch: 10 }, // PinCode
+
+      // Parent Information
+      { wch: 20 }, // FatherName
+      { wch: 20 }, // FatherOccupation
+      { wch: 15 }, // FatherPhone
+      { wch: 25 }, // FatherEmail
+      { wch: 12 }, // FatherIncome
+      { wch: 20 }, // MothersName
+      { wch: 20 }, // MotherOccupation
+      { wch: 15 }, // ParentsMobileNumber
+      { wch: 25 }, // MotherEmail
+      { wch: 12 }, // MotherIncome
+      { wch: 20 }, // GuardianName
+      { wch: 15 }, // GuardianRelation
+      { wch: 15 }, // GuardianPhone
+      { wch: 25 }, // GuardianEmail
+
+      // Academic Information
+      { wch: 15 }, // AdmissionNumber
+      { wch: 10 }, // Section
+      { wch: 25 }, // PreviousSchool
+      { wch: 20 }, // TransferCertificateNumber
+      { wch: 20 }, // SpecialNeeds
+
+      // Fees & Finance
+      { wch: 15 }, // FeeStructure
+      { wch: 12 }, // FeeDiscount
+      { wch: 15 }, // PaymentStatus
+      { wch: 12 }, // LateFees
+
+      // Physical & Health
+      { wch: 10 }, // Height
+      { wch: 10 }, // Weight
+      { wch: 15 }, // VisionTestLeftEye
+      { wch: 15 }, // VisionTestRightEye
+      { wch: 12 }, // VisionTestDate
+      { wch: 15 }, // HearingTestLeftEar
+      { wch: 15 }, // HearingTestRightEar
+      { wch: 12 }, // HearingTestDate
+      { wch: 12 }, // FitnessScore
+
+      // Medical Information
+      { wch: 20 }, // Allergies
+      { wch: 20 }, // MedicalConditions
+      { wch: 20 }, // Medications
+      { wch: 30 }, // EmergencyInstructions
+      { wch: 15 }, // VaccinationStatus
+
+      // Emergency Contact
+      { wch: 20 }, // EmergencyContactName
+      { wch: 15 }, // EmergencyContactRelation
+      { wch: 15 }, // EmergencyContactPhone
+      { wch: 25 }, // EmergencyContactEmail
+
+      // System & Access
+      { wch: 15 }, // RFIDCardNumber
+      { wch: 15 }, // LibraryCardNumber
+      { wch: 15 }, // HostelRoomNumber
+      { wch: 20 }, // HostelWardenName
+      { wch: 15 }, // HostelWardenPhone
+
+      // Transport Details
+      { wch: 15 }, // TransportRequired
+      { wch: 20 }, // PickupPoint
+      { wch: 20 }, // DropPoint
+      { wch: 12 }, // BusNumber
+      { wch: 20 }, // DriverName
+      { wch: 15 }, // DriverPhone
+
+      // Documents
+      { wch: 20 }, // BirthCertificate
+      { wch: 20 }, // TransferCertificate
+      { wch: 20 }, // CharacterCertificate
+      { wch: 20 }, // MedicalCertificate
+      { wch: 15 }, // AadharCard
+      { wch: 20 }, // CasteCertificate
+      { wch: 20 }, // IncomeCertificate
+      { wch: 15 }, // Passport
     ];
-    worksheet['!cols'] = columnWidths;
+    worksheet["!cols"] = columnWidths;
 
     // Add worksheet to workbook
     xlsx.utils.book_append_sheet(workbook, worksheet, "Students Template");
@@ -309,8 +462,11 @@ router.get("/:id/students/excel-template", auth, adminOnly, async (req, res) => 
 
     // Set headers for file download
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    res.setHeader("Content-Disposition", `attachment; filename="students_template_${classData.grade}${classData.division}.xlsx"`);
-    
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="students_template_${classData.grade}${classData.division}.xlsx"`
+    );
+
     res.send(buffer);
   } catch (error) {
     console.error("Error generating template:", error);
@@ -393,9 +549,9 @@ router.post("/:id/students/bulk", auth, adminOnly, upload.single("file"), async 
         }
 
         // Check if roll number already exists in the class
-        const existingRollNumber = await Student.findOne({ 
-          class: req.params.id, 
-          rollNumber: row.RollNumber 
+        const existingRollNumber = await Student.findOne({
+          class: req.params.id,
+          rollNumber: row.RollNumber,
         });
         if (existingRollNumber) {
           results.duplicates.push({
@@ -419,7 +575,7 @@ router.post("/:id/students/bulk", auth, adminOnly, upload.single("file"), async 
         const studentId = generateStudentId();
 
         // Create student
-        const student = await Student.create({
+        const studentData = {
           firstName: row.FirstName,
           middleName: row.MiddleName || "",
           lastName: row.LastName,
@@ -429,30 +585,191 @@ router.post("/:id/students/bulk", auth, adminOnly, upload.single("file"), async 
           dateOfBirth: row.DateOfBirth || null,
           gender: row.Gender || "other",
           currentAddress: row.CurrentAddress || row.Address || "",
-          mothersName: row.MothersName || row.ParentName || "",
-          parentsMobileNumber: row.ParentsMobileNumber || row.ParentPhone || "",
           grade: `${classData.grade}${classData.getOrdinalSuffix(classData.grade)}`,
           class: req.params.id,
           academicYear: classData.academicYear,
           currentGrade: `${classData.grade}${classData.getOrdinalSuffix(classData.grade)}`,
-          // Legacy fields for backward compatibility
-          father: {
-            name: row.MothersName || row.ParentName || "",
-            phone: row.ParentsMobileNumber || row.ParentPhone || "",
-          },
-          mother: {
-            name: row.MothersName || row.ParentName || "",
-            phone: row.ParentsMobileNumber || row.ParentPhone || "",
-          },
-          address: {
-            street: row.CurrentAddress || row.Address || "",
-            city: row.City || "",
-            state: row.State || "",
-            zipCode: row.ZipCode || "",
-            country: row.Country || "India",
-          },
           createdBy: req.user.id,
-        });
+        };
+
+        // Personal Information
+        if (row.Nationality) studentData.nationality = row.Nationality;
+        if (row.Religion) studentData.religion = row.Religion;
+        if (row.Caste) studentData.caste = row.Caste;
+        if (row.MotherTongue) studentData.motherTongue = row.MotherTongue;
+        if (row.BloodGroup) studentData.bloodGroup = row.BloodGroup;
+        if (row.Photo) studentData.photo = row.Photo;
+
+        // Contact & Address Details
+        if (row.PermanentAddress) studentData.permanentAddress = row.PermanentAddress;
+        if (row.City) studentData.city = row.City;
+        if (row.State) studentData.state = row.State;
+        if (row.PinCode) studentData.pinCode = row.PinCode;
+
+        // Parent/Guardian Information
+        if (row.FatherName || row.FatherOccupation || row.FatherPhone || row.FatherEmail || row.FatherIncome) {
+          studentData.father = {
+            name: row.FatherName || "",
+            occupation: row.FatherOccupation || "",
+            phone: row.FatherPhone || "",
+            email: row.FatherEmail || "",
+            annualIncome: row.FatherIncome ? parseFloat(row.FatherIncome) : undefined,
+          };
+        }
+
+        if (row.MothersName || row.MotherOccupation || row.MotherPhone || row.ParentsMobileNumber || row.MotherEmail || row.MotherIncome) {
+          studentData.mother = {
+            name: row.MothersName || row.ParentName || "",
+            occupation: row.MotherOccupation || "",
+            phone: row.ParentsMobileNumber || row.MotherPhone || row.ParentPhone || "",
+            email: row.MotherEmail || "",
+            annualIncome: row.MotherIncome ? parseFloat(row.MotherIncome) : undefined,
+          };
+        }
+
+        if (row.GuardianName || row.GuardianRelation || row.GuardianPhone || row.GuardianEmail) {
+          studentData.guardian = {
+            name: row.GuardianName || "",
+            relation: row.GuardianRelation || "",
+            phone: row.GuardianPhone || "",
+            email: row.GuardianEmail || "",
+          };
+        }
+
+        // Academic Information
+        if (row.AdmissionNumber) studentData.admissionNumber = row.AdmissionNumber;
+        if (row.Section) studentData.section = row.Section;
+        if (row.PreviousSchool) studentData.previousSchool = row.PreviousSchool;
+        if (row.TransferCertificateNumber) studentData.transferCertificateNumber = row.TransferCertificateNumber;
+        if (row.SpecialNeeds) studentData.specialNeeds = row.SpecialNeeds;
+
+        // Fees & Finance
+        if (row.FeeStructure) studentData.feeStructure = row.FeeStructure;
+        if (row.FeeDiscount) studentData.feeDiscount = parseFloat(row.FeeDiscount);
+        if (row.PaymentStatus) studentData.paymentStatus = row.PaymentStatus;
+        if (row.LateFees) studentData.lateFees = parseFloat(row.LateFees);
+
+        // Physical & Health Metrics
+        if (row.Height || row.Weight || row.VisionTest || row.HearingTest || row.FitnessScore) {
+          studentData.physicalMetrics = {
+            height: row.Height ? parseFloat(row.Height) : undefined,
+            weight: row.Weight ? parseFloat(row.Weight) : undefined,
+            visionTest: row.VisionTest
+              ? {
+                  leftEye: row.VisionTestLeftEye || "",
+                  rightEye: row.VisionTestRightEye || "",
+                  date: row.VisionTestDate ? new Date(row.VisionTestDate) : undefined,
+                }
+              : undefined,
+            hearingTest: row.HearingTest
+              ? {
+                  leftEar: row.HearingTestLeftEar || "",
+                  rightEar: row.HearingTestRightEar || "",
+                  date: row.HearingTestDate ? new Date(row.HearingTestDate) : undefined,
+                }
+              : undefined,
+            fitnessScore: row.FitnessScore ? parseFloat(row.FitnessScore) : undefined,
+          };
+        }
+
+        // Medical Information
+        if (
+          row.Allergies ||
+          row.MedicalConditions ||
+          row.Medications ||
+          row.EmergencyInstructions ||
+          row.VaccinationStatus
+        ) {
+          studentData.medicalHistory = {
+            allergies: row.Allergies ? row.Allergies.split(",").map((a) => a.trim()) : [],
+            medicalConditions: row.MedicalConditions ? row.MedicalConditions.split(",").map((c) => c.trim()) : [],
+            medications: row.Medications ? row.Medications.split(",").map((m) => m.trim()) : [],
+            emergencyInstructions: row.EmergencyInstructions || "",
+            vaccinationStatus: row.VaccinationStatus || "complete",
+          };
+        }
+
+        // Emergency Contact
+        if (
+          row.EmergencyContactName ||
+          row.EmergencyContactRelation ||
+          row.EmergencyContactPhone ||
+          row.EmergencyContactEmail
+        ) {
+          studentData.emergencyContact = {
+            name: row.EmergencyContactName || "",
+            relation: row.EmergencyContactRelation || "",
+            phone: row.EmergencyContactPhone || "",
+            email: row.EmergencyContactEmail || "",
+          };
+        }
+
+        // System & Access Information
+        if (row.RFIDCardNumber) studentData.rfidCardNumber = row.RFIDCardNumber;
+        if (row.LibraryCardNumber) studentData.libraryCardNumber = row.LibraryCardNumber;
+        if (row.HostelRoomNumber || row.HostelWardenName || row.HostelWardenPhone) {
+          studentData.hostelInformation = {
+            roomNumber: row.HostelRoomNumber || "",
+            wardenName: row.HostelWardenName || "",
+            wardenPhone: row.HostelWardenPhone || "",
+          };
+        }
+
+        // Transport Details
+        if (
+          row.TransportRequired ||
+          row.PickupPoint ||
+          row.DropPoint ||
+          row.BusNumber ||
+          row.DriverName ||
+          row.DriverPhone
+        ) {
+          studentData.transportDetails = {
+            required: row.TransportRequired === "true" || row.TransportRequired === true,
+            pickupPoint: row.PickupPoint || "",
+            dropPoint: row.DropPoint || "",
+            busNumber: row.BusNumber || "",
+            driverName: row.DriverName || "",
+            driverPhone: row.DriverPhone || "",
+          };
+        }
+
+        // Documents
+        if (
+          row.BirthCertificate ||
+          row.TransferCertificate ||
+          row.CharacterCertificate ||
+          row.MedicalCertificate ||
+          row.AadharCard ||
+          row.CasteCertificate ||
+          row.IncomeCertificate ||
+          row.Passport
+        ) {
+          studentData.documents = {
+            birthCertificate: row.BirthCertificate || "",
+            transferCertificate: row.TransferCertificate || "",
+            characterCertificate: row.CharacterCertificate || "",
+            medicalCertificate: row.MedicalCertificate || "",
+            photograph: row.Photo || "",
+            aadharCard: row.AadharCard || "",
+            casteCertificate: row.CasteCertificate || "",
+            incomeCertificate: row.IncomeCertificate || "",
+            passport: row.Passport || "",
+          };
+        }
+
+        // Legacy fields for backward compatibility
+        studentData.mothersName = row.MothersName || row.ParentName || "";
+        studentData.parentsMobileNumber = row.ParentsMobileNumber || row.ParentPhone || "";
+        studentData.address = {
+          street: row.CurrentAddress || row.Address || "",
+          city: row.City || "",
+          state: row.State || "",
+          zipCode: row.ZipCode || "",
+          country: row.Country || "India",
+        };
+
+        const student = await Student.create(studentData);
 
         // Add student to class
         classData.students.push(student._id);
@@ -553,11 +870,11 @@ router.get("/:id/subjects", auth, teacherOrAdmin, async (req, res) => {
     const classData = await Class.findById(req.params.id)
       .populate({
         path: "subjects.subject",
-        select: "name code description"
+        select: "name code description",
       })
       .populate({
         path: "subjects.teacher",
-        select: "name email"
+        select: "name email",
       });
 
     if (!classData) {
@@ -662,9 +979,7 @@ router.delete("/:id/subjects/:subjectId", auth, adminOnly, async (req, res) => {
     }
 
     // Find and remove subject from class
-    const subjectIndex = classData.subjects.findIndex(
-      sub => sub.subject.toString() === req.params.subjectId
-    );
+    const subjectIndex = classData.subjects.findIndex((sub) => sub.subject.toString() === req.params.subjectId);
 
     if (subjectIndex === -1) {
       return res.status(404).json({
