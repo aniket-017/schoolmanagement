@@ -197,6 +197,13 @@ const TimetableTab = ({ classId, classData }) => {
       setSaving(true);
       const token = localStorage.getItem("token");
 
+      console.log("Saving timetable with data:", {
+        classId,
+        weeklyTimetable: timetable,
+        academicYear,
+        semester: "1",
+      });
+
       const response = await fetch(`${appConfig.API_BASE_URL}/timetables/class/${classId}`, {
         method: "POST",
         headers: {
@@ -210,7 +217,10 @@ const TimetableTab = ({ classId, classData }) => {
         }),
       });
 
+      console.log("Save response status:", response.status);
       const data = await response.json();
+      console.log("Save response data:", data);
+
       if (data.success) {
         toast.success("Timetable saved successfully!");
         // Refresh the timetable data to get the populated information

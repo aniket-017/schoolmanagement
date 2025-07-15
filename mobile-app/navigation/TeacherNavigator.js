@@ -7,6 +7,7 @@ import ClassDetails from "../screens/teacher/ClassDetails";
 import AttendanceManagement from "../screens/teacher/AttendanceManagement";
 import GradeManagement from "../screens/teacher/GradeManagement";
 import ProfileScreen from "../screens/teacher/ProfileScreen";
+import TeacherTimetableScreen from "../screens/teacher/TeacherTimetableScreen";
 
 const Stack = createStackNavigator();
 
@@ -30,6 +31,11 @@ export default function TeacherNavigator({ navigation, route }) {
       <Stack.Screen name="TeacherClassDetails" component={ClassDetails} options={{ title: "Class Details" }} />
       <Stack.Screen name="TeacherAttendance" component={AttendanceManagement} options={{ title: "Attendance" }} />
       <Stack.Screen name="TeacherGrades" component={GradeManagement} options={{ title: "Grades" }} />
+      <Stack.Screen
+        name="TeacherTimetable"
+        component={TeacherTimetableScreen}
+        options={{ title: "Teaching Schedule" }}
+      />
       <Stack.Screen name="TeacherProfile" component={ProfileScreen} options={{ title: "Profile" }} />
     </Stack.Navigator>
   );

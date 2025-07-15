@@ -32,10 +32,17 @@ export default function StudentDashboard({ navigation }) {
         apiService.assignments.getAssignments({ student_id: user.id, limit: 5 }),
         apiService.grades.getStudentGrades(user.id, { limit: 10 }),
         apiService.announcements.getAnnouncementsForUser(user.id, { active_only: true, limit: 3 }),
-        user.class_id ? apiService.timetable.getClassTimetable(user.class_id) : { data: {} },
+        user.class_id
+          ? apiService.timetable.getClassTimetable(user.class_id._id || user.class_id).catch((err) => {
+              console.error("Error fetching timetable:", err);
+              return { data: {} };
+            })
+          : { data: {} },
       ]);
 
       // Process data for dashboard
+      console.log("Timetable data received:", timetableData);
+
       const processedData = {
         attendance: processAttendanceData(attendanceData.data),
         assignments: assignmentsData.data,
@@ -245,6 +252,89 @@ export default function StudentDashboard({ navigation }) {
     </Animatable.View>
   );
 
+  const renderTodaysSchedule = () => {
+    if (!dashboardData?.timetable || !user?.class_id) {
+      console.log("No timetable data or class_id:", {
+        hasTimetable: !!dashboardData?.timetable,
+        hasClassId: !!user?.class_id,
+        timetableData: dashboardData?.timetable,
+      });
+      return null;
+    }
+
+    const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
+    const todaysPeriods = dashboardData.timetable.weeklyTimetable?.[today] || [];
+
+    console.log("Today's schedule data:", {
+      today,
+      todaysPeriods,
+      weeklyTimetable: dashboardData.timetable.weeklyTimetable,
+    });
+
+    if (todaysPeriods.length === 0) {
+      return (
+        <Animatable.View animation="fadeInUp" delay={700}>
+          <Card style={styles.scheduleCard}>
+            <Text style={styles.cardTitle}>Today's Schedule</Text>
+            <View style={styles.emptySchedule}>
+              <Ionicons name="calendar-outline" size={48} color={theme.colors.textSecondary} />
+              <Text style={styles.emptyScheduleText}>No classes scheduled for today</Text>
+            </View>
+          </Card>
+        </Animatable.View>
+      );
+    }
+
+    return (
+      <Animatable.View animation="fadeInUp" delay={700}>
+        <Card style={styles.scheduleCard}>
+          <View style={styles.scheduleHeader}>
+            <Text style={styles.cardTitle}>Today's Schedule</Text>
+            <Button title="View Full" variant="outline" size="small" onPress={() => navigation.navigate("Timetable")} />
+          </View>
+          <View style={styles.scheduleList}>
+            {todaysPeriods.slice(0, 4).map((period, index) => (
+              <View key={index} style={styles.scheduleItem}>
+                <View style={styles.periodTime}>
+                  <Text style={styles.periodNumber}>Period {period.periodNumber}</Text>
+                  <Text style={styles.timeText}>
+                    {period.startTime} - {period.endTime}
+                  </Text>
+                </View>
+                <View style={styles.periodDetails}>
+                  <Text style={styles.subjectName}>{period.subject?.name || "Unknown Subject"}</Text>
+                  <Text style={styles.teacherName}>{period.teacher?.name || "Unknown Teacher"}</Text>
+                  {period.room && <Text style={styles.roomText}>Room: {period.room}</Text>}
+                </View>
+                <View style={styles.periodType}>
+                  <Text style={[styles.typeBadge, { backgroundColor: getPeriodTypeColor(period.type) }]}>
+                    {period.type}
+                  </Text>
+                </View>
+              </View>
+            ))}
+            {todaysPeriods.length > 4 && (
+              <View style={styles.morePeriods}>
+                <Text style={styles.morePeriodsText}>+{todaysPeriods.length - 4} more periods</Text>
+              </View>
+            )}
+          </View>
+        </Card>
+      </Animatable.View>
+    );
+  };
+
+  const getPeriodTypeColor = (type) => {
+    const colors = {
+      theory: theme.colors.primary,
+      practical: theme.colors.success,
+      lab: theme.colors.warning,
+      sports: theme.colors.info,
+      library: theme.colors.secondary,
+    };
+    return colors[type] || theme.colors.primary;
+  };
+
   const renderRecentAnnouncements = () => {
     if (!dashboardData?.announcements || dashboardData.announcements.length === 0) {
       return null;
@@ -304,6 +394,7 @@ export default function StudentDashboard({ navigation }) {
       >
         {renderStatsCards()}
         {renderAttendanceChart()}
+        {renderTodaysSchedule()}
         {renderQuickActions()}
         {renderRecentAnnouncements()}
 
@@ -435,6 +526,90 @@ const styles = StyleSheet.create({
   actionButton: {
     width: "48%",
     marginBottom: theme.spacing.sm,
+  },
+  scheduleCard: {
+    marginBottom: theme.spacing.lg,
+  },
+  scheduleHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: theme.spacing.md,
+  },
+  scheduleList: {
+    gap: theme.spacing.sm,
+  },
+  scheduleItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
+    borderLeftWidth: 4,
+    borderLeftColor: theme.colors.primary,
+  },
+  periodTime: {
+    width: 80,
+    marginRight: theme.spacing.md,
+  },
+  periodNumber: {
+    ...theme.typography.subtitle2,
+    color: theme.colors.text,
+    fontWeight: "bold",
+  },
+  timeText: {
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
+    marginTop: 2,
+  },
+  periodDetails: {
+    flex: 1,
+  },
+  subjectName: {
+    ...theme.typography.subtitle2,
+    color: theme.colors.text,
+    fontWeight: "600",
+  },
+  teacherName: {
+    ...theme.typography.body2,
+    color: theme.colors.textSecondary,
+    marginTop: 2,
+  },
+  roomText: {
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
+    marginTop: 2,
+  },
+  periodType: {
+    marginLeft: theme.spacing.sm,
+  },
+  typeBadge: {
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 4,
+    borderRadius: theme.borderRadius.sm,
+    color: theme.colors.textLight,
+    fontSize: 10,
+    fontWeight: "bold",
+    textTransform: "uppercase",
+  },
+  morePeriods: {
+    alignItems: "center",
+    paddingVertical: theme.spacing.sm,
+  },
+  morePeriodsText: {
+    ...theme.typography.body2,
+    color: theme.colors.primary,
+    fontWeight: "500",
+  },
+  emptySchedule: {
+    alignItems: "center",
+    paddingVertical: theme.spacing.xl,
+  },
+  emptyScheduleText: {
+    ...theme.typography.body2,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.md,
+    textAlign: "center",
   },
   announcementsCard: {
     marginBottom: theme.spacing.lg,

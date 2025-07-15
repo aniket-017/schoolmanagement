@@ -40,7 +40,19 @@ api.interceptors.response.use(
   }
 );
 
+// Helper function to handle API errors
+const handleError = (error) => {
+  if (error.response?.data?.message) {
+    return error.response.data.message;
+  } else if (error.message) {
+    return error.message;
+  } else {
+    return "An unexpected error occurred";
+  }
+};
+
 export const apiService = {
+  handleError,
   // Auth Service
   auth: {
     login: async (email, password) => {
@@ -173,8 +185,16 @@ export const apiService = {
       return response.data;
     },
     getTeacherTimetable: async (teacherId) => {
-      const response = await api.get(`/timetables/teacher/${teacherId}`);
-      return response.data;
+      console.log("API Service: Making request to /timetables/teacher/", teacherId);
+      try {
+        const response = await api.get(`/timetables/teacher/${teacherId}`);
+        console.log("API Service: Response received:", response.data);
+        return response.data;
+      } catch (error) {
+        console.error("API Service: Error in getTeacherTimetable:", error);
+        console.error("API Service: Error response:", error.response?.data);
+        throw error;
+      }
     },
   },
 

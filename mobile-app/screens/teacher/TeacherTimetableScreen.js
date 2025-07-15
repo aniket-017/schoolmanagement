@@ -9,7 +9,7 @@ import theme from "../../utils/theme";
 
 const { width } = Dimensions.get("window");
 
-export default function TimetableScreen() {
+export default function TeacherTimetableScreen() {
   const { user } = useAuth();
   const [timetable, setTimetable] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -25,20 +25,20 @@ export default function TimetableScreen() {
   const loadTimetable = async () => {
     try {
       setLoading(true);
-      if (!user?.class_id) {
+      if (!user?.id) {
         setTimetable(null);
         return;
       }
 
-      const response = await apiService.timetable.getClassTimetable(user.class_id._id || user.class_id);
-      console.log("Timetable response:", response);
+      const response = await apiService.timetable.getTeacherTimetable(user.id);
+      console.log("Teacher timetable response:", response);
       if (response.success) {
         setTimetable(response.data);
       } else {
-        console.error("Failed to load timetable:", response.message);
+        console.error("Failed to load teacher timetable:", response.message);
       }
     } catch (error) {
-      console.error("Error loading timetable:", error);
+      console.error("Error loading teacher timetable:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -89,7 +89,7 @@ export default function TimetableScreen() {
           <Ionicons name="calendar-outline" size={64} color={theme.colors.textSecondary} />
           <Text style={styles.emptyTitle}>No Timetable Available</Text>
           <Text style={styles.emptySubtitle}>
-            Your class timetable hasn't been set up yet. Please contact your administrator.
+            Your teaching schedule hasn't been set up yet. Please contact your administrator.
           </Text>
         </View>
       );
@@ -133,8 +133,10 @@ export default function TimetableScreen() {
                 </View>
 
                 <View style={styles.detailRow}>
-                  <Ionicons name="person-outline" size={16} color={theme.colors.secondary} />
-                  <Text style={styles.detailText}>{period.teacher?.name || "Unknown Teacher"}</Text>
+                  <Ionicons name="people-outline" size={16} color={theme.colors.secondary} />
+                  <Text style={styles.detailText}>
+                    {period.classId?.grade} - {period.classId?.division}
+                  </Text>
                 </View>
 
                 {period.room && (
@@ -165,9 +167,9 @@ export default function TimetableScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Class Timetable</Text>
+        <Text style={styles.title}>Teaching Schedule</Text>
         <Text style={styles.subtitle}>
-          {user?.class_id ? `${user.class_id.name} - ${user.class_id.section}` : "No Class Assigned"}
+          {user?.name} • {user?.subject || "All Subjects"}
         </Text>
       </View>
 

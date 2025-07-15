@@ -208,10 +208,26 @@ exports.getClassTimetable = async (req, res) => {
 // Create or update class timetable (bulk operation)
 exports.createOrUpdateClassTimetable = async (req, res) => {
   try {
+    console.log("=== TIMETABLE SAVE REQUEST START ===");
+    console.log("Request method:", req.method);
+    console.log("Request URL:", req.originalUrl);
+    console.log("Request headers:", req.headers);
+    console.log("Request body:", req.body);
+    console.log("Request params:", req.params);
+
     const { classId } = req.params;
     const { weeklyTimetable, academicYear, semester } = req.body;
 
+    console.log("Received timetable save request:", {
+      classId,
+      academicYear,
+      semester,
+      weeklyTimetableKeys: Object.keys(weeklyTimetable),
+      totalPeriods: Object.values(weeklyTimetable).reduce((sum, periods) => sum + (periods?.length || 0), 0),
+    });
+
     if (!classId || !weeklyTimetable || !academicYear) {
+      console.log("Validation failed:", { classId, hasWeeklyTimetable: !!weeklyTimetable, academicYear });
       return res.status(400).json({
         success: false,
         message: "Class ID, weekly timetable, and academic year are required",
@@ -227,30 +243,40 @@ exports.createOrUpdateClassTimetable = async (req, res) => {
       });
     }
 
-    // Check for conflicts across all days
+    // Delete existing timetables for this class and academic year FIRST
+    console.log("Deleting existing timetables for class:", classId, "academic year:", academicYear);
+    const deleteResult = await Timetable.deleteMany({ classId, academicYear });
+    console.log("Deleted", deleteResult.deletedCount, "existing timetables");
+
+    // Check for conflicts across all days (after deleting existing entries)
     const allConflicts = [];
     for (const [day, periods] of Object.entries(weeklyTimetable)) {
       if (periods && periods.length > 0) {
+        console.log(`Checking conflicts for ${day}:`, periods.length, "periods");
         const conflicts = await checkTimetableConflicts(classId, day, periods, academicYear);
+        if (conflicts.length > 0) {
+          console.log(`Conflicts found for ${day}:`, conflicts);
+        }
         allConflicts.push(...conflicts.map((conflict) => ({ ...conflict, day })));
       }
     }
 
     if (allConflicts.length > 0) {
+      console.log("Conflicts detected:", allConflicts);
       return res.status(400).json({
         success: false,
         message: "Timetable conflicts detected",
         conflicts: allConflicts,
       });
+    } else {
+      console.log("No conflicts detected - proceeding with save");
     }
-
-    // Delete existing timetables for this class and academic year
-    await Timetable.deleteMany({ classId, academicYear });
 
     // Create new timetables
     const createdTimetables = [];
     for (const [day, periods] of Object.entries(weeklyTimetable)) {
       if (periods && periods.length > 0) {
+        console.log(`Creating timetable for ${day}:`, periods.length, "periods");
         const timetable = new Timetable({
           classId,
           day,
@@ -270,6 +296,8 @@ exports.createOrUpdateClassTimetable = async (req, res) => {
       { path: "periods.teacher", select: "name email" },
     ]);
 
+    console.log("Successfully created/updated timetable. Total created:", createdTimetables.length);
+    console.log("=== TIMETABLE SAVE REQUEST END ===");
     res.json({
       success: true,
       message: "Class timetable created/updated successfully",
@@ -281,6 +309,7 @@ exports.createOrUpdateClassTimetable = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating/updating class timetable:", error);
+    console.log("=== TIMETABLE SAVE REQUEST ERROR ===");
     res.status(500).json({
       success: false,
       message: "Error creating/updating class timetable",
@@ -349,6 +378,7 @@ exports.getTeacherAvailability = async (req, res) => {
 exports.getTeacherTimetable = async (req, res) => {
   try {
     const { teacherId } = req.params;
+    console.log("getTeacherTimetable called for teacherId:", teacherId);
 
     const timetables = await Timetable.find({ "periods.teacher": teacherId, isActive: true })
       .populate([
@@ -357,6 +387,9 @@ exports.getTeacherTimetable = async (req, res) => {
         { path: "periods.teacher", select: "name email phone" },
       ])
       .sort({ day: 1, "periods.periodNumber": 1 });
+
+    console.log("Found timetables for teacher:", timetables.length);
+    console.log("Timetables data:", JSON.stringify(timetables, null, 2));
 
     // Group by day
     const weeklyTimetable = {
@@ -369,14 +402,18 @@ exports.getTeacherTimetable = async (req, res) => {
     };
 
     timetables.forEach((timetable) => {
+      console.log("Processing timetable for day:", timetable.day);
       if (weeklyTimetable[timetable.day]) {
         // Filter periods for this specific teacher
         const teacherPeriods = timetable.periods.filter(
           (period) => period.teacher && period.teacher._id.toString() === teacherId
         );
+        console.log("Teacher periods for", timetable.day, ":", teacherPeriods.length);
         weeklyTimetable[timetable.day].push(...teacherPeriods);
       }
     });
+
+    console.log("Final weeklyTimetable:", JSON.stringify(weeklyTimetable, null, 2));
 
     res.json({
       success: true,
@@ -532,24 +569,6 @@ async function checkTimetableConflicts(classId, day, periods, academicYear) {
   const conflicts = [];
 
   for (const period of periods) {
-    // Check for class conflicts (same class, same time)
-    const classConflict = await Timetable.findOne({
-      classId,
-      day,
-      academicYear,
-      isActive: true,
-      "periods.startTime": { $lt: period.endTime },
-      "periods.endTime": { $gt: period.startTime },
-    });
-
-    if (classConflict) {
-      conflicts.push({
-        type: "class_conflict",
-        period: period.periodNumber,
-        message: "Class already has a period scheduled at this time",
-      });
-    }
-
     // Check for teacher conflicts (same teacher, same time, different class)
     if (period.teacher) {
       const teacherConflict = await Timetable.findOne({
@@ -572,12 +591,13 @@ async function checkTimetableConflicts(classId, day, periods, academicYear) {
       }
     }
 
-    // Check for room conflicts (same room, same time)
+    // Check for room conflicts (same room, same time, different class)
     if (period.room) {
       const roomConflict = await Timetable.findOne({
         day,
         academicYear,
         isActive: true,
+        classId: { $ne: classId },
         "periods.room": period.room,
         "periods.startTime": { $lt: period.endTime },
         "periods.endTime": { $gt: period.startTime },
