@@ -116,7 +116,7 @@ export default function ClassDetails({ navigation, route }) {
     </Animatable.View>
   );
 
-  const renderStudentModal = () => (
+  const renderStudentModal = () =>
     <Modal
       visible={showStudentModal}
       animationType="slide"
@@ -137,96 +137,77 @@ export default function ClassDetails({ navigation, route }) {
 
           {selectedStudent && (
             <ScrollView style={styles.modalBody}>
+              {/* Basic Information */}
               <View style={styles.detailSection}>
                 <Text style={styles.sectionTitle}>Basic Information</Text>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Roll Number:</Text>
-                  <Text style={styles.detailValue}>{selectedStudent.rollNumber || "N/A"}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Name:</Text>
-                  <Text style={styles.detailValue}>{selectedStudent.name}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Email:</Text>
-                  <Text style={styles.detailValue}>{selectedStudent.email}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Phone:</Text>
-                  <Text style={styles.detailValue}>{selectedStudent.phone || selectedStudent.mobileNumber || "N/A"}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Gender:</Text>
-                  <Text style={styles.detailValue}>
-                    {selectedStudent.gender === 'male' ? 'Male' : selectedStudent.gender === 'female' ? 'Female' : 'Other'}
-                  </Text>
-                </View>
-                {selectedStudent.dateOfBirth && (
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Date of Birth:</Text>
-                    <Text style={styles.detailValue}>
-                      {new Date(selectedStudent.dateOfBirth).toLocaleDateString()}
-                    </Text>
-                  </View>
-                )}
+                <View style={styles.detailRow}><Text style={styles.detailLabel}>Student ID:</Text><Text style={styles.detailValue}>{selectedStudent.studentId || "N/A"}</Text></View>
+                <View style={styles.detailRow}><Text style={styles.detailLabel}>Admission No:</Text><Text style={styles.detailValue}>{selectedStudent.admissionNumber || "N/A"}</Text></View>
+                <View style={styles.detailRow}><Text style={styles.detailLabel}>Roll Number:</Text><Text style={styles.detailValue}>{selectedStudent.rollNumber || "N/A"}</Text></View>
+                <View style={styles.detailRow}><Text style={styles.detailLabel}>Full Name:</Text><Text style={styles.detailValue}>{selectedStudent.name || `${selectedStudent.firstName || ""} ${selectedStudent.middleName || ""} ${selectedStudent.lastName || ""}`.trim()}</Text></View>
+                <View style={styles.detailRow}><Text style={styles.detailLabel}>Email:</Text><Text style={styles.detailValue}>{selectedStudent.email}</Text></View>
+                <View style={styles.detailRow}><Text style={styles.detailLabel}>Phone:</Text><Text style={styles.detailValue}>{selectedStudent.phone || selectedStudent.mobileNumber || "N/A"}</Text></View>
+                <View style={styles.detailRow}><Text style={styles.detailLabel}>Gender:</Text><Text style={styles.detailValue}>{selectedStudent.gender ? selectedStudent.gender.charAt(0).toUpperCase() + selectedStudent.gender.slice(1) : "N/A"}</Text></View>
+                {selectedStudent.dateOfBirth && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Date of Birth:</Text><Text style={styles.detailValue}>{new Date(selectedStudent.dateOfBirth).toLocaleDateString()}</Text></View>)}
+                {selectedStudent.nationality && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Nationality:</Text><Text style={styles.detailValue}>{selectedStudent.nationality}</Text></View>)}
+                {selectedStudent.religion && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Religion:</Text><Text style={styles.detailValue}>{selectedStudent.religion}</Text></View>)}
+                {selectedStudent.bloodGroup && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Blood Group:</Text><Text style={styles.detailValue}>{selectedStudent.bloodGroup}</Text></View>)}
               </View>
 
+              {/* Parent Information */}
               <View style={styles.detailSection}>
                 <Text style={styles.sectionTitle}>Parent Information</Text>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Mother's Name:</Text>
-                  <Text style={styles.detailValue}>
-                    {selectedStudent.mother?.name || selectedStudent.mothersName || "N/A"}
-                  </Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Parent Phone:</Text>
-                  <Text style={styles.detailValue}>
-                    {selectedStudent.mother?.phone || selectedStudent.parentsMobileNumber || "N/A"}
-                  </Text>
-                </View>
+                {selectedStudent.father && selectedStudent.father.name && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Father's Name:</Text><Text style={styles.detailValue}>{selectedStudent.father.name}</Text></View>)}
+                {selectedStudent.father && selectedStudent.father.occupation && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Father's Occupation:</Text><Text style={styles.detailValue}>{selectedStudent.father.occupation}</Text></View>)}
+                {selectedStudent.father && selectedStudent.father.phone && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Father's Phone:</Text><Text style={styles.detailValue}>{selectedStudent.father.phone}</Text></View>)}
+                <View style={styles.detailRow}><Text style={styles.detailLabel}>Mother's Name:</Text><Text style={styles.detailValue}>{selectedStudent.mother?.name || selectedStudent.mothersName || "N/A"}</Text></View>
+                {selectedStudent.mother && selectedStudent.mother.occupation && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Mother's Occupation:</Text><Text style={styles.detailValue}>{selectedStudent.mother.occupation}</Text></View>)}
+                <View style={styles.detailRow}><Text style={styles.detailLabel}>Parent Phone:</Text><Text style={styles.detailValue}>{selectedStudent.mother?.phone || selectedStudent.parentsMobileNumber || "N/A"}</Text></View>
+                {selectedStudent.guardian && selectedStudent.guardian.name && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Guardian Name:</Text><Text style={styles.detailValue}>{selectedStudent.guardian.name}</Text></View>)}
+                {selectedStudent.guardian && selectedStudent.guardian.relation && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Guardian Relation:</Text><Text style={styles.detailValue}>{selectedStudent.guardian.relation}</Text></View>)}
+                {selectedStudent.guardian && selectedStudent.guardian.phone && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Guardian Phone:</Text><Text style={styles.detailValue}>{selectedStudent.guardian.phone}</Text></View>)}
               </View>
 
+              {/* Address Information */}
               <View style={styles.detailSection}>
-                <Text style={styles.sectionTitle}>Address</Text>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Current Address:</Text>
-                  <Text style={styles.detailValue}>
-                    {selectedStudent.currentAddress || selectedStudent.address?.street || "N/A"}
-                  </Text>
-                </View>
+                <Text style={styles.sectionTitle}>Address Information</Text>
+                <View style={styles.detailRow}><Text style={styles.detailLabel}>Current Address:</Text><Text style={styles.detailValue}>{selectedStudent.currentAddress || selectedStudent.address?.street || "N/A"}</Text></View>
+                {selectedStudent.permanentAddress && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Permanent Address:</Text><Text style={styles.detailValue}>{selectedStudent.permanentAddress}</Text></View>)}
+                {selectedStudent.city && (<View style={styles.detailRow}><Text style={styles.detailLabel}>City:</Text><Text style={styles.detailValue}>{selectedStudent.city}</Text></View>)}
+                {selectedStudent.state && (<View style={styles.detailRow}><Text style={styles.detailLabel}>State:</Text><Text style={styles.detailValue}>{selectedStudent.state}</Text></View>)}
+                {selectedStudent.pinCode && (<View style={styles.detailRow}><Text style={styles.detailLabel}>PIN Code:</Text><Text style={styles.detailValue}>{selectedStudent.pinCode}</Text></View>)}
               </View>
 
+              {/* Academic Information */}
               <View style={styles.detailSection}>
                 <Text style={styles.sectionTitle}>Academic Information</Text>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Student ID:</Text>
-                  <Text style={styles.detailValue}>{selectedStudent.studentId || "N/A"}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Grade:</Text>
-                  <Text style={styles.detailValue}>{selectedStudent.grade || selectedStudent.currentGrade || "N/A"}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Academic Year:</Text>
-                  <Text style={styles.detailValue}>{selectedStudent.academicYear || "N/A"}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Status:</Text>
-                  <Text style={[
-                    styles.detailValue,
-                    selectedStudent.isActive ? styles.activeText : styles.inactiveText
-                  ]}>
-                    {selectedStudent.isActive ? "Active" : "Inactive"}
-                  </Text>
-                </View>
+                <View style={styles.detailRow}><Text style={styles.detailLabel}>Grade:</Text><Text style={styles.detailValue}>{selectedStudent.grade || selectedStudent.currentGrade || "N/A"}</Text></View>
+                {selectedStudent.section && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Section:</Text><Text style={styles.detailValue}>{selectedStudent.section}</Text></View>)}
+                <View style={styles.detailRow}><Text style={styles.detailLabel}>Academic Year:</Text><Text style={styles.detailValue}>{selectedStudent.academicYear || "N/A"}</Text></View>
+                {selectedStudent.previousSchool && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Previous School:</Text><Text style={styles.detailValue}>{selectedStudent.previousSchool}</Text></View>)}
+                {selectedStudent.transferCertificateNumber && (<View style={styles.detailRow}><Text style={styles.detailLabel}>TC Number:</Text><Text style={styles.detailValue}>{selectedStudent.transferCertificateNumber}</Text></View>)}
+                <View style={styles.detailRow}><Text style={styles.detailLabel}>Status:</Text><Text style={[styles.detailValue, selectedStudent.isActive ? styles.activeText : styles.inactiveText]}>{selectedStudent.isActive ? "Active" : "Inactive"}</Text></View>
+                {selectedStudent.enrollmentStatus && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Enrollment Status:</Text><Text style={styles.detailValue}>{selectedStudent.enrollmentStatus}</Text></View>)}
               </View>
+
+              {/* Fee Information */}
+              {selectedStudent.feeStructure && (<View style={styles.detailSection}><Text style={styles.sectionTitle}>Fee Information</Text><View style={styles.detailRow}><Text style={styles.detailLabel}>Fee Structure:</Text><Text style={styles.detailValue}>{selectedStudent.feeStructure}</Text></View>{selectedStudent.feeDiscount > 0 && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Fee Discount:</Text><Text style={styles.detailValue}>{selectedStudent.feeDiscount}%</Text></View>)}{selectedStudent.paymentStatus && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Payment Status:</Text><Text style={[styles.detailValue, selectedStudent.paymentStatus === 'paid' ? styles.activeText : selectedStudent.paymentStatus === 'overdue' ? styles.errorText : styles.warningText]}>{selectedStudent.paymentStatus.charAt(0).toUpperCase() + selectedStudent.paymentStatus.slice(1)}</Text></View>)}</View>)}
+
+              {/* Transport Information */}
+              {selectedStudent.transportDetails && selectedStudent.transportDetails.required && (<View style={styles.detailSection}><Text style={styles.sectionTitle}>Transport Information</Text>{selectedStudent.transportDetails.pickupPoint && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Pickup Point:</Text><Text style={styles.detailValue}>{selectedStudent.transportDetails.pickupPoint}</Text></View>)}{selectedStudent.transportDetails.dropPoint && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Drop Point:</Text><Text style={styles.detailValue}>{selectedStudent.transportDetails.dropPoint}</Text></View>)}{selectedStudent.transportDetails.busNumber && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Bus Number:</Text><Text style={styles.detailValue}>{selectedStudent.transportDetails.busNumber}</Text></View>)}{selectedStudent.transportDetails.driverName && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Driver Name:</Text><Text style={styles.detailValue}>{selectedStudent.transportDetails.driverName}</Text></View>)}{selectedStudent.transportDetails.driverPhone && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Driver Phone:</Text><Text style={styles.detailValue}>{selectedStudent.transportDetails.driverPhone}</Text></View>)}</View>)}
+
+              {/* Medical Information */}
+              {selectedStudent.medicalHistory && (<View style={styles.detailSection}><Text style={styles.sectionTitle}>Medical Information</Text>{selectedStudent.medicalHistory.allergies && selectedStudent.medicalHistory.allergies.length > 0 && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Allergies:</Text><Text style={styles.detailValue}>{selectedStudent.medicalHistory.allergies.join(", ")}</Text></View>)}{selectedStudent.medicalHistory.medicalConditions && selectedStudent.medicalHistory.medicalConditions.length > 0 && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Medical Conditions:</Text><Text style={styles.detailValue}>{selectedStudent.medicalHistory.medicalConditions.join(", ")}</Text></View>)}{selectedStudent.medicalHistory.emergencyInstructions && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Emergency Instructions:</Text><Text style={styles.detailValue}>{selectedStudent.medicalHistory.emergencyInstructions}</Text></View>)}{selectedStudent.medicalHistory.vaccinationStatus && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Vaccination Status:</Text><Text style={styles.detailValue}>{selectedStudent.medicalHistory.vaccinationStatus}</Text></View>)}</View>)}
+
+              {/* Emergency Contact */}
+              {selectedStudent.emergencyContact && (<View style={styles.detailSection}><Text style={styles.sectionTitle}>Emergency Contact</Text>{selectedStudent.emergencyContact.name && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Name:</Text><Text style={styles.detailValue}>{selectedStudent.emergencyContact.name}</Text></View>)}{selectedStudent.emergencyContact.relation && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Relation:</Text><Text style={styles.detailValue}>{selectedStudent.emergencyContact.relation}</Text></View>)}{selectedStudent.emergencyContact.phone && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Phone:</Text><Text style={styles.detailValue}>{selectedStudent.emergencyContact.phone}</Text></View>)}{selectedStudent.emergencyContact.email && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Email:</Text><Text style={styles.detailValue}>{selectedStudent.emergencyContact.email}</Text></View>)}</View>)}
+
+              {/* Additional Information */}
+              {(selectedStudent.remarks || selectedStudent.notes) && (<View style={styles.detailSection}><Text style={styles.sectionTitle}>Additional Information</Text>{selectedStudent.remarks && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Remarks:</Text><Text style={styles.detailValue}>{selectedStudent.remarks}</Text></View>)}{selectedStudent.notes && selectedStudent.notes.length > 0 && (<View style={styles.detailRow}><Text style={styles.detailLabel}>Notes:</Text><Text style={styles.detailValue}>{selectedStudent.notes.join(", ")}</Text></View>)}</View>)}
             </ScrollView>
           )}
         </View>
       </View>
-    </Modal>
-  );
+    </Modal>;
 
   const renderEmptyState = () => (
     <Animatable.View animation="fadeIn" style={styles.emptyContainer}>
@@ -438,5 +419,11 @@ const styles = StyleSheet.create({
   },
   inactiveText: {
     color: theme.colors.error,
+  },
+  errorText: {
+    color: theme.colors.error,
+  },
+  warningText: {
+    color: theme.colors.warning,
   },
 }); 

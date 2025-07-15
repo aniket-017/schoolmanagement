@@ -512,21 +512,19 @@ const getTeacherClasses = async (req, res) => {
 const getClassStudents = async (req, res) => {
   try {
     const { classId } = req.params;
-    console.log("Getting students for class:", classId);
-
     const classData = await Class.findById(classId)
-      .populate("students", "firstName lastName middleName name studentId rollNumber")
+      .populate({
+        path: "students",
+        // Do not limit select, return all fields
+      })
       .select("name grade division students");
 
     if (!classData) {
-      console.log("Class not found:", classId);
       return res.status(404).json({
         success: false,
         message: "Class not found",
       });
     }
-
-    console.log("Found class:", classData.name, "with", classData.students.length, "students");
 
     // Ensure students have the name field
     const studentsWithName = classData.students.map((student) => ({
@@ -548,10 +546,8 @@ const getClassStudents = async (req, res) => {
       },
     };
 
-    console.log("Sending response with", studentsWithName.length, "students");
     res.json(response);
   } catch (error) {
-    console.error("Get class students error:", error);
     res.status(500).json({
       success: false,
       message: "Server error while fetching class students",
