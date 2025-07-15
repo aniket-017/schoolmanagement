@@ -11,6 +11,7 @@ import AdminDashboard from "../screens/admin/AdminDashboard";
 import UserManagement from "../screens/admin/UserManagement";
 import ClassManagement from "../screens/admin/ClassManagement";
 import ClassDetails from "../screens/admin/ClassDetails";
+import TimetableManagement from "../screens/admin/TimetableManagement";
 import FeeManagement from "../screens/admin/FeeManagement";
 import LibraryManagement from "../screens/admin/LibraryManagement";
 import TransportManagement from "../screens/admin/TransportManagement";
@@ -111,6 +112,11 @@ export default function AdminNavigator() {
       <Stack.Screen name="AdminTabs" component={AdminTabNavigator} options={{ headerShown: false }} />
       <Stack.Screen name="AdminProfile" component={ProfileScreen} options={{ title: "Profile" }} />
       <Stack.Screen name="ClassDetails" component={ClassDetails} options={{ title: "Class Details" }} />
+      <Stack.Screen
+        name="TimetableManagement"
+        component={TimetableManagement}
+        options={{ title: "Timetable Management" }}
+      />
     </Stack.Navigator>
   );
 }

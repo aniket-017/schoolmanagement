@@ -31,7 +31,7 @@ import axios from "../../utils/axios";
 
 export default function ClassDetails({ navigation, route }) {
   const { classId } = route.params;
-  
+
   const [classData, setClassData] = useState(null);
   const [students, setStudents] = useState([]);
   const [subjects, setSubjects] = useState([]);
@@ -97,7 +97,7 @@ export default function ClassDetails({ navigation, route }) {
       setStudents(studentsResponse.data.data || []);
       setSubjects(subjectsResponse.data.data || []);
       setAvailableTeachers(teachersResponse.data.data || []);
-      
+
       // Set filtered data
       setFilteredStudents(studentsResponse.data.data || []);
       setFilteredSubjects(subjectsResponse.data.data || []);
@@ -119,17 +119,19 @@ export default function ClassDetails({ navigation, route }) {
   };
 
   const filterStudents = () => {
-    const filtered = students.filter(student =>
-      student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.email.toLowerCase().includes(searchQuery.toLowerCase())
+    const filtered = students.filter(
+      (student) =>
+        student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        student.email.toLowerCase().includes(searchQuery.toLowerCase())
     );
     setFilteredStudents(filtered);
   };
 
   const filterSubjects = () => {
-    const filtered = subjects.filter(subject =>
-      subject.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      subject.code.toLowerCase().includes(searchQuery.toLowerCase())
+    const filtered = subjects.filter(
+      (subject) =>
+        subject.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        subject.code.toLowerCase().includes(searchQuery.toLowerCase())
     );
     setFilteredSubjects(filtered);
   };
@@ -230,65 +232,57 @@ export default function ClassDetails({ navigation, route }) {
   };
 
   const handleRemoveStudent = async (studentId) => {
-    Alert.alert(
-      "Remove Student",
-      "Are you sure you want to remove this student from the class?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Remove",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await axios.delete(`/api/classes/${classId}/students/${studentId}`);
-              showMessage({
-                message: "Success",
-                description: "Student removed successfully",
-                type: "success",
-              });
-              fetchClassDetails();
-            } catch (error) {
-              showMessage({
-                message: "Error removing student",
-                description: error.response?.data?.message || "Please try again later",
-                type: "danger",
-              });
-            }
-          },
+    Alert.alert("Remove Student", "Are you sure you want to remove this student from the class?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await axios.delete(`/api/classes/${classId}/students/${studentId}`);
+            showMessage({
+              message: "Success",
+              description: "Student removed successfully",
+              type: "success",
+            });
+            fetchClassDetails();
+          } catch (error) {
+            showMessage({
+              message: "Error removing student",
+              description: error.response?.data?.message || "Please try again later",
+              type: "danger",
+            });
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleRemoveSubject = async (subjectId) => {
-    Alert.alert(
-      "Remove Subject",
-      "Are you sure you want to remove this subject from the class?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Remove",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await axios.delete(`/api/classes/${classId}/subjects/${subjectId}`);
-              showMessage({
-                message: "Success",
-                description: "Subject removed successfully",
-                type: "success",
-              });
-              fetchClassDetails();
-            } catch (error) {
-              showMessage({
-                message: "Error removing subject",
-                description: error.response?.data?.message || "Please try again later",
-                type: "danger",
-              });
-            }
-          },
+    Alert.alert("Remove Subject", "Are you sure you want to remove this subject from the class?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await axios.delete(`/api/classes/${classId}/subjects/${subjectId}`);
+            showMessage({
+              message: "Success",
+              description: "Subject removed successfully",
+              type: "success",
+            });
+            fetchClassDetails();
+          } catch (error) {
+            showMessage({
+              message: "Error removing subject",
+              description: error.response?.data?.message || "Please try again later",
+              type: "danger",
+            });
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const StudentCard = ({ student }) => (
@@ -302,9 +296,7 @@ export default function ClassDetails({ navigation, route }) {
               <Paragraph style={styles.studentEmail}>{student.email}</Paragraph>
               <Paragraph style={styles.studentPhone}>{student.phone}</Paragraph>
               <View style={styles.chips}>
-                <Chip style={styles.chip}>
-                  {student.rollNumber || "No Roll No"}
-                </Chip>
+                <Chip style={styles.chip}>{student.rollNumber || "No Roll No"}</Chip>
                 <Chip style={[styles.chip, student.isActive ? styles.activeChip : styles.inactiveChip]}>
                   {student.isActive ? "Active" : "Inactive"}
                 </Chip>
@@ -335,9 +327,7 @@ export default function ClassDetails({ navigation, route }) {
               <Paragraph style={styles.subjectCode}>Code: {subject.code}</Paragraph>
               <Paragraph style={styles.subjectDescription}>{subject.description}</Paragraph>
               <View style={styles.chips}>
-                <Chip style={styles.chip}>
-                  {subject.teacher ? subject.teacher.name : "No Teacher"}
-                </Chip>
+                <Chip style={styles.chip}>{subject.teacher ? subject.teacher.name : "No Teacher"}</Chip>
               </View>
             </View>
           </View>
@@ -354,7 +344,7 @@ export default function ClassDetails({ navigation, route }) {
 
   const tabOptions = [
     { value: "students", label: "Students" },
-    { value: "subjects", label: "Subjects" },
+    { value: "timetable", label: "Timetable" },
     { value: "attendance", label: "Attendance" },
   ];
 
@@ -372,21 +362,16 @@ export default function ClassDetails({ navigation, route }) {
       <View style={styles.header}>
         <View style={styles.classInfo}>
           <Title style={styles.classTitle}>
-            {classData?.grade}{getOrdinalSuffix(classData?.grade)} Class - {classData?.division}
+            {classData?.grade}
+            {getOrdinalSuffix(classData?.grade)} Class - {classData?.division}
           </Title>
           <Paragraph style={styles.classSubtitle}>
             {classData?.classTeacher ? `Teacher: ${classData.classTeacher.name}` : "No teacher assigned"}
           </Paragraph>
           <View style={styles.stats}>
-            <Chip style={styles.statChip}>
-              {students.length} Students
-            </Chip>
-            <Chip style={styles.statChip}>
-              {subjects.length} Subjects
-            </Chip>
-            <Chip style={styles.statChip}>
-              {classData?.classroom || "No Classroom"}
-            </Chip>
+            <Chip style={styles.statChip}>{students.length} Students</Chip>
+            <Chip style={styles.statChip}>{subjects.length} Subjects</Chip>
+            <Chip style={styles.statChip}>{classData?.classroom || "No Classroom"}</Chip>
           </View>
         </View>
       </View>
@@ -429,20 +414,21 @@ export default function ClassDetails({ navigation, route }) {
           </View>
         )}
 
-        {activeTab === "subjects" && (
+        {activeTab === "timetable" && (
           <View>
-            {filteredSubjects.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Paragraph style={styles.emptyText}>
-                  {searchQuery ? "No subjects found matching your search" : "No subjects in this class"}
-                </Paragraph>
-                <Button mode="contained" onPress={() => setShowAddSubjectDialog(true)}>
-                  Add First Subject
+            <Card style={styles.timetableCard}>
+              <Card.Content>
+                <Title>Timetable Management</Title>
+                <Paragraph>Create and manage the weekly timetable for this class</Paragraph>
+                <Button
+                  mode="contained"
+                  onPress={() => navigation.navigate("TimetableManagement", { classId })}
+                  style={styles.timetableButton}
+                >
+                  Manage Timetable
                 </Button>
-              </View>
-            ) : (
-              filteredSubjects.map((subject) => <SubjectCard key={subject._id} subject={subject} />)
-            )}
+              </Card.Content>
+            </Card>
           </View>
         )}
 
@@ -768,4 +754,4 @@ const styles = StyleSheet.create({
   attendanceButton: {
     marginTop: theme.spacing.md,
   },
-}); 
+});

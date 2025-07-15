@@ -37,6 +37,7 @@ app.use("/api/fees", require("./routes/fees"));
 app.use("/api/subjects", require("./routes/subjects"));
 app.use("/api/attendances", require("./routes/attendances"));
 app.use("/api/timetables", require("./routes/timetables"));
+app.use("/api/teachers", require("./routes/teachers"));
 app.use("/api/examinations", require("./routes/examinations"));
 app.use("/api/grades", require("./routes/grades"));
 app.use("/api/syllabus", require("./routes/syllabus"));

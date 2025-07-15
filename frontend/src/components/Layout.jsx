@@ -17,6 +17,7 @@ import {
   Settings,
   Bell,
   Search,
+  UserCheck,
 } from "lucide-react";
 
 const Layout = ({ children }) => {
@@ -39,7 +40,13 @@ const Layout = ({ children }) => {
       color: "emerald",
       description: "Manage students and staff",
     },
-
+    {
+      name: "Teacher Management",
+      href: "/teachers",
+      icon: UserCheck,
+      color: "amber",
+      description: "Manage teacher schedules",
+    },
     {
       name: "Class Management",
       href: "/classes",

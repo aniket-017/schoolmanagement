@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
 import UserManagement from "./pages/UserManagement";
+import TeacherManagement from "./pages/TeacherManagement";
 import ClassManagement from "./pages/ClassManagement";
 import ClassDetails from "./pages/ClassDetails";
 import AddStudent from "./pages/AddStudent";
@@ -54,6 +55,14 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <UserManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/teachers"
+          element={
+            <ProtectedRoute>
+              <TeacherManagement />
             </ProtectedRoute>
           }
         />

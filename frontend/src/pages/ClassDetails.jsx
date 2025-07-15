@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Users, BookOpen, Calendar, Plus, Upload, UserPlus, Download, Eye, Trash2 } from "lucide-react";
+import { Users, Clock, Calendar, Plus, Upload, UserPlus, Download, Eye, Trash2 } from "lucide-react";
 import Layout from "../components/Layout";
 import { cn } from "../utils/cn";
 import appConfig from "../config/environment";
 import { toast } from "react-toastify";
 import StudentDetailModal from "../components/StudentDetailModal";
 import StudentEditModal from "../components/StudentEditModal";
+import TimetableTab from "../components/TimetableTab";
 
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
 const TABS = [
   { id: "students", name: "Students", icon: Users },
-  { id: "subjects", name: "Subjects", icon: BookOpen },
+  { id: "timetable", name: "Timetable", icon: Clock },
   { id: "attendance", name: "Attendance", icon: Calendar },
 ];
 
@@ -23,20 +24,11 @@ const ClassDetails = () => {
   const navigate = useNavigate();
   const [classData, setClassData] = useState(null);
   const [students, setStudents] = useState([]);
-  const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("students");
   const [searchTerm, setSearchTerm] = useState("");
 
   const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
-  const [showAddSubjectModal, setShowAddSubjectModal] = useState(false);
-
-  const [subjectForm, setSubjectForm] = useState({
-    name: "",
-    code: "",
-    description: "",
-    teacherId: "",
-  });
   const [uploadFile, setUploadFile] = useState(null);
   const [availableTeachers, setAvailableTeachers] = useState([]);
   const [uploadResults, setUploadResults] = useState(null);
@@ -64,12 +56,9 @@ const ClassDetails = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
-      const [classRes, studentsRes, subjectsRes, teachersRes] = await Promise.all([
+      const [classRes, studentsRes, teachersRes] = await Promise.all([
         fetch(`${appConfig.API_BASE_URL}/classes/${classId}`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${appConfig.API_BASE_URL}/classes/${classId}/students`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${appConfig.API_BASE_URL}/classes/${classId}/subjects`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
         fetch(`${appConfig.API_BASE_URL}/users?role=teacher&status=approved`, {
@@ -78,11 +67,9 @@ const ClassDetails = () => {
       ]);
       const classData = await classRes.json();
       const studentsData = await studentsRes.json();
-      const subjectsData = await subjectsRes.json();
       const teachersData = await teachersRes.json();
       if (classData.success) setClassData(classData.data);
       if (studentsData.success) setStudents(studentsData.data || []);
-      if (subjectsData.success) setSubjects(subjectsData.data || []);
       if (teachersData.success) setAvailableTeachers(teachersData.data || []);
     } catch (e) {
       toast.error("Error fetching class details");
@@ -120,11 +107,6 @@ const ClassDetails = () => {
       (s.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (s.email || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (s.rollNumber && s.rollNumber.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
-  const filteredSubjects = subjects.filter(
-    (s) =>
-      (s.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (s.code || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleBulkUpload = async (e) => {
@@ -199,39 +181,6 @@ const ClassDetails = () => {
     }
   };
 
-  const handleAddSubject = async (e) => {
-    e.preventDefault();
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`${appConfig.API_BASE_URL}/classes/${classId}/subjects`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(subjectForm),
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        toast.success("Subject added successfully");
-        setShowAddSubjectModal(false);
-        setSubjectForm({
-          name: "",
-          code: "",
-          description: "",
-          teacherId: "",
-        });
-        fetchClassDetails();
-      } else {
-        toast.error(data.message || "Error adding subject");
-      }
-    } catch (error) {
-      console.error("Error adding subject:", error);
-      toast.error("Error adding subject");
-    }
-  };
-
   const handleRemoveStudent = async (studentId) => {
     if (!confirm("Are you sure you want to remove this student from the class?")) return;
 
@@ -252,29 +201,6 @@ const ClassDetails = () => {
     } catch (error) {
       console.error("Error removing student:", error);
       toast.error("Error removing student");
-    }
-  };
-
-  const handleRemoveSubject = async (subjectId) => {
-    if (!confirm("Are you sure you want to remove this subject from the class?")) return;
-
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`${appConfig.API_BASE_URL}/classes/${classId}/subjects/${subjectId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        toast.success("Subject removed successfully");
-        fetchClassDetails();
-      } else {
-        toast.error(data.message || "Error removing subject");
-      }
-    } catch (error) {
-      console.error("Error removing subject:", error);
-      toast.error("Error removing subject");
     }
   };
 
@@ -314,8 +240,8 @@ const ClassDetails = () => {
               <div className="text-sm text-gray-500">Students</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{subjects.length}</div>
-              <div className="text-sm text-gray-500">Subjects</div>
+              <div className="text-2xl font-bold text-purple-600">8</div>
+              <div className="text-sm text-gray-500">Periods/Day</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-yellow-600">{classData?.classroom || "N/A"}</div>
@@ -369,15 +295,6 @@ const ClassDetails = () => {
                     Bulk Upload
                   </button>
                 </>
-              )}
-              {activeTab === "subjects" && (
-                <button
-                  onClick={() => setShowAddSubjectModal(true)}
-                  className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium shadow"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Subject
-                </button>
               )}
             </div>
           </div>
@@ -495,49 +412,7 @@ const ClassDetails = () => {
               )}
             </div>
           )}
-          {activeTab === "subjects" && (
-            <div>
-              {filteredSubjects.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl shadow-sm">
-                  <BookOpen className="w-16 h-16 text-gray-300 mb-4" />
-                  <p className="text-gray-600 mb-2 text-lg">No subjects in this class</p>
-                  <p className="text-gray-400 mb-6">Add subjects to this class.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredSubjects.map((subject) => (
-                    <div key={subject._id} className="bg-white border rounded-2xl shadow-sm p-5 flex flex-col gap-2">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center text-white">
-                          <BookOpen className="w-6 h-6" />
-                        </div>
-                        <div>
-                          <div className="font-semibold text-gray-900">{subject.name}</div>
-                          <div className="text-sm text-gray-600">Code: {subject.code}</div>
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-1 mt-2">
-                        <div className="text-xs text-gray-500">{subject.description}</div>
-                        <div className="text-xs text-gray-500">
-                          Teacher:{" "}
-                          <span className="text-gray-900">
-                            {subject.teacher ? subject.teacher.name : "Not assigned"}
-                          </span>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleRemoveSubject(subject._id)}
-                        className="mt-2 text-error-600 hover:underline text-xs self-end"
-                      >
-                        <Trash2 className="w-4 h-4 inline mr-1" />
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          {activeTab === "timetable" && <TimetableTab classId={classId} classData={classData} />}
           {activeTab === "attendance" && (
             <div className="bg-white rounded-2xl shadow-sm p-8 w-full">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
@@ -781,79 +656,6 @@ const ClassDetails = () => {
                   Close
                 </button>
               </div>
-            </motion.div>
-          </div>
-        )}
-
-        {showAddSubjectModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-90">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="bg-white rounded-2xl w-full max-w-lg mx-4 shadow-2xl p-8 max-h-[90vh] overflow-y-auto border border-gray-200"
-            >
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Add Subject</h2>
-              <form onSubmit={handleAddSubject} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Subject Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={subjectForm.name}
-                    onChange={(e) => setSubjectForm({ ...subjectForm, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Subject Code</label>
-                  <input
-                    type="text"
-                    required
-                    value={subjectForm.code}
-                    onChange={(e) => setSubjectForm({ ...subjectForm, code: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                  <textarea
-                    value={subjectForm.description}
-                    onChange={(e) => setSubjectForm({ ...subjectForm, description: e.target.value })}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Teacher (Optional)</label>
-                  <select
-                    value={subjectForm.teacherId}
-                    onChange={(e) => setSubjectForm({ ...subjectForm, teacherId: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Select Teacher</option>
-                    {availableTeachers.map((teacher) => (
-                      <option key={teacher._id} value={teacher._id}>
-                        {teacher.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex space-x-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddSubjectModal(false)}
-                    className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Add Subject
-                  </button>
-                </div>
-              </form>
             </motion.div>
           </div>
         )}

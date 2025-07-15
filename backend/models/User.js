@@ -82,6 +82,62 @@ const userSchema = new mongoose.Schema(
       default: Date.now,
     },
 
+    // Teacher Lecture Information
+    lectureSchedule: [
+      {
+        classId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Class",
+        },
+        subjectId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Subject",
+        },
+        day: {
+          type: String,
+          enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+        },
+        periodNumber: Number,
+        startTime: String,
+        endTime: String,
+        room: String,
+        type: {
+          type: String,
+          enum: ["theory", "practical", "lab", "sports", "library"],
+          default: "theory",
+        },
+        academicYear: String,
+        semester: String,
+        isActive: {
+          type: Boolean,
+          default: true,
+        },
+      },
+    ],
+    totalPeriodsPerWeek: {
+      type: Number,
+      default: 0,
+    },
+    maxPeriodsPerDay: {
+      type: Number,
+      default: 8,
+    },
+    preferredSubjects: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Subject",
+      },
+    ],
+    teachingSpecializations: [String],
+    availability: {
+      Monday: { available: { type: Boolean, default: true }, maxPeriods: { type: Number, default: 8 } },
+      Tuesday: { available: { type: Boolean, default: true }, maxPeriods: { type: Number, default: 8 } },
+      Wednesday: { available: { type: Boolean, default: true }, maxPeriods: { type: Number, default: 8 } },
+      Thursday: { available: { type: Boolean, default: true }, maxPeriods: { type: Number, default: 8 } },
+      Friday: { available: { type: Boolean, default: true }, maxPeriods: { type: Number, default: 8 } },
+      Saturday: { available: { type: Boolean, default: true }, maxPeriods: { type: Number, default: 8 } },
+    },
+
     // Family Information (for students)
     father: {
       name: String,
