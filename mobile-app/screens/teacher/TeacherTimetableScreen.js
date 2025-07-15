@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Dimensions } from "react-native";
+import { View, Text, StyleSheet, ScrollView, RefreshControl, Dimensions, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Animatable from "react-native-animatable";
 import { useAuth } from "../../context/AuthContext";
@@ -25,20 +25,82 @@ export default function TeacherTimetableScreen() {
   const loadTimetable = async () => {
     try {
       setLoading(true);
-      if (!user?.id) {
+      console.log("TeacherTimetableScreen: Loading timetable for user:", user);
+
+      const userId = user?.id || user?._id;
+      if (!userId) {
+        console.log("TeacherTimetableScreen: No user ID found, setting timetable to null");
         setTimetable(null);
         return;
       }
 
-      const response = await apiService.timetable.getTeacherTimetable(user.id);
-      console.log("Teacher timetable response:", response);
+      console.log("TeacherTimetableScreen: Making API call to get teacher timetable for ID:", userId);
+      const response = await apiService.timetable.getTeacherTimetable(userId);
+      console.log("TeacherTimetableScreen: API response:", response);
+
       if (response.success) {
+        console.log("TeacherTimetableScreen: Setting timetable data:", response.data);
         setTimetable(response.data);
       } else {
-        console.error("Failed to load teacher timetable:", response.message);
+        console.error("TeacherTimetableScreen: Failed to load teacher timetable:", response.message);
+
+        // For testing purposes, set some mock data if API fails
+        if (__DEV__) {
+          console.log("TeacherTimetableScreen: Setting mock data for testing");
+          setTimetable({
+            teacherId: userId,
+            weeklyTimetable: {
+              Monday: [
+                {
+                  periodNumber: 1,
+                  subject: { name: "Mathematics" },
+                  teacher: { name: "John Smith" },
+                  classId: { grade: "10", division: "A" },
+                  startTime: "08:00",
+                  endTime: "08:45",
+                  room: "Room 101",
+                  type: "theory",
+                },
+              ],
+              Tuesday: [],
+              Wednesday: [],
+              Thursday: [],
+              Friday: [],
+              Saturday: [],
+            },
+          });
+        }
       }
     } catch (error) {
-      console.error("Error loading teacher timetable:", error);
+      console.error("TeacherTimetableScreen: Error loading teacher timetable:", error);
+      console.error("TeacherTimetableScreen: Error details:", error.response?.data || error.message);
+
+      // For testing purposes, set some mock data if API fails
+      if (__DEV__) {
+        console.log("TeacherTimetableScreen: Setting mock data due to error");
+        setTimetable({
+          teacherId: userId,
+          weeklyTimetable: {
+            Monday: [
+              {
+                periodNumber: 1,
+                subject: { name: "Mathematics" },
+                teacher: { name: "John Smith" },
+                classId: { grade: "10", division: "A" },
+                startTime: "08:00",
+                endTime: "08:45",
+                room: "Room 101",
+                type: "theory",
+              },
+            ],
+            Tuesday: [],
+            Wednesday: [],
+            Thursday: [],
+            Friday: [],
+            Saturday: [],
+          },
+        });
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -83,7 +145,12 @@ export default function TeacherTimetableScreen() {
   );
 
   const renderDaySchedule = () => {
+    console.log("TeacherTimetableScreen: renderDaySchedule called");
+    console.log("TeacherTimetableScreen: timetable:", timetable);
+    console.log("TeacherTimetableScreen: selectedDay:", selectedDay);
+
     if (!timetable?.weeklyTimetable) {
+      console.log("TeacherTimetableScreen: No weeklyTimetable found");
       return (
         <View style={styles.emptyContainer}>
           <Ionicons name="calendar-outline" size={64} color={theme.colors.textSecondary} />
@@ -96,8 +163,10 @@ export default function TeacherTimetableScreen() {
     }
 
     const dayPeriods = timetable.weeklyTimetable[selectedDay] || [];
+    console.log("TeacherTimetableScreen: dayPeriods for", selectedDay, ":", dayPeriods);
 
     if (dayPeriods.length === 0) {
+      console.log("TeacherTimetableScreen: No periods for selected day");
       return (
         <View style={styles.emptyContainer}>
           <Ionicons name="calendar-outline" size={64} color={theme.colors.textSecondary} />
@@ -324,5 +393,40 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
     textAlign: "center",
     lineHeight: 20,
+  },
+  debugSection: {
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.divider,
+  },
+  debugTitle: {
+    ...theme.typography.h6,
+    color: theme.colors.text,
+    fontWeight: "bold",
+    marginBottom: theme.spacing.sm,
+  },
+  debugContainer: {
+    backgroundColor: theme.colors.background,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.sm,
+  },
+  debugText: {
+    ...theme.typography.body2,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xs,
+    fontFamily: "monospace",
+  },
+  testButton: {
+    backgroundColor: theme.colors.primary,
+    padding: theme.spacing.sm,
+    borderRadius: theme.borderRadius.sm,
+    marginTop: theme.spacing.sm,
+    alignItems: "center",
+  },
+  testButtonText: {
+    ...theme.typography.body2,
+    color: theme.colors.textLight,
+    fontWeight: "600",
   },
 });
