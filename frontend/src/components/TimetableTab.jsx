@@ -213,6 +213,8 @@ const TimetableTab = ({ classId, classData }) => {
       const data = await response.json();
       if (data.success) {
         toast.success("Timetable saved successfully!");
+        // Refresh the timetable data to get the populated information
+        await fetchTimetableData();
       } else {
         toast.error(data.message || "Error saving timetable");
       }
@@ -229,13 +231,33 @@ const TimetableTab = ({ classId, classData }) => {
   };
 
   const getSubjectName = (subjectId) => {
+    // First check in the original subjects array
     const subject = subjects.find((s) => s._id === subjectId);
-    return subject ? subject.name : "Unknown";
+    if (subject) return subject.name;
+
+    // If subjectId is an object with name property (populated data)
+    if (subjectId && typeof subjectId === "object" && subjectId.name) {
+      return subjectId.name;
+    }
+
+    return "Unknown";
   };
 
   const getTeacherName = (teacherId) => {
+    // First check in the original teachers array
     const teacher = teachers.find((t) => t._id === teacherId);
-    return teacher ? teacher.name : "Unknown";
+    if (teacher) return teacher.name;
+
+    // Then check in the available teachers array (for recently added periods)
+    const availableTeacher = availableTeachers.find((t) => t._id === teacherId);
+    if (availableTeacher) return availableTeacher.name;
+
+    // If teacherId is an object with name property (populated data)
+    if (teacherId && typeof teacherId === "object" && teacherId.name) {
+      return teacherId.name;
+    }
+
+    return "Unknown";
   };
 
   if (loading) {
