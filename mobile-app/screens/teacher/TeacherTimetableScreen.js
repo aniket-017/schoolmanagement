@@ -55,14 +55,35 @@ export default function TeacherTimetableScreen() {
                   periodNumber: 1,
                   subject: { name: "Mathematics" },
                   teacher: { name: "John Smith" },
-                  classId: { grade: "10", division: "A" },
+                  classId: { _id: "class1", grade: "10", division: "A", classroom: "Room 101" },
                   startTime: "08:00",
                   endTime: "08:45",
                   room: "Room 101",
                   type: "theory",
                 },
+                {
+                  periodNumber: 2,
+                  subject: { name: "English" },
+                  teacher: { name: "John Smith" },
+                  classId: { _id: "class2", grade: "9", division: "B", classroom: "Room 102" },
+                  startTime: "08:45",
+                  endTime: "09:30",
+                  room: "Room 102",
+                  type: "theory",
+                },
               ],
-              Tuesday: [],
+              Tuesday: [
+                {
+                  periodNumber: 1,
+                  subject: { name: "Science" },
+                  teacher: { name: "John Smith" },
+                  classId: { _id: "class3", grade: "11", division: "A", classroom: "Room 103" },
+                  startTime: "08:00",
+                  endTime: "08:45",
+                  room: "Room 103",
+                  type: "lab",
+                },
+              ],
               Wednesday: [],
               Thursday: [],
               Friday: [],
@@ -86,14 +107,35 @@ export default function TeacherTimetableScreen() {
                 periodNumber: 1,
                 subject: { name: "Mathematics" },
                 teacher: { name: "John Smith" },
-                classId: { grade: "10", division: "A" },
+                classId: { _id: "class1", grade: "10", division: "A", classroom: "Room 101" },
                 startTime: "08:00",
                 endTime: "08:45",
                 room: "Room 101",
                 type: "theory",
               },
+              {
+                periodNumber: 2,
+                subject: { name: "English" },
+                teacher: { name: "John Smith" },
+                classId: { _id: "class2", grade: "9", division: "B", classroom: "Room 102" },
+                startTime: "08:45",
+                endTime: "09:30",
+                room: "Room 102",
+                type: "theory",
+              },
             ],
-            Tuesday: [],
+            Tuesday: [
+              {
+                periodNumber: 1,
+                subject: { name: "Science" },
+                teacher: { name: "John Smith" },
+                classId: { _id: "class3", grade: "11", division: "A", classroom: "Room 103" },
+                startTime: "08:00",
+                endTime: "08:45",
+                room: "Room 103",
+                type: "lab",
+              },
+            ],
             Wednesday: [],
             Thursday: [],
             Friday: [],
@@ -188,7 +230,11 @@ export default function TeacherTimetableScreen() {
                     {period.startTime} - {period.endTime}
                   </Text>
                 </View>
-                <View style={styles.periodType}>
+                <View style={styles.periodBadges}>
+                  <Text style={[styles.classBadge, { backgroundColor: theme.colors.secondary }]}>
+                    Class {period.classId?.grade}
+                    {period.classId?.division}
+                  </Text>
                   <Text style={[styles.typeBadge, { backgroundColor: getPeriodTypeColor(period.type) }]}>
                     {period.type}
                   </Text>
@@ -199,13 +245,6 @@ export default function TeacherTimetableScreen() {
                 <View style={styles.detailRow}>
                   <Ionicons name="book-outline" size={16} color={theme.colors.primary} />
                   <Text style={styles.detailText}>{period.subject?.name || "Unknown Subject"}</Text>
-                </View>
-
-                <View style={styles.detailRow}>
-                  <Ionicons name="people-outline" size={16} color={theme.colors.secondary} />
-                  <Text style={styles.detailText}>
-                    {period.classId?.grade} - {period.classId?.division}
-                  </Text>
                 </View>
 
                 {period.room && (
@@ -351,8 +390,18 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     marginTop: 2,
   },
-  periodType: {
+  periodBadges: {
     marginLeft: theme.spacing.sm,
+    flexDirection: "row",
+    gap: theme.spacing.xs,
+  },
+  classBadge: {
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 4,
+    borderRadius: theme.borderRadius.sm,
+    color: theme.colors.textLight,
+    fontSize: 10,
+    fontWeight: "bold",
   },
   typeBadge: {
     paddingHorizontal: theme.spacing.sm,

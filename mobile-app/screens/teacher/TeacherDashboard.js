@@ -155,14 +155,16 @@ export default function TeacherDashboard({ navigation }) {
                       </View>
                       <View style={styles.scheduleDetails}>
                         <Text style={styles.scheduleSubject}>{period.subject?.name || "Unknown Subject"}</Text>
-                        <Text style={styles.scheduleLocation}>
-                          {period.classId?.grade} - {period.classId?.division} • Room {period.room || "TBD"}
-                        </Text>
-                        <View style={styles.periodTypeContainer}>
+                        <View style={styles.scheduleBadges}>
+                          <Text style={[styles.classBadge, { backgroundColor: theme.colors.secondary }]}>
+                            Class {period.classId?.grade}
+                            {period.classId?.division}
+                          </Text>
                           <Text style={[styles.periodTypeBadge, { backgroundColor: getPeriodTypeColor(period.type) }]}>
                             {period.type}
                           </Text>
                         </View>
+                        <Text style={styles.scheduleLocation}>Room {period.room || "TBD"}</Text>
                       </View>
                     </View>
                   ))
@@ -399,6 +401,20 @@ const styles = StyleSheet.create({
     ...theme.typography.body2,
     color: theme.colors.textSecondary,
     marginBottom: theme.spacing.xs,
+  },
+  scheduleBadges: {
+    flexDirection: "row",
+    gap: theme.spacing.xs,
+    marginTop: theme.spacing.xs,
+    marginBottom: theme.spacing.xs,
+  },
+  classBadge: {
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.sm,
+    color: theme.colors.textLight,
+    fontSize: 10,
+    fontWeight: "bold",
   },
   periodTypeContainer: {
     marginTop: theme.spacing.xs,

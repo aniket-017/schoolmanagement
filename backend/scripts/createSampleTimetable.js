@@ -11,20 +11,39 @@ async function createSampleTimetable() {
     await mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/school_management");
     console.log("Connected to database");
 
-    // Get or create a class
-    let classData = await Class.findOne();
-    if (!classData) {
-      console.log("No classes found. Creating a sample class...");
-      classData = new Class({
-        grade: "10",
-        division: "A",
-        classroom: "Room 101",
-        academicYear: new Date().getFullYear().toString(),
-        capacity: 30,
-        classTeacher: null,
-      });
-      await classData.save();
-      console.log("Created sample class:", classData._id);
+    // Get or create classes
+    let classes = await Class.find().limit(3);
+    if (classes.length === 0) {
+      console.log("No classes found. Creating sample classes...");
+      const sampleClasses = [
+        {
+          grade: "10",
+          division: "A",
+          classroom: "Room 101",
+          academicYear: new Date().getFullYear().toString(),
+          capacity: 30,
+          classTeacher: null,
+        },
+        {
+          grade: "9",
+          division: "B",
+          classroom: "Room 102",
+          academicYear: new Date().getFullYear().toString(),
+          capacity: 30,
+          classTeacher: null,
+        },
+        {
+          grade: "11",
+          division: "A",
+          classroom: "Room 103",
+          academicYear: new Date().getFullYear().toString(),
+          capacity: 30,
+          classTeacher: null,
+        },
+      ];
+
+      classes = await Class.insertMany(sampleClasses);
+      console.log("Created sample classes");
     }
 
     // Get or create subjects
@@ -59,14 +78,14 @@ async function createSampleTimetable() {
       console.log("Created sample teachers");
     }
 
-    // Check if timetable already exists
-    const existingTimetable = await Timetable.findOne({ classId: classData._id });
-    if (existingTimetable) {
-      console.log("Timetable already exists for this class. Skipping creation.");
+    // Check if timetables already exist
+    const existingTimetables = await Timetable.find({ classId: { $in: classes.map((c) => c._id) } });
+    if (existingTimetables.length > 0) {
+      console.log("Timetables already exist for these classes. Skipping creation.");
       return;
     }
 
-    // Create sample timetable entries for each day
+    // Create sample timetable entries for each class and day
     const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
     const timeSlots = [
       { period: 1, startTime: "08:00", endTime: "08:45" },
@@ -79,32 +98,34 @@ async function createSampleTimetable() {
       { period: 8, startTime: "01:30", endTime: "02:15" },
     ];
 
-    for (const day of days) {
-      const periods = timeSlots.map((slot, index) => ({
-        periodNumber: slot.period,
-        subject: subjects[index % subjects.length]._id,
-        teacher: teachers[index % teachers.length]._id,
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-        room: `Room ${101 + (index % 5)}`,
-        type: index % 3 === 0 ? "theory" : index % 3 === 1 ? "practical" : "lab",
-      }));
+    for (const classData of classes) {
+      for (const day of days) {
+        const periods = timeSlots.map((slot, index) => ({
+          periodNumber: slot.period,
+          subject: subjects[index % subjects.length]._id,
+          teacher: teachers[index % teachers.length]._id,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          room: classData.classroom,
+          type: index % 3 === 0 ? "theory" : index % 3 === 1 ? "practical" : "lab",
+        }));
 
-      const timetable = new Timetable({
-        classId: classData._id,
-        day: day,
-        periods: periods,
-        academicYear: new Date().getFullYear().toString(),
-        semester: "1",
-        isActive: true,
-      });
+        const timetable = new Timetable({
+          classId: classData._id,
+          day: day,
+          periods: periods,
+          academicYear: new Date().getFullYear().toString(),
+          semester: "1",
+          isActive: true,
+        });
 
-      await timetable.save();
-      console.log(`Created timetable for ${day}`);
+        await timetable.save();
+        console.log(`Created timetable for ${classData.grade}${classData.division} - ${day}`);
+      }
     }
 
     console.log("Sample timetable created successfully!");
-    console.log(`Created timetables for class: ${classData.grade}${classData.division}`);
+    console.log(`Created timetables for classes: ${classes.map((c) => c.grade + c.division).join(", ")}`);
     console.log(`Teachers assigned: ${teachers.length}`);
     console.log(`Subjects used: ${subjects.length}`);
   } catch (error) {

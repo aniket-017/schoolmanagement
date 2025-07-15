@@ -404,10 +404,13 @@ exports.getTeacherTimetable = async (req, res) => {
     timetables.forEach((timetable) => {
       console.log("Processing timetable for day:", timetable.day);
       if (weeklyTimetable[timetable.day]) {
-        // Filter periods for this specific teacher
-        const teacherPeriods = timetable.periods.filter(
-          (period) => period.teacher && period.teacher._id.toString() === teacherId
-        );
+        // Filter periods for this specific teacher and add class information
+        const teacherPeriods = timetable.periods
+          .filter((period) => period.teacher && period.teacher._id.toString() === teacherId)
+          .map((period) => ({
+            ...period.toObject(),
+            classId: timetable.classId, // Add class information to each period
+          }));
         console.log("Teacher periods for", timetable.day, ":", teacherPeriods.length);
         weeklyTimetable[timetable.day].push(...teacherPeriods);
       }
