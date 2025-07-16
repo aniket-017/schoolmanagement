@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const Student = require("../models/Student");
 
 // Verify JWT token
 const auth = async (req, res, next) => {
@@ -14,7 +15,19 @@ const auth = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select("-password");
+    
+    let user;
+    
+    // Check if it's a student token or regular user token
+    if (decoded.type === 'student') {
+      user = await Student.findById(decoded.id).select("-loginPassword");
+      if (user) {
+        // Add role for consistency
+        user.role = 'student';
+      }
+    } else {
+      user = await User.findById(decoded.id).select("-password");
+    }
 
     if (!user) {
       return res.status(401).json({

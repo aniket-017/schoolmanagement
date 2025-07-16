@@ -455,6 +455,11 @@ const studentSchema = new mongoose.Schema(
       password: String,
       lastLogin: Date,
     },
+    // Student login password (generated automatically)
+    loginPassword: {
+      type: String,
+      required: false,
+    },
     rfidCardNumber: {
       type: String,
       trim: true,
@@ -601,6 +606,11 @@ studentSchema.pre("save", function (next) {
     this.admissionNumber = `ADM${Date.now()}`;
   }
 
+  // Generate login password if not provided and roll number and mother's name exist
+  if (!this.loginPassword && this.rollNumber && this.mother && this.mother.name) {
+    this.loginPassword = `${this.rollNumber}${this.mother.name.replace(/\s+/g, '')}`;
+  }
+
   // Calculate BMI if height and weight are provided
   if (this.physicalMetrics && this.physicalMetrics.height && this.physicalMetrics.weight) {
     const heightInMeters = this.physicalMetrics.height / 100;
@@ -656,6 +666,20 @@ studentSchema.methods.getGrades = async function (academicYear) {
     student_id: this._id,
     academic_year: academicYear,
   }).populate("examination_id");
+};
+
+// Method to generate login password
+studentSchema.methods.generateLoginPassword = function () {
+  if (this.rollNumber && this.mother && this.mother.name) {
+    this.loginPassword = `${this.rollNumber}${this.mother.name.replace(/\s+/g, '')}`;
+    return this.loginPassword;
+  }
+  return null;
+};
+
+// Method to verify login password
+studentSchema.methods.verifyLoginPassword = function (password) {
+  return this.loginPassword === password;
 };
 
 module.exports = mongoose.model("Student", studentSchema);

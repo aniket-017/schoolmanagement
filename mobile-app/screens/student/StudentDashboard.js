@@ -1,327 +1,87 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Alert, Dimensions } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Alert } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import * as Animatable from "react-native-animatable";
-import { ProgressChart, LineChart } from "react-native-chart-kit";
 import { useAuth } from "../../context/AuthContext";
 import apiService from "../../services/apiService";
-import Card from "../../components/ui/Card";
-import Button from "../../components/ui/Button";
 import theme from "../../utils/theme";
+import Card from "../../components/ui/Card";
 
-const { width } = Dimensions.get("window");
+const notificationData = [
+  { id: 1, text: "New announcement from Administration." },
+  { id: 2, text: "Parent-teacher meeting scheduled for tomorrow." },
+  { id: 3, text: "School holiday notice for next week." },
+];
 
 export default function StudentDashboard({ navigation }) {
-  const { user, logout } = useAuth();
-  const [dashboardData, setDashboardData] = useState(null);
+  const { user } = useAuth();
+  const insets = useSafeAreaInsets();
+  const [timetable, setTimetable] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    loadDashboardData();
+    loadTimetable();
   }, []);
 
-  const loadDashboardData = async () => {
+  const loadTimetable = async () => {
     try {
       setLoading(true);
+      console.log("Loading timetable for user:", user);
 
-      // Fetch various data in parallel
-      const [attendanceData, assignmentsData, gradesData, announcementsData, timetableData] = await Promise.all([
-        apiService.attendance.getStudentAttendance(user.id, { limit: 30 }),
-        apiService.assignments.getAssignments({ student_id: user.id, limit: 5 }),
-        apiService.grades.getStudentGrades(user.id, { limit: 10 }),
-        apiService.announcements.getAnnouncementsForUser(user.id, { active_only: true, limit: 3 }),
-        user.class_id
-          ? apiService.timetable.getClassTimetable(user.class_id._id || user.class_id).catch((err) => {
-              console.error("Error fetching timetable:", err);
-              return { data: {} };
-            })
-          : { data: {} },
-      ]);
+      const userId = user?.id || user?._id;
+      if (!userId) {
+        console.log("No user ID found, setting timetable to null");
+        setTimetable(null);
+        return;
+      }
 
-      // Process data for dashboard
-      console.log("Timetable data received:", timetableData);
+      if (!user?.class_id) {
+        console.log("No class_id found, setting timetable to null");
+        setTimetable(null);
+        return;
+      }
 
-      const processedData = {
-        attendance: processAttendanceData(attendanceData.data),
-        assignments: assignmentsData.data,
-        grades: processGradesData(gradesData.data),
-        announcements: announcementsData.data,
-        timetable: timetableData.data,
-        stats: calculateStats(attendanceData.data, assignmentsData.data, gradesData.data),
-      };
+      console.log("Making API call to get class timetable for ID:", user.class_id._id || user.class_id);
+      const response = await apiService.timetable.getClassTimetable(user.class_id._id || user.class_id);
+      console.log("Student timetable API response:", response);
 
-      setDashboardData(processedData);
+      if (response.success) {
+        console.log("Setting timetable data:", response.data);
+        setTimetable(response.data);
+      } else {
+        console.error("Failed to load student timetable:", response.message);
+      }
     } catch (error) {
-      console.error("Dashboard error:", error);
-      Alert.alert("Error", "Failed to load dashboard data");
+      console.error("Error loading student timetable:", error);
+      console.error("Error details:", error.response?.data || error.message);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  const processAttendanceData = (attendance) => {
-    const totalDays = attendance.length;
-    const presentDays = attendance.filter((day) => day.status === "present").length;
-    const attendancePercentage = totalDays > 0 ? (presentDays / totalDays) * 100 : 0;
-
-    return {
-      percentage: attendancePercentage,
-      totalDays,
-      presentDays,
-      absentDays: totalDays - presentDays,
-    };
-  };
-
-  const processGradesData = (grades) => {
-    if (!grades.grades || grades.grades.length === 0) {
-      return { average: 0, trend: [], distribution: [] };
-    }
-
-    const gradeValues = grades.grades.map((g) => g.percentage);
-    const average = gradeValues.reduce((sum, grade) => sum + grade, 0) / gradeValues.length;
-
-    return {
-      average,
-      trend: gradeValues.slice(-6), // Last 6 grades for trend
-      distribution: grades.grades,
-    };
-  };
-
-  const calculateStats = (attendance, assignments, grades) => {
-    return {
-      attendancePercentage:
-        attendance.length > 0
-          ? ((attendance.filter((a) => a.status === "present").length / attendance.length) * 100).toFixed(1)
-          : "0",
-      pendingAssignments: assignments.filter ? assignments.filter((a) => a.status === "pending").length : 0,
-      averageGrade: grades.summary?.average_percentage || 0,
-      totalSubjects: grades.summary?.total_exams || 0,
-    };
-  };
-
   const onRefresh = () => {
     setRefreshing(true);
-    loadDashboardData();
+    loadTimetable();
   };
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good Morning";
-    if (hour < 17) return "Good Afternoon";
-    return "Good Evening";
-  };
+  const getTodaySchedule = () => {
+    console.log("getTodaySchedule called with timetable:", timetable);
 
-  const renderHeader = () => (
-    <LinearGradient colors={theme.colors.gradients.primary} style={styles.header}>
-      <Animatable.View animation="fadeInDown" delay={200}>
-        <Text style={styles.greeting}>{getGreeting()},</Text>
-        <Text style={styles.userName}>{user?.name || "Student"}</Text>
-        <Text style={styles.userClass}>
-          {user?.class_id ? `Class: ${user.class_id.name} - ${user.class_id.section}` : "No Class Assigned"}
-        </Text>
-      </Animatable.View>
-    </LinearGradient>
-  );
-
-  const renderStatsCards = () => (
-    <View style={styles.statsContainer}>
-      <Animatable.View animation="fadeInUp" delay={300}>
-        <Card gradient="primary" style={styles.statsCard} onPress={() => navigation.navigate("Attendance")}>
-          <View style={styles.statsContent}>
-            <Ionicons name="calendar-outline" size={24} color={theme.colors.textLight} />
-            <Text style={styles.statsValue}>{dashboardData?.stats.attendancePercentage || "0"}%</Text>
-            <Text style={styles.statsLabel}>Attendance</Text>
-          </View>
-        </Card>
-      </Animatable.View>
-
-      <Animatable.View animation="fadeInUp" delay={400}>
-        <Card gradient="secondary" style={styles.statsCard} onPress={() => navigation.navigate("Assignments")}>
-          <View style={styles.statsContent}>
-            <Ionicons name="document-text-outline" size={24} color={theme.colors.textLight} />
-            <Text style={styles.statsValue}>{dashboardData?.stats.pendingAssignments || 0}</Text>
-            <Text style={styles.statsLabel}>Pending</Text>
-          </View>
-        </Card>
-      </Animatable.View>
-
-      <Animatable.View animation="fadeInUp" delay={500}>
-        <Card gradient="success" style={styles.statsCard} onPress={() => navigation.navigate("Grades")}>
-          <View style={styles.statsContent}>
-            <Ionicons name="trophy-outline" size={24} color={theme.colors.textLight} />
-            <Text style={styles.statsValue}>{dashboardData?.stats.averageGrade.toFixed(1) || "0"}%</Text>
-            <Text style={styles.statsLabel}>Average</Text>
-          </View>
-        </Card>
-      </Animatable.View>
-    </View>
-  );
-
-  const renderAttendanceChart = () => {
-    if (!dashboardData?.attendance) return null;
-
-    const data = {
-      data: [dashboardData.attendance.percentage / 100],
-    };
-
-    return (
-      <Animatable.View animation="fadeInUp" delay={600}>
-        <Card style={styles.chartCard}>
-          <Text style={styles.cardTitle}>Attendance Overview</Text>
-          <View style={styles.chartContainer}>
-            <ProgressChart
-              data={data}
-              width={width - 80}
-              height={180}
-              strokeWidth={12}
-              radius={60}
-              chartConfig={{
-                backgroundColor: "#fff",
-                backgroundGradientFrom: "#fff",
-                backgroundGradientTo: "#fff",
-                color: (opacity = 1) => `rgba(33, 150, 243, ${opacity})`,
-              }}
-              hideLegend={true}
-            />
-            <View style={styles.chartOverlay}>
-              <Text style={styles.chartPercentage}>{dashboardData.attendance.percentage.toFixed(1)}%</Text>
-              <Text style={styles.chartLabel}>Present</Text>
-            </View>
-          </View>
-          <View style={styles.attendanceStats}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{dashboardData.attendance.presentDays}</Text>
-              <Text style={styles.statLabel}>Present</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{dashboardData.attendance.absentDays}</Text>
-              <Text style={styles.statLabel}>Absent</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{dashboardData.attendance.totalDays}</Text>
-              <Text style={styles.statLabel}>Total</Text>
-            </View>
-          </View>
-        </Card>
-      </Animatable.View>
-    );
-  };
-
-  const renderQuickActions = () => (
-    <Animatable.View animation="fadeInUp" delay={700}>
-      <Card style={styles.actionsCard}>
-        <Text style={styles.cardTitle}>Quick Actions</Text>
-        <View style={styles.actionsGrid}>
-          <Button
-            title="Timetable"
-            icon="time-outline"
-            variant="outline"
-            size="small"
-            onPress={() => navigation.navigate("Timetable")}
-            style={styles.actionButton}
-          />
-          <Button
-            title="Assignments"
-            icon="document-text-outline"
-            variant="outline"
-            size="small"
-            onPress={() => navigation.navigate("Assignments")}
-            style={styles.actionButton}
-          />
-          <Button
-            title="Grades"
-            icon="trophy-outline"
-            variant="outline"
-            size="small"
-            onPress={() => navigation.navigate("Grades")}
-            style={styles.actionButton}
-          />
-          <Button
-            title="Messages"
-            icon="chatbubble-outline"
-            variant="outline"
-            size="small"
-            onPress={() => navigation.navigate("Messages")}
-            style={styles.actionButton}
-          />
-        </View>
-      </Card>
-    </Animatable.View>
-  );
-
-  const renderTodaysSchedule = () => {
-    if (!dashboardData?.timetable || !user?.class_id) {
-      console.log("No timetable data or class_id:", {
-        hasTimetable: !!dashboardData?.timetable,
-        hasClassId: !!user?.class_id,
-        timetableData: dashboardData?.timetable,
-      });
-      return null;
+    if (!timetable?.weeklyTimetable) {
+      console.log("No weeklyTimetable found, returning empty array");
+      return [];
     }
 
     const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
-    const todaysPeriods = dashboardData.timetable.weeklyTimetable?.[today] || [];
+    console.log("Today is:", today);
+    console.log("Available days in timetable:", Object.keys(timetable.weeklyTimetable));
+    console.log("Today's schedule:", timetable.weeklyTimetable[today]);
 
-    console.log("Today's schedule data:", {
-      today,
-      todaysPeriods,
-      weeklyTimetable: dashboardData.timetable.weeklyTimetable,
-    });
-
-    if (todaysPeriods.length === 0) {
-      return (
-        <Animatable.View animation="fadeInUp" delay={700}>
-          <Card style={styles.scheduleCard}>
-            <Text style={styles.cardTitle}>Today's Schedule</Text>
-            <View style={styles.emptySchedule}>
-              <Ionicons name="calendar-outline" size={48} color={theme.colors.textSecondary} />
-              <Text style={styles.emptyScheduleText}>No classes scheduled for today</Text>
-            </View>
-          </Card>
-        </Animatable.View>
-      );
-    }
-
-    return (
-      <Animatable.View animation="fadeInUp" delay={700}>
-        <Card style={styles.scheduleCard}>
-          <View style={styles.scheduleHeader}>
-            <Text style={styles.cardTitle}>Today's Schedule</Text>
-            <Button title="View Full" variant="outline" size="small" onPress={() => navigation.navigate("Timetable")} />
-          </View>
-          <View style={styles.scheduleList}>
-            {todaysPeriods.slice(0, 4).map((period, index) => (
-              <View key={index} style={styles.scheduleItem}>
-                <View style={styles.periodTime}>
-                  <Text style={styles.periodNumber}>Period {period.periodNumber}</Text>
-                  <Text style={styles.timeText}>
-                    {period.startTime} - {period.endTime}
-                  </Text>
-                </View>
-                <View style={styles.periodDetails}>
-                  <Text style={styles.subjectName}>{period.subject?.name || "Unknown Subject"}</Text>
-                  <Text style={styles.teacherName}>{period.teacher?.name || "Unknown Teacher"}</Text>
-                  {period.room && <Text style={styles.roomText}>Room: {period.room}</Text>}
-                </View>
-                <View style={styles.periodType}>
-                  <Text style={[styles.typeBadge, { backgroundColor: getPeriodTypeColor(period.type) }]}>
-                    {period.type}
-                  </Text>
-                </View>
-              </View>
-            ))}
-            {todaysPeriods.length > 4 && (
-              <View style={styles.morePeriods}>
-                <Text style={styles.morePeriodsText}>+{todaysPeriods.length - 4} more periods</Text>
-              </View>
-            )}
-          </View>
-        </Card>
-      </Animatable.View>
-    );
+    return timetable.weeklyTimetable[today] || [];
   };
 
   const getPeriodTypeColor = (type) => {
@@ -335,72 +95,148 @@ export default function StudentDashboard({ navigation }) {
     return colors[type] || theme.colors.primary;
   };
 
-  const renderRecentAnnouncements = () => {
-    if (!dashboardData?.announcements || dashboardData.announcements.length === 0) {
-      return null;
-    }
-
-    return (
-      <Animatable.View animation="fadeInUp" delay={800}>
-        <Card style={styles.announcementsCard}>
-          <Text style={styles.cardTitle}>Recent Announcements</Text>
-          {dashboardData.announcements.slice(0, 2).map((announcement, index) => (
-            <View key={announcement._id} style={styles.announcementItem}>
-              <View style={styles.announcementHeader}>
-                <Ionicons name="megaphone-outline" size={16} color={theme.colors.primary} />
-                <Text style={styles.announcementTitle} numberOfLines={1}>
-                  {announcement.title}
-                </Text>
-              </View>
-              <Text style={styles.announcementContent} numberOfLines={2}>
-                {announcement.content}
-              </Text>
-              <Text style={styles.announcementDate}>{new Date(announcement.created_at).toLocaleDateString()}</Text>
-            </View>
-          ))}
-          <Button
-            title="View All"
-            variant="ghost"
-            size="small"
-            onPress={() => navigation.navigate("Announcements")}
-            style={styles.viewAllButton}
-          />
-        </Card>
-      </Animatable.View>
-    );
-  };
-
-  if (loading && !dashboardData) {
-    return (
-      <View style={styles.loadingContainer}>
-        <LinearGradient colors={theme.colors.gradients.primary} style={styles.loadingGradient}>
-          <Animatable.View animation="pulse" iterationCount="infinite">
-            <Ionicons name="school-outline" size={60} color={theme.colors.textLight} />
-          </Animatable.View>
-          <Text style={styles.loadingText}>Loading Dashboard...</Text>
-        </LinearGradient>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      {renderHeader()}
+      <LinearGradient
+        colors={[theme.colors.primary, "#3b5998"]}
+        style={[styles.header, { paddingTop: insets.top + theme.spacing.lg }]}
+      >
+        <View>
+          <Text style={styles.welcomeText}>Welcome back,</Text>
+          <Text style={styles.nameText}>{user?.name}</Text>
+        </View>
+        <TouchableOpacity style={styles.profileIconContainer} onPress={() => navigation.navigate("StudentProfile")}>
+          <Ionicons name="person-outline" size={28} color={theme.colors.primary} />
+        </TouchableOpacity>
+      </LinearGradient>
 
       <ScrollView
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
+        style={styles.scrollView}
+        contentContainerStyle={{
+          paddingBottom: insets.bottom + theme.spacing.lg,
+        }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {renderStatsCards()}
-        {renderAttendanceChart()}
-        {renderTodaysSchedule()}
-        {renderQuickActions()}
-        {renderRecentAnnouncements()}
+        {/* Today's Schedule */}
+        <Animatable.View animation="fadeInUp" delay={200}>
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Today's Schedule</Text>
+              <TouchableOpacity style={styles.viewAllButton} onPress={() => navigation.navigate("StudentTimetable")}>
+                <Text style={styles.viewAllText}>View Full</Text>
+              </TouchableOpacity>
+            </View>
+            <Card style={styles.infoCard}>
+              {loading ? (
+                <View style={styles.loadingContainer}>
+                  <Ionicons name="time-outline" size={32} color={theme.colors.textSecondary} />
+                  <Text style={styles.loadingText}>Loading schedule...</Text>
+                </View>
+              ) : getTodaySchedule().length === 0 ? (
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="calendar-outline" size={32} color={theme.colors.textSecondary} />
+                  <Text style={styles.emptyText}>No classes scheduled for today</Text>
+                  <Text style={[styles.emptyText, { fontSize: 12, marginTop: 8 }]}>
+                    {timetable
+                      ? "Your timetable is loaded but no classes are scheduled for today."
+                      : "No timetable data available."}
+                  </Text>
+                </View>
+              ) : (
+                getTodaySchedule()
+                  .slice(0, 4)
+                  .map((period, index) => (
+                    <View
+                      key={index}
+                      style={[
+                        styles.scheduleItem,
+                        index === Math.min(getTodaySchedule().length - 1, 3) && styles.lastItem,
+                      ]}
+                    >
+                      <View style={styles.scheduleTimeContainer}>
+                        <Text style={styles.scheduleTime}>
+                          {period.startTime} - {period.endTime}
+                        </Text>
+                        <Text style={styles.periodNumber}>Period {period.periodNumber}</Text>
+                      </View>
+                      <View style={styles.scheduleDetails}>
+                        <Text style={styles.scheduleSubject}>{period.subject?.name || "Unknown Subject"}</Text>
+                        <View style={styles.scheduleBadges}>
+                          <Text style={[styles.classBadge, { backgroundColor: theme.colors.secondary }]}>
+                            Class {period.classId?.grade || user?.class_id?.grade}
+                            {period.classId?.division || user?.class_id?.section}
+                          </Text>
+                          <Text style={[styles.periodTypeBadge, { backgroundColor: getPeriodTypeColor(period.type) }]}>
+                            {period.type}
+                          </Text>
+                        </View>
+                        <Text style={styles.scheduleLocation}>Room {period.room || "TBD"}</Text>
+                      </View>
+                    </View>
+                  ))
+              )}
+              {getTodaySchedule().length > 4 && (
+                <View style={styles.morePeriods}>
+                  <Text style={styles.morePeriodsText}>+{getTodaySchedule().length - 4} more periods</Text>
+                </View>
+              )}
+            </Card>
+          </View>
+        </Animatable.View>
 
-        <View style={styles.footer}>
-          <Button title="Logout" variant="danger" icon="log-out-outline" onPress={logout} fullWidth />
+
+
+        {/* Recent Notifications */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Recent Notifications</Text>
+          <Card style={styles.infoCard}>
+            {notificationData.map((item, index) => (
+              <View
+                key={item.id}
+                style={[styles.notificationItem, index === notificationData.length - 1 && styles.lastItem]}
+              >
+                <Ionicons name="notifications-outline" size={20} color={theme.colors.primary} />
+                <Text style={styles.notificationText}>{item.text}</Text>
+              </View>
+            ))}
+          </Card>
         </View>
+
+        {/* Quick Actions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.actionGrid}>
+            <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate("StudentAttendance")}>
+              <View style={styles.actionInner}>
+                <Ionicons name="calendar" size={32} color={theme.colors.primary} />
+                <Text style={styles.actionText}>Attendance</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate("StudentGrades")}>
+              <View style={styles.actionInner}>
+                <Ionicons name="school" size={32} color={theme.colors.primary} />
+                <Text style={styles.actionText}>Grades</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate("StudentTimetable")}>
+              <View style={styles.actionInner}>
+                <Ionicons name="time" size={32} color={theme.colors.primary} />
+                <Text style={styles.actionText}>Timetable</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate("StudentProfile")}>
+              <View style={styles.actionInner}>
+                <Ionicons name="person" size={32} color={theme.colors.primary} />
+                <Text style={styles.actionText}>Profile</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+
       </ScrollView>
     </View>
   );
@@ -409,241 +245,203 @@ export default function StudentDashboard({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: "#f4f7fc",
   },
-  loadingContainer: {
+  scrollView: {
     flex: 1,
-  },
-  loadingGradient: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    ...theme.typography.h6,
-    color: theme.colors.textLight,
-    marginTop: theme.spacing.lg,
   },
   header: {
-    padding: theme.spacing.lg,
-    paddingTop: theme.spacing.xxl,
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.lg,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     borderBottomLeftRadius: theme.borderRadius.xl,
     borderBottomRightRadius: theme.borderRadius.xl,
   },
-  greeting: {
-    ...theme.typography.body1,
+  welcomeText: {
+    ...theme.typography.h5,
     color: theme.colors.textLight,
     opacity: 0.9,
   },
-  userName: {
+  nameText: {
     ...theme.typography.h3,
     color: theme.colors.textLight,
     marginTop: theme.spacing.xs,
-  },
-  userClass: {
-    ...theme.typography.body2,
-    color: theme.colors.textLight,
-    opacity: 0.8,
-    marginTop: theme.spacing.xs,
-  },
-  content: {
-    flex: 1,
-    padding: theme.spacing.lg,
-  },
-  statsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: theme.spacing.lg,
-  },
-  statsCard: {
-    flex: 1,
-    marginHorizontal: theme.spacing.xs,
-    padding: theme.spacing.md,
-  },
-  statsContent: {
-    alignItems: "center",
-  },
-  statsValue: {
-    ...theme.typography.h4,
-    color: theme.colors.textLight,
-    marginTop: theme.spacing.sm,
-  },
-  statsLabel: {
-    ...theme.typography.caption,
-    color: theme.colors.textLight,
-    opacity: 0.9,
-  },
-  chartCard: {
-    marginBottom: theme.spacing.lg,
-  },
-  cardTitle: {
-    ...theme.typography.h6,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.md,
-  },
-  chartContainer: {
-    alignItems: "center",
-    position: "relative",
-  },
-  chartOverlay: {
-    position: "absolute",
-    top: 70,
-    alignItems: "center",
-  },
-  chartPercentage: {
-    ...theme.typography.h4,
-    color: theme.colors.primary,
     fontWeight: "bold",
   },
-  chartLabel: {
-    ...theme.typography.caption,
-    color: theme.colors.textSecondary,
-  },
-  attendanceStats: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    marginTop: theme.spacing.lg,
-  },
-  statItem: {
+  profileIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    justifyContent: "center",
     alignItems: "center",
   },
-  statValue: {
+  section: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+  },
+  sectionTitle: {
     ...theme.typography.h6,
     color: theme.colors.text,
+    marginBottom: theme.spacing.md,
+    fontWeight: "bold",
   },
-  statLabel: {
-    ...theme.typography.caption,
-    color: theme.colors.textSecondary,
+  infoCard: {
+    padding: 0,
+    borderRadius: theme.borderRadius.lg,
+    ...theme.shadows.sm,
+    overflow: "hidden",
+    backgroundColor: theme.colors.surface,
   },
-  actionsCard: {
-    marginBottom: theme.spacing.lg,
-  },
-  actionsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-  },
-  actionButton: {
-    width: "48%",
-    marginBottom: theme.spacing.sm,
-  },
-  scheduleCard: {
-    marginBottom: theme.spacing.lg,
-  },
-  scheduleHeader: {
+  sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: theme.spacing.md,
   },
-  scheduleList: {
-    gap: theme.spacing.sm,
+  viewAllButton: {
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.sm,
+    backgroundColor: theme.colors.primary,
+  },
+  viewAllText: {
+    ...theme.typography.caption,
+    color: theme.colors.textLight,
+    fontWeight: "600",
+  },
+  loadingContainer: {
+    padding: theme.spacing.xl,
+    alignItems: "center",
+  },
+  loadingText: {
+    ...theme.typography.body2,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.sm,
+  },
+  emptyContainer: {
+    padding: theme.spacing.xl,
+    alignItems: "center",
+  },
+  emptyText: {
+    ...theme.typography.body2,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.sm,
+    textAlign: "center",
   },
   scheduleItem: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     padding: theme.spacing.md,
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.md,
-    borderLeftWidth: 4,
-    borderLeftColor: theme.colors.primary,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.divider,
   },
-  periodTime: {
-    width: 80,
+  scheduleTimeContainer: {
+    width: 100,
     marginRight: theme.spacing.md,
   },
-  periodNumber: {
+  scheduleTime: {
     ...theme.typography.subtitle2,
-    color: theme.colors.text,
-    fontWeight: "bold",
+    color: theme.colors.primary,
+    fontWeight: "600",
   },
-  timeText: {
+  periodNumber: {
     ...theme.typography.caption,
     color: theme.colors.textSecondary,
     marginTop: 2,
   },
-  periodDetails: {
+  scheduleDetails: {
     flex: 1,
   },
-  subjectName: {
+  scheduleSubject: {
     ...theme.typography.subtitle2,
     color: theme.colors.text,
     fontWeight: "600",
+    marginBottom: 2,
   },
-  teacherName: {
+  scheduleLocation: {
     ...theme.typography.body2,
     color: theme.colors.textSecondary,
-    marginTop: 2,
+    marginBottom: theme.spacing.xs,
   },
-  roomText: {
-    ...theme.typography.caption,
-    color: theme.colors.textSecondary,
-    marginTop: 2,
+  scheduleBadges: {
+    flexDirection: "row",
+    gap: theme.spacing.xs,
+    marginTop: theme.spacing.xs,
+    marginBottom: theme.spacing.xs,
   },
-  periodType: {
-    marginLeft: theme.spacing.sm,
-  },
-  typeBadge: {
+  classBadge: {
     paddingHorizontal: theme.spacing.sm,
-    paddingVertical: 4,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.sm,
+    color: theme.colors.textLight,
+    fontSize: 10,
+    fontWeight: "bold",
+  },
+  periodTypeContainer: {
+    marginTop: theme.spacing.xs,
+  },
+  periodTypeBadge: {
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 2,
     borderRadius: theme.borderRadius.sm,
     color: theme.colors.textLight,
     fontSize: 10,
     fontWeight: "bold",
     textTransform: "uppercase",
+    alignSelf: "flex-start",
   },
   morePeriods: {
+    padding: theme.spacing.md,
     alignItems: "center",
-    paddingVertical: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.divider,
   },
   morePeriodsText: {
     ...theme.typography.body2,
     color: theme.colors.primary,
     fontWeight: "500",
   },
-  emptySchedule: {
+  notificationItem: {
+    flexDirection: "row",
     alignItems: "center",
-    paddingVertical: theme.spacing.xl,
-  },
-  emptyScheduleText: {
-    ...theme.typography.body2,
-    color: theme.colors.textSecondary,
-    marginTop: theme.spacing.md,
-    textAlign: "center",
-  },
-  announcementsCard: {
-    marginBottom: theme.spacing.lg,
-  },
-  announcementItem: {
-    paddingVertical: theme.spacing.md,
+    padding: theme.spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.divider,
   },
-  announcementHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: theme.spacing.xs,
-  },
-  announcementTitle: {
-    ...theme.typography.subtitle2,
+  notificationText: {
+    ...theme.typography.body2,
     color: theme.colors.text,
-    marginLeft: theme.spacing.sm,
+    marginLeft: theme.spacing.md,
     flex: 1,
   },
-  announcementContent: {
-    ...theme.typography.body2,
-    color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.xs,
+  lastItem: {
+    borderBottomWidth: 0,
   },
-  announcementDate: {
-    ...theme.typography.caption,
-    color: theme.colors.textSecondary,
+  actionGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginHorizontal: -theme.spacing.sm,
   },
-  viewAllButton: {
+  actionCard: {
+    width: "50%",
+    padding: theme.spacing.sm,
+  },
+  actionInner: {
+    backgroundColor: theme.colors.surface,
+    padding: theme.spacing.lg,
+    borderRadius: theme.borderRadius.lg,
+    alignItems: "center",
+    justifyContent: "center",
+    ...theme.shadows.sm,
+    height: 120,
+  },
+  actionText: {
+    ...theme.typography.subtitle2,
+    color: theme.colors.textSecondary,
     marginTop: theme.spacing.sm,
-  },
-  footer: {
-    marginTop: theme.spacing.xl,
-    marginBottom: theme.spacing.lg,
+    textAlign: "center",
   },
 });

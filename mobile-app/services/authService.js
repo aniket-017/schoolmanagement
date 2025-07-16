@@ -28,9 +28,10 @@ class AuthService {
     }
   }
 
-  async changePassword(currentPassword, newPassword) {
+  async changePassword(currentPassword, newPassword, userType = "teacher") {
     try {
-      const response = await axios.put("/api/auth/change-password", {
+      const endpoint = userType === "student" ? "/api/student-auth/change-password" : "/api/auth/change-password";
+      const response = await axios.put(endpoint, {
         currentPassword,
         newPassword,
       });

@@ -66,10 +66,16 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (email, password) => {
+  const login = async (email, password, userType = "teacher") => {
     try {
       setIsLoading(true);
-      const response = await apiService.auth.login(email, password);
+      
+      let response;
+      if (userType === "student") {
+        response = await apiService.auth.studentLogin(email, password);
+      } else {
+        response = await apiService.auth.login(email, password);
+      }
 
       if (response.success && response.user && response.token) {
         setUser(response.user);
@@ -215,7 +221,8 @@ export const AuthProvider = ({ children }) => {
   const changePassword = async (currentPassword, newPassword) => {
     try {
       setIsLoading(true);
-      const response = await apiService.auth.changePassword(currentPassword, newPassword);
+      const userType = user?.role === "student" ? "student" : "teacher";
+      const response = await apiService.auth.changePassword(currentPassword, newPassword, userType);
 
       if (response.success) {
         setRequirePasswordChange(false);

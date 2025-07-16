@@ -4,11 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { View, Text, StyleSheet, Platform, TouchableOpacity } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../context/AuthContext";
-import StudentDashboard from "../screens/student/StudentDashboard";
-import AssignmentsScreen from "../screens/student/AssignmentsScreen";
-import AttendanceScreen from "../screens/student/AttendanceScreen";
-import GradesScreen from "../screens/student/GradesScreen";
-import TimetableScreen from "../screens/student/TimetableScreen";
+import StudentNavigator from "./StudentNavigator";
 import TeacherDashboard from "../screens/teacher/TeacherDashboard";
 import ClassesScreen from "../screens/teacher/ClassesScreen";
 import AttendanceManagement from "../screens/teacher/AttendanceManagement";
@@ -100,49 +96,40 @@ export default function MainNavigator() {
   if (user?.role === "student") {
     return (
       <Tab.Navigator
+        tabBar={(props) => <CustomTabBar {...props} />}
         screenOptions={{
-          headerShown: false,
-          tabBarStyle: styles.tabBar,
-          tabBarActiveTintColor: theme.colors.primary,
-          tabBarInactiveTintColor: theme.colors.textSecondary,
-          tabBarLabelStyle: styles.tabBarLabel,
-          tabBarItemStyle: styles.tabBarItem,
+          headerShown: false, // Set to false since StudentNavigator handles headers
         }}
       >
         <Tab.Screen
-          name="Dashboard"
-          component={StudentDashboard}
+          name="StudentHome"
+          component={StudentNavigator}
           options={{
+            title: "Dashboard",
             tabBarIcon: ({ focused, color }) => <TabIcon name="home" focused={focused} color={color} />,
           }}
         />
         <Tab.Screen
-          name="Attendance"
-          component={AttendanceScreen}
+          name="StudentAttendanceTab"
+          component={StudentNavigator}
           options={{
+            title: "Attendance",
             tabBarIcon: ({ focused, color }) => <TabIcon name="calendar" focused={focused} color={color} />,
           }}
         />
         <Tab.Screen
-          name="Assignments"
-          component={AssignmentsScreen}
+          name="StudentGradesTab"
+          component={StudentNavigator}
           options={{
-            tabBarIcon: ({ focused, color }) => (
-              <TabIcon name="document-text" focused={focused} color={color} badge={user?.pendingAssignments || null} />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="Grades"
-          component={GradesScreen}
-          options={{
+            title: "Grades",
             tabBarIcon: ({ focused, color }) => <TabIcon name="trophy" focused={focused} color={color} />,
           }}
         />
         <Tab.Screen
-          name="Timetable"
-          component={TimetableScreen}
+          name="StudentTimetableTab"
+          component={StudentNavigator}
           options={{
+            title: "Timetable",
             tabBarIcon: ({ focused, color }) => <TabIcon name="time" focused={focused} color={color} />,
           }}
         />

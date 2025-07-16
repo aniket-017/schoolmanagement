@@ -200,6 +200,7 @@ router.post("/:id/students", auth, adminOnly, async (req, res) => {
         email: student.email,
         studentId: student.studentId,
         rollNumber: student.rollNumber,
+        loginPassword: student.loginPassword, // Include generated password
       },
     });
   } catch (error) {
@@ -782,6 +783,7 @@ router.post("/:id/students/bulk", auth, adminOnly, upload.single("file"), async 
             email: student.email,
             studentId: student.studentId,
             rollNumber: student.rollNumber,
+            loginPassword: student.loginPassword, // Include generated password
           },
         });
 

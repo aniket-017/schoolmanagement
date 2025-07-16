@@ -63,6 +63,14 @@ export const apiService = {
       }
       return response.data;
     },
+    studentLogin: async (email, password) => {
+      const response = await api.post("/student-auth/login", { email, password });
+      if (response.data.token) {
+        await AsyncStorage.setItem("token", response.data.token);
+        await AsyncStorage.setItem("user", JSON.stringify(response.data.user));
+      }
+      return response.data;
+    },
     register: async (userData) => {
       const response = await api.post("/auth/register", userData);
       return response.data;
@@ -72,8 +80,9 @@ export const apiService = {
       await AsyncStorage.removeItem("user");
       return api.post("/auth/logout");
     },
-    changePassword: async (currentPassword, newPassword) => {
-      const response = await api.put("/auth/change-password", {
+    changePassword: async (currentPassword, newPassword, userType = "teacher") => {
+      const endpoint = userType === "student" ? "/student-auth/change-password" : "/auth/change-password";
+      const response = await api.put(endpoint, {
         currentPassword,
         newPassword,
       });
@@ -84,11 +93,15 @@ export const apiService = {
   // User Services (works for all user types)
   user: {
     getProfile: async () => {
-      const response = await api.get("/auth/profile");
+      const user = JSON.parse(await AsyncStorage.getItem("user") || "{}");
+      const endpoint = user.role === "student" ? "/student-auth/profile" : "/auth/profile";
+      const response = await api.get(endpoint);
       return response.data;
     },
     updateProfile: async (data) => {
-      const response = await api.put("/auth/profile", data);
+      const user = JSON.parse(await AsyncStorage.getItem("user") || "{}");
+      const endpoint = user.role === "student" ? "/student-auth/profile" : "/auth/profile";
+      const response = await api.put(endpoint, data);
       return response.data;
     },
   },
@@ -100,11 +113,11 @@ export const apiService = {
       return response.data;
     },
     getProfile: async () => {
-      const response = await api.get("/auth/profile");
+      const response = await api.get("/student-auth/profile");
       return response.data;
     },
     updateProfile: async (data) => {
-      const response = await api.put("/auth/profile", data);
+      const response = await api.put("/student-auth/profile", data);
       return response.data;
     },
   },
