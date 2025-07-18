@@ -39,7 +39,7 @@ export default function StudentNavigator({ navigation, route }) {
       }}
     >
       <Stack.Screen name="StudentDashboard" component={StudentDashboard} options={{ headerShown: false }} />
-      <Stack.Screen name="StudentAttendance" component={AttendanceScreen} options={{ title: "Attendance" }} />
+      <Stack.Screen name="StudentAttendance" component={AttendanceScreen} options={{ headerShown: false }} />
       <Stack.Screen name="StudentGrades" component={GradesScreen} options={{ title: "Grades" }} />
       <Stack.Screen name="StudentTimetable" component={TimetableScreen} options={{ title: "Timetable" }} />
       <Stack.Screen name="StudentProfile" component={ProfileScreen} options={{ headerShown: false }} />

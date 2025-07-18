@@ -21,6 +21,7 @@ export default function StudentDashboard({ navigation }) {
   const [timetable, setTimetable] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [todayAttendance, setTodayAttendance] = useState(null);
 
   useEffect(() => {
     initializeDashboard();
@@ -30,8 +31,8 @@ export default function StudentDashboard({ navigation }) {
     try {
       // First refresh user data to ensure we have the latest class information
       await refreshUser();
-      // Then load the timetable
-      await loadTimetable();
+      // Then load the timetable and attendance
+      await Promise.all([loadTimetable(), loadTodayAttendance()]);
     } catch (error) {
       console.error("Error initializing dashboard:", error);
       setLoading(false);
@@ -74,6 +75,28 @@ export default function StudentDashboard({ navigation }) {
     initializeDashboard();
   };
 
+  const loadTodayAttendance = async () => {
+    try {
+      const userId = user?.id || user?._id;
+      if (!userId) return;
+
+      const today = new Date();
+      const response = await apiService.attendance.getStudentAttendance(userId, {
+        startDate: today.toISOString().split('T')[0],
+        endDate: today.toISOString().split('T')[0],
+      });
+
+      if (response.success && response.data?.attendance?.length > 0) {
+        setTodayAttendance(response.data.attendance[0]);
+      } else {
+        setTodayAttendance(null);
+      }
+    } catch (error) {
+      console.error("Error loading today's attendance:", error);
+      setTodayAttendance(null);
+    }
+  };
+
   const getTodaySchedule = () => {
     if (!timetable?.weeklyTimetable) {
       return [];
@@ -93,6 +116,36 @@ export default function StudentDashboard({ navigation }) {
       library: theme.colors.secondary,
     };
     return colors[type] || theme.colors.primary;
+  };
+
+  const getAttendanceStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case "present":
+        return theme.colors.success;
+      case "absent":
+        return theme.colors.error;
+      case "late":
+        return theme.colors.warning;
+      case "leave":
+        return theme.colors.info;
+      default:
+        return theme.colors.grey;
+    }
+  };
+
+  const getAttendanceStatusIcon = (status) => {
+    switch (status?.toLowerCase()) {
+      case "present":
+        return "checkmark-circle";
+      case "absent":
+        return "close-circle";
+      case "late":
+        return "time";
+      case "leave":
+        return "calendar";
+      default:
+        return "help-circle";
+    }
   };
 
   return (
@@ -189,7 +242,49 @@ export default function StudentDashboard({ navigation }) {
           </View>
         </Animatable.View>
 
-
+        {/* Today's Attendance Summary */}
+        <Animatable.View animation="fadeInUp" delay={300}>
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Today's Attendance</Text>
+              <TouchableOpacity style={styles.viewAllButton} onPress={() => navigation.navigate("StudentAttendance")}>
+                <Text style={styles.viewAllText}>View Details</Text>
+              </TouchableOpacity>
+            </View>
+            <Card style={styles.infoCard}>
+              {todayAttendance ? (
+                <View style={styles.attendanceSummaryContainer}>
+                  <View style={styles.attendanceStatusContainer}>
+                    <Ionicons
+                      name={getAttendanceStatusIcon(todayAttendance.status)}
+                      size={32}
+                      color={getAttendanceStatusColor(todayAttendance.status)}
+                    />
+                    <View style={styles.attendanceStatusText}>
+                      <Text style={[styles.attendanceStatus, { color: getAttendanceStatusColor(todayAttendance.status) }]}>
+                        {todayAttendance.status?.toUpperCase()}
+                      </Text>
+                      <Text style={styles.attendanceTime}>
+                        {todayAttendance.timeIn ? `Time In: ${todayAttendance.timeIn}` : "No time recorded"}
+                      </Text>
+                    </View>
+                  </View>
+                  {todayAttendance.remarks && (
+                    <Text style={styles.attendanceRemarks}>Remarks: {todayAttendance.remarks}</Text>
+                  )}
+                </View>
+              ) : (
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="calendar-outline" size={32} color={theme.colors.textSecondary} />
+                  <Text style={styles.emptyText}>No attendance marked for today</Text>
+                  <Text style={[styles.emptyText, { fontSize: 12, marginTop: 8 }]}>
+                    Your attendance will appear here once marked by your teacher
+                  </Text>
+                </View>
+              )}
+            </Card>
+          </View>
+        </Animatable.View>
 
         {/* Recent Notifications */}
         <View style={styles.section}>
@@ -397,6 +492,36 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textTransform: "uppercase",
     alignSelf: "flex-start",
+  },
+  attendanceSummaryContainer: {
+    padding: theme.spacing.md,
+  },
+  attendanceStatusContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: theme.spacing.sm,
+  },
+  attendanceStatusText: {
+    marginLeft: theme.spacing.md,
+    flex: 1,
+  },
+  attendanceStatus: {
+    ...theme.typography.h6,
+    fontWeight: "bold",
+    marginBottom: theme.spacing.xs,
+  },
+  attendanceTime: {
+    ...theme.typography.body2,
+    color: theme.colors.textSecondary,
+  },
+  attendanceRemarks: {
+    ...theme.typography.body2,
+    color: theme.colors.textSecondary,
+    fontStyle: "italic",
+    marginTop: theme.spacing.sm,
+    paddingTop: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.divider,
   },
   morePeriods: {
     padding: theme.spacing.md,
