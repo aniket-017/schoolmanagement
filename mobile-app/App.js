@@ -8,7 +8,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import FlashMessage from "react-native-flash-message";
 import * as SplashScreen from "expo-splash-screen";
 import { Ionicons } from "@expo/vector-icons";
-import * as Animatable from "react-native-animatable";
+// Removed animatable import for size optimization
 
 import { AuthProvider } from "./context/AuthContext";
 import AuthNavigator from "./navigation/AuthNavigator";
@@ -25,27 +25,27 @@ SplashScreen.preventAutoHideAsync();
 function SplashScreenComponent() {
   return (
     <View style={styles.splashContainer}>
-      <Animatable.View animation="fadeIn" duration={1000} style={styles.splashContent}>
+      <View style={styles.splashContent}>
         <View style={styles.logoContainer}>
-          <Animatable.View animation="bounceIn" delay={500} style={styles.logoCircle}>
+          <View style={styles.logoCircle}>
             <Ionicons name="school" size={48} color={theme.colors.textLight} />
-          </Animatable.View>
+          </View>
         </View>
 
-        <Animatable.Text animation="fadeInUp" delay={800} style={styles.appTitle}>
+        <Text style={styles.appTitle}>
           School Management
-        </Animatable.Text>
+        </Text>
 
-        <Animatable.Text animation="fadeInUp" delay={1000} style={styles.appSubtitle}>
+        <Text style={styles.appSubtitle}>
           Connecting Education
-        </Animatable.Text>
+        </Text>
 
-        <Animatable.View animation="fadeInUp" delay={1200} style={styles.loadingContainer}>
+        <View style={styles.loadingContainer}>
           <View style={styles.loadingBar}>
-            <Animatable.View animation="slideInLeft" delay={1400} duration={1000} style={styles.loadingProgress} />
+            <View style={styles.loadingProgress} />
           </View>
-        </Animatable.View>
-      </Animatable.View>
+        </View>
+      </View>
     </View>
   );
 }

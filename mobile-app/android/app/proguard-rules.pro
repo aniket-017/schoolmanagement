@@ -30,8 +30,9 @@
 -keep class com.facebook.react.uimanager.** { *; }
 -keep class com.facebook.react.views.** { *; }
 
-# Keep Expo modules
--keep class expo.modules.** { *; }
+# Keep only essential Expo modules
+-keep class expo.modules.splashscreen.** { *; }
+-keep class expo.modules.statusbar.** { *; }
 
 # Keep navigation libraries
 -keep class com.swmansion.reanimated.** { *; }
@@ -53,11 +54,45 @@
 -optimizationpasses 5
 -allowaccessmodification
 
+# Aggressive optimization for size reduction
+-optimizations !code/allocation/variable
+-optimizations !code/simplification/arithmetic
+-optimizations !code/simplification/cast
+-optimizations !field/*
+-optimizations !class/merging/*
+-optimizations !code/allocation/variable
+
+# Remove unused code more aggressively
+-dontusemixedcaseclassnames
+-dontskipnonpubliclibraryclasses
+-verbose
+
+# Remove debug information
+-renamesourcefileattribute SourceFile
+
 # Remove logging in release
 -assumenosideeffects class android.util.Log {
     public static *** d(...);
     public static *** v(...);
     public static *** i(...);
+}
+
+# Remove unused resources
+-dontwarn android.support.**
+-dontwarn androidx.**
+-dontwarn org.conscrypt.**
+-dontwarn org.bouncycastle.**
+-dontwarn org.openjsse.**
+
+# Remove unused classes more aggressively
+-dontusemixedcaseclassnames
+-dontskipnonpubliclibraryclasses
+-verbose
+
+# Remove unused methods
+-assumenosideeffects class java.io.PrintStream {
+    public void println(java.lang.String);
+    public void println(java.lang.Object);
 }
 
 # Keep native methods
