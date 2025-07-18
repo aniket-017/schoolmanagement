@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { createStackNavigator } from "@react-navigation/stack";
 
 import StudentDashboard from "../screens/student/StudentDashboard";
@@ -13,9 +13,23 @@ export default function StudentNavigator({ navigation, route }) {
   // Get the initial route name from the tab navigator
   const initialRouteName = route?.name?.replace("Tab", "") || "StudentHome";
 
+  // Handle tab navigation
+  useEffect(() => {
+    if (route?.name) {
+      const routeName = route.name.replace("Tab", "");
+      if (routeName === "StudentAttendance") {
+        navigation.navigate("StudentAttendance");
+      } else if (routeName === "StudentGrades") {
+        navigation.navigate("StudentGrades");
+      } else if (routeName === "StudentTimetable") {
+        navigation.navigate("StudentTimetable");
+      }
+    }
+  }, [route?.name, navigation]);
+
   return (
     <Stack.Navigator
-      initialRouteName={initialRouteName}
+      initialRouteName="StudentDashboard"
       screenOptions={{
         headerShown: true,
         headerStyle: {

@@ -16,47 +16,53 @@ const notificationData = [
 ];
 
 export default function StudentDashboard({ navigation }) {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const insets = useSafeAreaInsets();
   const [timetable, setTimetable] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    loadTimetable();
+    initializeDashboard();
   }, []);
+
+  const initializeDashboard = async () => {
+    try {
+      // First refresh user data to ensure we have the latest class information
+      await refreshUser();
+      // Then load the timetable
+      await loadTimetable();
+    } catch (error) {
+      console.error("Error initializing dashboard:", error);
+      setLoading(false);
+    }
+  };
 
   const loadTimetable = async () => {
     try {
       setLoading(true);
-      console.log("Loading timetable for user:", user);
 
       const userId = user?.id || user?._id;
       if (!userId) {
-        console.log("No user ID found, setting timetable to null");
         setTimetable(null);
         return;
       }
 
-      if (!user?.class_id) {
-        console.log("No class_id found, setting timetable to null");
+      if (!user?.class) {
         setTimetable(null);
         return;
       }
 
-      console.log("Making API call to get class timetable for ID:", user.class_id._id || user.class_id);
-      const response = await apiService.timetable.getClassTimetable(user.class_id._id || user.class_id);
-      console.log("Student timetable API response:", response);
+      const response = await apiService.timetable.getClassTimetable(user.class._id || user.class);
 
       if (response.success) {
-        console.log("Setting timetable data:", response.data);
         setTimetable(response.data);
       } else {
-        console.error("Failed to load student timetable:", response.message);
+        setTimetable(null);
       }
     } catch (error) {
       console.error("Error loading student timetable:", error);
-      console.error("Error details:", error.response?.data || error.message);
+      setTimetable(null);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -65,21 +71,15 @@ export default function StudentDashboard({ navigation }) {
 
   const onRefresh = () => {
     setRefreshing(true);
-    loadTimetable();
+    initializeDashboard();
   };
 
   const getTodaySchedule = () => {
-    console.log("getTodaySchedule called with timetable:", timetable);
-
     if (!timetable?.weeklyTimetable) {
-      console.log("No weeklyTimetable found, returning empty array");
       return [];
     }
 
     const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
-    console.log("Today is:", today);
-    console.log("Available days in timetable:", Object.keys(timetable.weeklyTimetable));
-    console.log("Today's schedule:", timetable.weeklyTimetable[today]);
 
     return timetable.weeklyTimetable[today] || [];
   };
@@ -139,8 +139,13 @@ export default function StudentDashboard({ navigation }) {
                   <Text style={[styles.emptyText, { fontSize: 12, marginTop: 8 }]}>
                     {timetable
                       ? "Your timetable is loaded but no classes are scheduled for today."
-                      : "No timetable data available."}
+                      : "No timetable data available. Please contact your administrator."}
                   </Text>
+                  {!timetable && (
+                    <TouchableOpacity style={styles.retryButton} onPress={loadTimetable}>
+                      <Text style={styles.retryButtonText}>Retry</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               ) : (
                 getTodaySchedule()
@@ -163,8 +168,8 @@ export default function StudentDashboard({ navigation }) {
                         <Text style={styles.scheduleSubject}>{period.subject?.name || "Unknown Subject"}</Text>
                         <View style={styles.scheduleBadges}>
                           <Text style={[styles.classBadge, { backgroundColor: theme.colors.secondary }]}>
-                            Class {period.classId?.grade || user?.class_id?.grade}
-                            {period.classId?.division || user?.class_id?.section}
+                            Class {period.classId?.grade || user?.class?.grade || 'Class'}
+                            {period.classId?.division || user?.class?.section || 'Section'}
                           </Text>
                           <Text style={[styles.periodTypeBadge, { backgroundColor: getPeriodTypeColor(period.type) }]}>
                             {period.type}
@@ -443,5 +448,18 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     marginTop: theme.spacing.sm,
     textAlign: "center",
+  },
+  retryButton: {
+    marginTop: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.lg,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.md,
+    alignSelf: "center",
+  },
+  retryButtonText: {
+    ...theme.typography.body2,
+    color: theme.colors.textLight,
+    fontWeight: "bold",
   },
 });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Dimensions } from "react-native";
+import { View, Text, StyleSheet, ScrollView, RefreshControl, Dimensions, TouchableOpacity, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Animatable from "react-native-animatable";
 import { useAuth } from "../../context/AuthContext";
@@ -10,35 +10,54 @@ import theme from "../../utils/theme";
 const { width } = Dimensions.get("window");
 
 export default function TimetableScreen() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [timetable, setTimetable] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedDay, setSelectedDay] = useState(new Date().toLocaleDateString("en-US", { weekday: "long" }));
+  const [error, setError] = useState(null);
 
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
   useEffect(() => {
-    loadTimetable();
+    initializeTimetable();
   }, []);
+
+  const initializeTimetable = async () => {
+    try {
+      // First refresh user data to ensure we have the latest class information
+      await refreshUser();
+      // Then load the timetable
+      await loadTimetable();
+    } catch (error) {
+      console.error("Error initializing timetable:", error);
+      setError("Failed to initialize timetable");
+      setLoading(false);
+    }
+  };
 
   const loadTimetable = async () => {
     try {
       setLoading(true);
-      if (!user?.class_id) {
+      setError(null);
+      
+      if (!user?.class) {
+        setError("No class assigned. Please contact your administrator.");
         setTimetable(null);
         return;
       }
 
-      const response = await apiService.timetable.getClassTimetable(user.class_id._id || user.class_id);
-      console.log("Timetable response:", response);
+      const classId = user.class._id || user.class;
+      const response = await apiService.timetable.getClassTimetable(classId);
+      
       if (response.success) {
         setTimetable(response.data);
       } else {
-        console.error("Failed to load timetable:", response.message);
+        setError(response.message || "Failed to load timetable");
       }
     } catch (error) {
       console.error("Error loading timetable:", error);
+      setError("Network error. Please check your connection and try again.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -47,7 +66,7 @@ export default function TimetableScreen() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    loadTimetable();
+    initializeTimetable();
   };
 
   const getPeriodTypeColor = (type) => {
@@ -70,19 +89,33 @@ export default function TimetableScreen() {
     >
       {days.map((day) => (
         <Animatable.View key={day} animation="fadeInUp" delay={days.indexOf(day) * 100}>
-          <Card
+          <TouchableOpacity
             style={[styles.dayCard, selectedDay === day && styles.selectedDayCard]}
             onPress={() => setSelectedDay(day)}
+            activeOpacity={0.7}
           >
             <Text style={[styles.dayText, selectedDay === day && styles.selectedDayText]}>{day.slice(0, 3)}</Text>
             <Text style={[styles.dayFullText, selectedDay === day && styles.selectedDayFullText]}>{day}</Text>
-          </Card>
+          </TouchableOpacity>
         </Animatable.View>
       ))}
     </ScrollView>
   );
 
   const renderDaySchedule = () => {
+    if (error) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="alert-circle-outline" size={64} color={theme.colors.error} />
+          <Text style={styles.emptyTitle}>Error Loading Timetable</Text>
+          <Text style={styles.emptySubtitle}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={initializeTimetable}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
     if (!timetable?.weeklyTimetable) {
       return (
         <View style={styles.emptyContainer}>
@@ -167,7 +200,7 @@ export default function TimetableScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Class Timetable</Text>
         <Text style={styles.subtitle}>
-          {user?.class_id ? `${user.class_id.name} - ${user.class_id.section}` : "No Class Assigned"}
+          {user?.class ? `${user.class.grade || user.class.name || 'Class'} - ${user.class.section || user.class.division || 'Section'}` : "No Class Assigned"}
         </Text>
       </View>
 
@@ -322,5 +355,17 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
     textAlign: "center",
     lineHeight: 20,
+  },
+  retryButton: {
+    marginTop: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.lg,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.md,
+  },
+  retryButtonText: {
+    ...theme.typography.body2,
+    color: theme.colors.textLight,
+    fontWeight: "bold",
   },
 });
