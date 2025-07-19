@@ -111,24 +111,246 @@ export default function ProfileScreen({ navigation }) {
 
   const renderProfileInfo = () => (
     <View style={styles.profileDetails}>
-      <View style={styles.detailRow}>
-        <Ionicons name="mail-outline" size={20} color={theme.colors.textSecondary} />
-        <Text style={styles.detailText}>{user?.email}</Text>
+      {/* Basic Information Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Basic Information</Text>
+        <View style={styles.detailRow}>
+          <Ionicons name="mail-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>{user?.email}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="call-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>{user?.mobileNumber || user?.phone || "Not provided"}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="calendar-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>
+            {user?.dateOfBirth ? new Date(user.dateOfBirth).toLocaleDateString() : "Not provided"}
+          </Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="person-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>{user?.gender ? user.gender.charAt(0).toUpperCase() + user.gender.slice(1) : "Not provided"}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="flag-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>{user?.nationality || "Not provided"}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="heart-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>{user?.bloodGroup || "Not provided"}</Text>
+        </View>
       </View>
-      <View style={styles.detailRow}>
-        <Ionicons name="call-outline" size={20} color={theme.colors.textSecondary} />
-        <Text style={styles.detailText}>{user?.phone || "Not provided"}</Text>
+
+      {/* Academic Information Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Academic Information</Text>
+        <View style={styles.detailRow}>
+          <Ionicons name="id-card-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>{user?.studentId || "Not provided"}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="document-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>{user?.admissionNumber || "Not provided"}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="school-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>
+            {user?.class ? `${user.class.name} - ${user.class.section}` : "No Class Assigned"}
+          </Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="library-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>{user?.grade || "Not provided"}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="calendar-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>{user?.academicYear || "Not provided"}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="trophy-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>{user?.attendancePercentage ? `${user.attendancePercentage}%` : "Not available"}</Text>
+        </View>
       </View>
-      <View style={styles.detailRow}>
-        <Ionicons name="school-outline" size={20} color={theme.colors.textSecondary} />
-        <Text style={styles.detailText}>
-          {user?.class_id ? `${user.class_id.name} - ${user.class_id.section}` : "No Class Assigned"}
-        </Text>
+
+      {/* Address Information Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Address Information</Text>
+        <View style={styles.detailRow}>
+          <Ionicons name="location-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>{user?.address || "Not provided"}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="business-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>{user?.city || "Not provided"}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="map-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>{user?.state || "Not provided"}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="mail-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>{user?.pinCode || "Not provided"}</Text>
+        </View>
       </View>
-      <View style={styles.detailRow}>
-        <Ionicons name="id-card-outline" size={20} color={theme.colors.textSecondary} />
-        <Text style={styles.detailText}>{user?.studentId || "Not provided"}</Text>
+
+      {/* Parent Information Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Parent Information</Text>
+        <View style={styles.detailRow}>
+          <Ionicons name="woman-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>{user?.mother?.name || "Not provided"}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="call-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>{user?.mother?.phone || "Not provided"}</Text>
+        </View>
+        {user?.father?.name && (
+          <View style={styles.detailRow}>
+            <Ionicons name="man-outline" size={20} color={theme.colors.textSecondary} />
+            <Text style={styles.detailText}>{user.father.name}</Text>
+          </View>
+        )}
+        {user?.father?.phone && (
+          <View style={styles.detailRow}>
+            <Ionicons name="call-outline" size={20} color={theme.colors.textSecondary} />
+            <Text style={styles.detailText}>{user.father.phone}</Text>
+          </View>
+        )}
+        {user?.guardian?.name && (
+          <View style={styles.detailRow}>
+            <Ionicons name="people-outline" size={20} color={theme.colors.textSecondary} />
+            <Text style={styles.detailText}>{user.guardian.name} ({user.guardian.relation})</Text>
+          </View>
+        )}
       </View>
+
+      {/* Fee Information Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Fee Information</Text>
+        <View style={styles.detailRow}>
+          <Ionicons name="card-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>{user?.feeStructure ? user.feeStructure.charAt(0).toUpperCase() + user.feeStructure.slice(1) : "Regular"}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="percent-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>{user?.feeDiscount ? `${user.feeDiscount}% discount` : "No discount"}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="checkmark-circle-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>{user?.paymentStatus ? user.paymentStatus.charAt(0).toUpperCase() + user.paymentStatus.slice(1) : "Pending"}</Text>
+        </View>
+      </View>
+
+      {/* Additional Information Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Additional Information</Text>
+        {user?.rfidCardNumber && (
+          <View style={styles.detailRow}>
+            <Ionicons name="card-outline" size={20} color={theme.colors.textSecondary} />
+            <Text style={styles.detailText}>RFID: {user.rfidCardNumber}</Text>
+          </View>
+        )}
+        {user?.libraryCardNumber && (
+          <View style={styles.detailRow}>
+            <Ionicons name="library-outline" size={20} color={theme.colors.textSecondary} />
+            <Text style={styles.detailText}>Library Card: {user.libraryCardNumber}</Text>
+          </View>
+        )}
+        {user?.transportDetails?.required && (
+          <View style={styles.detailRow}>
+            <Ionicons name="bus-outline" size={20} color={theme.colors.textSecondary} />
+            <Text style={styles.detailText}>Transport: {user.transportDetails.busNumber || "Assigned"}</Text>
+          </View>
+        )}
+        {user?.hostelInformation?.roomNumber && (
+          <View style={styles.detailRow}>
+            <Ionicons name="home-outline" size={20} color={theme.colors.textSecondary} />
+            <Text style={styles.detailText}>Hostel: Room {user.hostelInformation.roomNumber}</Text>
+          </View>
+        )}
+        <View style={styles.detailRow}>
+          <Ionicons name="information-circle-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>{user?.status ? user.status.charAt(0).toUpperCase() + user.status.slice(1) : "Active"}</Text>
+        </View>
+      </View>
+
+      {/* Medical Information Section */}
+      {user?.medicalHistory && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Medical Information</Text>
+          {user.medicalHistory.allergies && user.medicalHistory.allergies.length > 0 && (
+            <View style={styles.detailRow}>
+              <Ionicons name="warning-outline" size={20} color={theme.colors.textSecondary} />
+              <Text style={styles.detailText}>Allergies: {user.medicalHistory.allergies.join(", ")}</Text>
+            </View>
+          )}
+          {user.medicalHistory.medicalConditions && user.medicalHistory.medicalConditions.length > 0 && (
+            <View style={styles.detailRow}>
+              <Ionicons name="medical-outline" size={20} color={theme.colors.textSecondary} />
+              <Text style={styles.detailText}>Conditions: {user.medicalHistory.medicalConditions.join(", ")}</Text>
+            </View>
+          )}
+          {user.medicalHistory.vaccinationStatus && (
+            <View style={styles.detailRow}>
+              <Ionicons name="shield-checkmark-outline" size={20} color={theme.colors.textSecondary} />
+              <Text style={styles.detailText}>Vaccination: {user.medicalHistory.vaccinationStatus.charAt(0).toUpperCase() + user.medicalHistory.vaccinationStatus.slice(1)}</Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* Emergency Contact Section */}
+      {user?.emergencyContact && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Emergency Contact</Text>
+          <View style={styles.detailRow}>
+            <Ionicons name="person-outline" size={20} color={theme.colors.textSecondary} />
+            <Text style={styles.detailText}>{user.emergencyContact.name} ({user.emergencyContact.relation})</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Ionicons name="call-outline" size={20} color={theme.colors.textSecondary} />
+            <Text style={styles.detailText}>{user.emergencyContact.phone}</Text>
+          </View>
+          {user.emergencyContact.email && (
+            <View style={styles.detailRow}>
+              <Ionicons name="mail-outline" size={20} color={theme.colors.textSecondary} />
+              <Text style={styles.detailText}>{user.emergencyContact.email}</Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* Physical Metrics Section */}
+      {user?.physicalMetrics && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Physical Information</Text>
+          {user.physicalMetrics.height && (
+            <View style={styles.detailRow}>
+              <Ionicons name="resize-outline" size={20} color={theme.colors.textSecondary} />
+              <Text style={styles.detailText}>Height: {user.physicalMetrics.height} cm</Text>
+            </View>
+          )}
+          {user.physicalMetrics.weight && (
+            <View style={styles.detailRow}>
+              <Ionicons name="scale-outline" size={20} color={theme.colors.textSecondary} />
+              <Text style={styles.detailText}>Weight: {user.physicalMetrics.weight} kg</Text>
+            </View>
+          )}
+          {user.physicalMetrics.bmi && (
+            <View style={styles.detailRow}>
+              <Ionicons name="analytics-outline" size={20} color={theme.colors.textSecondary} />
+              <Text style={styles.detailText}>BMI: {user.physicalMetrics.bmi}</Text>
+            </View>
+          )}
+          {user.physicalMetrics.fitnessScore && (
+            <View style={styles.detailRow}>
+              <Ionicons name="fitness-outline" size={20} color={theme.colors.textSecondary} />
+              <Text style={styles.detailText}>Fitness Score: {user.physicalMetrics.fitnessScore}/100</Text>
+            </View>
+          )}
+        </View>
+      )}
     </View>
   );
 
@@ -293,7 +515,11 @@ export default function ProfileScreen({ navigation }) {
         <View style={styles.headerRight} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         <Card style={styles.profileCard}>
           <View style={styles.profileHeader}>
             <View style={styles.avatarContainer}>
@@ -313,20 +539,19 @@ export default function ProfileScreen({ navigation }) {
           {isEditing ? renderEditForm() : renderProfileInfo()}
         </Card>
 
+        {/* Action Buttons Card */}
         <Card style={styles.actionCard}>
           <TouchableOpacity
-            style={styles.actionItem}
+            style={styles.profileActionButton}
             onPress={() => setIsChangePasswordModalVisible(true)}
           >
-            <Ionicons name="lock-closed-outline" size={20} color={theme.colors.primary} />
-            <Text style={styles.actionText}>Change Password</Text>
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
+            <Ionicons name="lock-closed-outline" size={20} color={theme.colors.textSecondary} />
+            <Text style={styles.profileActionButtonText}>Change Password</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionItem} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={20} color={theme.colors.danger} />
-            <Text style={[styles.actionText, { color: theme.colors.danger }]}>Logout</Text>
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={20} color={theme.colors.error} />
+            <Text style={styles.logoutText}>Logout</Text>
           </TouchableOpacity>
         </Card>
       </ScrollView>
@@ -367,6 +592,9 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: theme.spacing.lg,
   },
+  scrollContent: {
+    paddingBottom: theme.spacing.xxl * 2,
+  },
   profileCard: {
     marginBottom: theme.spacing.lg,
   },
@@ -401,7 +629,19 @@ const styles = StyleSheet.create({
     padding: theme.spacing.sm,
   },
   profileDetails: {
-    gap: theme.spacing.md,
+    gap: theme.spacing.lg,
+  },
+  section: {
+    marginBottom: theme.spacing.lg,
+  },
+  sectionTitle: {
+    ...theme.typography.h6,
+    color: theme.colors.text,
+    fontWeight: "bold",
+    marginBottom: theme.spacing.md,
+    paddingBottom: theme.spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.divider,
   },
   detailRow: {
     flexDirection: "row",
@@ -462,18 +702,28 @@ const styles = StyleSheet.create({
   actionCard: {
     marginBottom: theme.spacing.lg,
   },
-  actionItem: {
+  profileActionButton: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: theme.spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.divider,
   },
-  actionText: {
-    ...theme.typography.body2,
-    color: theme.colors.text,
-    marginLeft: theme.spacing.md,
-    flex: 1,
+  profileActionButtonText: {
+    ...theme.typography.button,
+    color: theme.colors.textSecondary,
+    marginLeft: theme.spacing.sm,
+  },
+  logoutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: theme.spacing.md,
+  },
+  logoutText: {
+    ...theme.typography.button,
+    color: theme.colors.error,
+    marginLeft: theme.spacing.sm,
   },
   modalOverlay: {
     flex: 1,
