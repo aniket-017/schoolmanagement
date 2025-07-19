@@ -195,7 +195,7 @@ export default function TeacherDashboard({ navigation }) {
         </View>
 
         {/* Debug Info (Development Only) */}
-        {__DEV__ && (
+        {/* {__DEV__ && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Debug Info</Text>
             <Card style={styles.infoCard}>
@@ -214,7 +214,7 @@ export default function TeacherDashboard({ navigation }) {
               </View>
             </Card>
           </View>
-        )}
+        )} */}
 
         {/* Quick Actions */}
         <View style={styles.section}>
