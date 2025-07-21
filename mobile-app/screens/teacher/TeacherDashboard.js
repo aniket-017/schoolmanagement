@@ -9,12 +9,6 @@ import apiService from "../../services/apiService";
 import theme from "../../utils/theme";
 import Card from "../../components/ui/Card";
 
-const notificationData = [
-  { id: 1, text: "New announcement from Administration." },
-  { id: 2, text: "You have 3 assignments to grade for English." },
-  { id: 3, text: "Parent-teacher meeting scheduled for tomorrow." },
-];
-
 export default function TeacherDashboard({ navigation }) {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
@@ -22,8 +16,14 @@ export default function TeacherDashboard({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Add announcement states
+  const [announcements, setAnnouncements] = useState([]);
+  const [annLoading, setAnnLoading] = useState(true);
+  const [annError, setAnnError] = useState(null);
+
   useEffect(() => {
     loadTimetable();
+    loadAnnouncements();
   }, []);
 
   const loadTimetable = async () => {
@@ -57,9 +57,28 @@ export default function TeacherDashboard({ navigation }) {
     }
   };
 
+  // Fetch notifications from backend
+  const loadAnnouncements = async () => {
+    try {
+      setAnnLoading(true);
+      setAnnError(null);
+      const response = await apiService.announcements.getTeacherAnnouncements({ activeOnly: true, limit: 5 });
+      if (response.success) {
+        setAnnouncements(response.data);
+      } else {
+        setAnnError(response.message || 'Failed to load announcements');
+      }
+    } catch (error) {
+      setAnnError(error?.response?.data?.message || error.message || 'Failed to load announcements');
+    } finally {
+      setAnnLoading(false);
+    }
+  };
+
   const onRefresh = () => {
     setRefreshing(true);
     loadTimetable();
+    loadAnnouncements();
   };
 
   const getTodaySchedule = () => {
@@ -178,21 +197,55 @@ export default function TeacherDashboard({ navigation }) {
           </View>
         </Animatable.View>
 
-        {/* Recent Notifications */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Notifications</Text>
-          <Card style={styles.infoCard}>
-            {notificationData.map((item, index) => (
-              <View
-                key={item.id}
-                style={[styles.notificationItem, index === notificationData.length - 1 && styles.lastItem]}
-              >
-                <Ionicons name="notifications-outline" size={20} color={theme.colors.primary} />
-                <Text style={styles.notificationText}>{item.text}</Text>
-              </View>
-            ))}
-          </Card>
-        </View>
+        {/* Recent Announcements */}
+        <TouchableOpacity onPress={() => navigation.navigate('TeacherAnnouncementsPage')} activeOpacity={0.8}>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Recent Announcements</Text>
+            <Card style={styles.infoCard}>
+              {annLoading ? (
+                <View style={styles.loadingContainer}>
+                  <Ionicons name="megaphone-outline" size={24} color={theme.colors.textSecondary} />
+                  <Text style={styles.loadingText}>Loading announcements...</Text>
+                </View>
+              ) : annError ? (
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="alert-circle-outline" size={24} color={theme.colors.error} />
+                  <Text style={styles.emptyText}>{annError}</Text>
+                  <TouchableOpacity onPress={loadAnnouncements} style={{ marginTop: 8 }}>
+                    <Text style={{ color: theme.colors.primary, fontWeight: 'bold' }}>Retry</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : announcements.length === 0 ? (
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="megaphone-outline" size={24} color={theme.colors.textSecondary} />
+                  <Text style={styles.emptyText}>No announcements at the moment</Text>
+                </View>
+              ) : (
+                announcements.map((item, index) => (
+                  <View
+                    key={item._id || item.id || index}
+                    style={[styles.notificationItem, index === announcements.length - 1 && styles.lastItem]}
+                  >
+                    <Ionicons name="megaphone-outline" size={20} color={theme.colors.primary} />
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <Text style={[styles.notificationText, { fontWeight: 'bold' }]} numberOfLines={1}>
+                        {item.title || 'Announcement'}
+                      </Text>
+                      {item.message && (
+                        <Text style={styles.notificationText} numberOfLines={2}>
+                          {item.message}
+                        </Text>
+                      )}
+                      <Text style={[styles.notificationText, { fontSize: 11, color: theme.colors.textSecondary, marginTop: 2 }]}> 
+                        {item.createdBy?.name ? `By ${item.createdBy.name}` : ''} {item.createdAt ? `• ${new Date(item.createdAt).toLocaleDateString()}` : ''}
+                      </Text>
+                    </View>
+                  </View>
+                ))
+              )}
+            </Card>
+          </View>
+        </TouchableOpacity>
 
         {/* Debug Info (Development Only) */}
         {/* {__DEV__ && (

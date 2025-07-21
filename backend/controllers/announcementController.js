@@ -5,39 +5,81 @@ const Class = require("../models/Class");
 // Create a new announcement
 exports.createAnnouncement = async (req, res) => {
   try {
-    const { title, content, announcement_type, priority, target_audience, class_ids, expiry_date, attachments } =
-      req.body;
+    const {
+      title,
+      content,
+      priority,
+      targetAudience,
+      targetClasses,
+      targetIndividuals,
+      expiryDate,
+      attachments,
+      images,
+      sendNotification,
+      isPinned,
+      scheduledFor,
+      isScheduled,
+    } = req.body;
 
     // Validate required fields
-    if (!title || !content || !announcement_type || !target_audience) {
+    if (!title || !content || !targetAudience) {
       return res.status(400).json({
         success: false,
-        message: "Title, content, announcement type, and target audience are required",
+        message: "Title, content, and target audience are required",
       });
     }
 
-    // Validate target audience and class_ids
-    if (target_audience === "class" && (!class_ids || class_ids.length === 0)) {
+    // Validate target audience and related fields
+    if (targetAudience === "class" && (!targetClasses || targetClasses.length === 0)) {
       return res.status(400).json({
         success: false,
         message: 'Class IDs are required when target audience is "class"',
       });
     }
 
+    if (targetAudience === "individual" && (!targetIndividuals || targetIndividuals.length === 0)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Individual user IDs are required when target audience is "individual"',
+      });
+    }
+
+    // Determine initial status
+    let status = "draft";
+    let publishDate = new Date();
+
+    if (isScheduled && scheduledFor) {
+      status = "draft";
+      publishDate = scheduledFor;
+    } else if (!isScheduled) {
+      status = "published";
+    }
+
     const announcement = new Announcement({
       title,
       content,
-      announcement_type,
       priority: priority || "medium",
-      target_audience,
-      class_ids: target_audience === "class" ? class_ids : [],
-      created_by: req.user.id,
-      expiry_date,
+      targetAudience,
+      targetClasses: targetAudience === "class" ? targetClasses : [],
+      targetIndividuals: targetAudience === "individual" ? targetIndividuals : [],
+      createdBy: req.user.id,
+      publishDate,
+      expiryDate,
       attachments: attachments || [],
+      images: images || [],
+      sendNotification: sendNotification !== false,
+      isPinned: isPinned || false,
+      scheduledFor,
+      isScheduled: isScheduled || false,
+      status,
     });
 
     await announcement.save();
-    await announcement.populate(["created_by", "class_ids"]);
+    await announcement.populate([
+      { path: "createdBy", select: "name email" },
+      { path: "targetClasses", select: "name section" },
+      { path: "targetIndividuals", select: "name email role" },
+    ]);
 
     res.status(201).json({
       success: true,
@@ -58,37 +100,47 @@ exports.createAnnouncement = async (req, res) => {
 exports.getAnnouncements = async (req, res) => {
   try {
     const {
-      announcement_type,
+      targetAudience,
       priority,
-      target_audience,
-      class_id,
       status,
-      active_only,
+      isPinned,
+      classId,
+      individualId,
+      activeOnly,
       page = 1,
       limit = 10,
+      sortBy = "createdAt",
+      sortOrder = "desc",
     } = req.query;
 
     const query = {};
 
     // Build query filters
-    if (announcement_type) query.announcement_type = announcement_type;
+    if (targetAudience) query.targetAudience = targetAudience;
     if (priority) query.priority = priority;
-    if (target_audience) query.target_audience = target_audience;
-    if (class_id) query.class_ids = class_id;
     if (status) query.status = status;
+    if (isPinned !== undefined) query.isPinned = isPinned === "true";
+    if (classId) query.targetClasses = classId;
+    if (individualId) query.targetIndividuals = individualId;
 
     // Filter active announcements only
-    if (active_only === "true") {
-      query.status = "active";
-      query.$or = [{ expiry_date: { $gt: new Date() } }, { expiry_date: { $exists: false } }];
+    if (activeOnly === "true") {
+      query.status = "published";
+      query.$or = [
+        { expiryDate: { $gt: new Date() } },
+        { expiryDate: { $exists: false } },
+      ];
     }
 
     const skip = (page - 1) * limit;
+    const sortOptions = {};
+    sortOptions[sortBy] = sortOrder === "desc" ? -1 : 1;
 
     const announcements = await Announcement.find(query)
-      .populate("created_by", "name email")
-      .populate("class_ids", "name section")
-      .sort({ created_at: -1 })
+      .populate("createdBy", "name email")
+      .populate("targetClasses", "name section")
+      .populate("targetIndividuals", "name email role")
+      .sort(sortOptions)
       .skip(skip)
       .limit(parseInt(limit));
 
@@ -117,8 +169,10 @@ exports.getAnnouncements = async (req, res) => {
 exports.getAnnouncementById = async (req, res) => {
   try {
     const announcement = await Announcement.findById(req.params.id)
-      .populate("created_by", "name email")
-      .populate("class_ids", "name section");
+      .populate("createdBy", "name email")
+      .populate("targetClasses", "name section")
+      .populate("targetIndividuals", "name email role")
+      .populate("readBy.user", "name email");
 
     if (!announcement) {
       return res.status(404).json({
@@ -144,10 +198,20 @@ exports.getAnnouncementById = async (req, res) => {
 // Get announcements for a specific user
 exports.getAnnouncementsForUser = async (req, res) => {
   try {
-    const { user_id } = req.params;
-    const { active_only, page = 1, limit = 10 } = req.query;
+    const { userId } = req.params;
+    const { activeOnly, page = 1, limit = 10 } = req.query;
 
-    const user = await User.findById(user_id).populate("class_id");
+    console.log("getAnnouncementsForUser called with userId:", userId);
+    console.log("userId type:", typeof userId);
+
+    if (!userId || userId === "undefined") {
+      return res.status(400).json({
+        success: false,
+        message: "User ID is required",
+      });
+    }
+
+    const user = await User.findById(userId).populate("class");
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -156,23 +220,30 @@ exports.getAnnouncementsForUser = async (req, res) => {
     }
 
     const query = {
-      $or: [{ target_audience: "all" }, { target_audience: user.role }],
+      $or: [
+        { targetAudience: "all" },
+        { targetAudience: user.role },
+        { targetIndividuals: userId },
+      ],
     };
 
     // Add class-specific announcements for students
-    if (user.role === "student" && user.class_id) {
+    if (user.role === "student" && user.class) {
       query.$or.push({
-        target_audience: "class",
-        class_ids: user.class_id,
+        targetAudience: "class",
+        targetClasses: user.class._id,
       });
     }
 
     // Filter active announcements only
-    if (active_only === "true") {
-      query.status = "active";
+    if (activeOnly === "true") {
+      query.status = "published";
       query.$and = [
         {
-          $or: [{ expiry_date: { $gt: new Date() } }, { expiry_date: { $exists: false } }],
+          $or: [
+            { expiryDate: { $gt: new Date() } },
+            { expiryDate: { $exists: false } },
+          ],
         },
       ];
     }
@@ -180,9 +251,10 @@ exports.getAnnouncementsForUser = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const announcements = await Announcement.find(query)
-      .populate("created_by", "name email")
-      .populate("class_ids", "name section")
-      .sort({ priority: 1, created_at: -1 })
+      .populate("createdBy", "name email")
+      .populate("targetClasses", "name section")
+      .populate("targetIndividuals", "name email role")
+      .sort({ isPinned: -1, priority: 1, createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
@@ -207,26 +279,29 @@ exports.getAnnouncementsForUser = async (req, res) => {
   }
 };
 
-// Get announcements by class
-exports.getAnnouncementsByClass = async (req, res) => {
+// Get announcements for teachers (simplified endpoint)
+exports.getTeacherAnnouncements = async (req, res) => {
   try {
-    const { class_id } = req.params;
-    const { active_only, page = 1, limit = 10 } = req.query;
+    const { activeOnly = "true", page = 1, limit = 10 } = req.query;
+
+    console.log("getTeacherAnnouncements called");
 
     const query = {
       $or: [
-        { target_audience: "all" },
-        { target_audience: "student" },
-        { target_audience: "class", class_ids: class_id },
+        { targetAudience: "all" },
+        { targetAudience: "teachers" },
       ],
     };
 
     // Filter active announcements only
-    if (active_only === "true") {
-      query.status = "active";
+    if (activeOnly === "true") {
+      query.status = "published";
       query.$and = [
         {
-          $or: [{ expiry_date: { $gt: new Date() } }, { expiry_date: { $exists: false } }],
+          $or: [
+            { expiryDate: { $gt: new Date() } },
+            { expiryDate: { $exists: false } },
+          ],
         },
       ];
     }
@@ -234,9 +309,68 @@ exports.getAnnouncementsByClass = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const announcements = await Announcement.find(query)
-      .populate("created_by", "name email")
-      .populate("class_ids", "name section")
-      .sort({ priority: 1, created_at: -1 })
+      .populate("createdBy", "name email")
+      .populate("targetClasses", "name section")
+      .populate("targetIndividuals", "name email role")
+      .sort({ isPinned: -1, priority: 1, createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await Announcement.countDocuments(query);
+
+    res.json({
+      success: true,
+      data: announcements,
+      pagination: {
+        current: parseInt(page),
+        total: Math.ceil(total / limit),
+        count: total,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching teacher announcements:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching teacher announcements",
+      error: error.message,
+    });
+  }
+};
+
+// Get announcements by class
+exports.getAnnouncementsByClass = async (req, res) => {
+  try {
+    const { classId } = req.params;
+    const { activeOnly, page = 1, limit = 10 } = req.query;
+
+    const query = {
+      $or: [
+        { targetAudience: "all" },
+        { targetAudience: "students" },
+        { targetAudience: "class", targetClasses: classId },
+      ],
+    };
+
+    // Filter active announcements only
+    if (activeOnly === "true") {
+      query.status = "published";
+      query.$and = [
+        {
+          $or: [
+            { expiryDate: { $gt: new Date() } },
+            { expiryDate: { $exists: false } },
+          ],
+        },
+      ];
+    }
+
+    const skip = (page - 1) * limit;
+
+    const announcements = await Announcement.find(query)
+      .populate("createdBy", "name email")
+      .populate("targetClasses", "name section")
+      .populate("targetIndividuals", "name email role")
+      .sort({ isPinned: -1, priority: 1, createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
@@ -267,18 +401,41 @@ exports.updateAnnouncement = async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
 
-    // Validate target audience and class_ids if being updated
-    if (updateData.target_audience === "class" && (!updateData.class_ids || updateData.class_ids.length === 0)) {
+    // Validate target audience and related fields
+    if (updateData.targetAudience === "class" && (!updateData.targetClasses || updateData.targetClasses.length === 0)) {
       return res.status(400).json({
         success: false,
         message: 'Class IDs are required when target audience is "class"',
       });
     }
 
-    const announcement = await Announcement.findByIdAndUpdate(id, updateData, {
-      new: true,
-      runValidators: true,
-    }).populate(["created_by", "class_ids"]);
+    if (updateData.targetAudience === "individual" && (!updateData.targetIndividuals || updateData.targetIndividuals.length === 0)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Individual user IDs are required when target audience is "individual"',
+      });
+    }
+
+    // Handle scheduling logic
+    if (updateData.isScheduled && updateData.scheduledFor) {
+      updateData.status = "draft";
+      updateData.publishDate = updateData.scheduledFor;
+    } else if (updateData.isScheduled === false) {
+      updateData.status = "published";
+      updateData.publishDate = new Date();
+    }
+
+    const announcement = await Announcement.findByIdAndUpdate(
+      id,
+      updateData,
+      {
+        new: true,
+        runValidators: true,
+      }
+    )
+      .populate("createdBy", "name email")
+      .populate("targetClasses", "name section")
+      .populate("targetIndividuals", "name email role");
 
     if (!announcement) {
       return res.status(404).json({
@@ -308,18 +465,29 @@ exports.updateAnnouncementStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    if (!["active", "inactive", "expired"].includes(status)) {
+    if (!["draft", "published", "archived", "expired"].includes(status)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid status. Must be one of: active, inactive, expired",
+        message: "Invalid status. Must be one of: draft, published, archived, expired",
       });
+    }
+
+    const updateData = { status };
+
+    // If publishing, set publish date
+    if (status === "published") {
+      updateData.publishDate = new Date();
+      updateData.isScheduled = false;
     }
 
     const announcement = await Announcement.findByIdAndUpdate(
       id,
-      { status },
+      updateData,
       { new: true, runValidators: true }
-    ).populate(["created_by", "class_ids"]);
+    )
+      .populate("createdBy", "name email")
+      .populate("targetClasses", "name section")
+      .populate("targetIndividuals", "name email role");
 
     if (!announcement) {
       return res.status(404).json({
@@ -338,6 +506,85 @@ exports.updateAnnouncementStatus = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error updating announcement status",
+      error: error.message,
+    });
+  }
+};
+
+// Toggle announcement pin status
+exports.toggleAnnouncementPin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const announcement = await Announcement.findById(id);
+
+    if (!announcement) {
+      return res.status(404).json({
+        success: false,
+        message: "Announcement not found",
+      });
+    }
+
+    announcement.isPinned = !announcement.isPinned;
+    await announcement.save();
+
+    await announcement.populate([
+      { path: "createdBy", select: "name email" },
+      { path: "targetClasses", select: "name section" },
+      { path: "targetIndividuals", select: "name email role" },
+    ]);
+
+    res.json({
+      success: true,
+      message: `Announcement ${announcement.isPinned ? "pinned" : "unpinned"} successfully`,
+      data: announcement,
+    });
+  } catch (error) {
+    console.error("Error toggling announcement pin:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error toggling announcement pin",
+      error: error.message,
+    });
+  }
+};
+
+// Mark announcement as read
+exports.markAnnouncementAsRead = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.body;
+
+    const announcement = await Announcement.findById(id);
+    if (!announcement) {
+      return res.status(404).json({
+        success: false,
+        message: "Announcement not found",
+      });
+    }
+
+    // Check if already read
+    const alreadyRead = announcement.readBy.find(
+      (read) => read.user.toString() === userId
+    );
+
+    if (!alreadyRead) {
+      announcement.readBy.push({
+        user: userId,
+        readAt: new Date(),
+      });
+      announcement.views += 1;
+      await announcement.save();
+    }
+
+    res.json({
+      success: true,
+      message: "Announcement marked as read",
+    });
+  } catch (error) {
+    console.error("Error marking announcement as read:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error marking announcement as read",
       error: error.message,
     });
   }
@@ -369,48 +616,15 @@ exports.deleteAnnouncement = async (req, res) => {
   }
 };
 
-// Mark announcement as read for a user
-exports.markAnnouncementAsRead = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { user_id } = req.body;
-
-    const announcement = await Announcement.findById(id);
-    if (!announcement) {
-      return res.status(404).json({
-        success: false,
-        message: "Announcement not found",
-      });
-    }
-
-    // Add user to read_by array if not already present
-    if (!announcement.read_by.includes(user_id)) {
-      announcement.read_by.push(user_id);
-      await announcement.save();
-    }
-
-    res.json({
-      success: true,
-      message: "Announcement marked as read",
-    });
-  } catch (error) {
-    console.error("Error marking announcement as read:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error marking announcement as read",
-      error: error.message,
-    });
-  }
-};
-
 // Get announcement read status
 exports.getAnnouncementReadStatus = async (req, res) => {
   try {
     const { id } = req.params;
 
     const announcement = await Announcement.findById(id)
-      .populate("read_by", "name email")
-      .populate("class_ids", "name section");
+      .populate("readBy.user", "name email")
+      .populate("targetClasses", "name section")
+      .populate("targetIndividuals", "name email role");
 
     if (!announcement) {
       return res.status(404).json({
@@ -422,30 +636,32 @@ exports.getAnnouncementReadStatus = async (req, res) => {
     // Calculate read statistics
     let totalTargetUsers = 0;
 
-    if (announcement.target_audience === "all") {
+    if (announcement.targetAudience === "all") {
       totalTargetUsers = await User.countDocuments();
-    } else if (announcement.target_audience === "class") {
+    } else if (announcement.targetAudience === "class") {
       totalTargetUsers = await User.countDocuments({
-        class_id: { $in: announcement.class_ids },
+        classId: { $in: announcement.targetClasses },
       });
+    } else if (announcement.targetAudience === "individual") {
+      totalTargetUsers = announcement.targetIndividuals.length;
     } else {
       totalTargetUsers = await User.countDocuments({
-        role: announcement.target_audience,
+        role: announcement.targetAudience,
       });
     }
 
-    const readCount = announcement.read_by.length;
+    const readCount = announcement.readBy.length;
     const readPercentage = totalTargetUsers > 0 ? ((readCount / totalTargetUsers) * 100).toFixed(2) : 0;
 
     res.json({
       success: true,
       data: {
         announcement,
-        read_statistics: {
-          total_target_users: totalTargetUsers,
-          read_count: readCount,
-          unread_count: totalTargetUsers - readCount,
-          read_percentage: readPercentage,
+        readStatistics: {
+          totalTargetUsers,
+          readCount,
+          unreadCount: totalTargetUsers - readCount,
+          readPercentage,
         },
       },
     });
@@ -463,37 +679,48 @@ exports.getAnnouncementReadStatus = async (req, res) => {
 exports.getAnnouncementStats = async (req, res) => {
   try {
     const totalAnnouncements = await Announcement.countDocuments();
-    const activeAnnouncements = await Announcement.countDocuments({ status: "active" });
+    const publishedAnnouncements = await Announcement.countDocuments({ status: "published" });
+    const draftAnnouncements = await Announcement.countDocuments({ status: "draft" });
     const expiredAnnouncements = await Announcement.countDocuments({ status: "expired" });
+    const pinnedAnnouncements = await Announcement.countDocuments({ isPinned: true });
 
     const announcementsByType = await Announcement.aggregate([
-      { $group: { _id: "$announcement_type", count: { $sum: 1 } } },
+      { $group: { _id: "$targetAudience", count: { $sum: 1 } } },
     ]);
 
     const announcementsByPriority = await Announcement.aggregate([
       { $group: { _id: "$priority", count: { $sum: 1 } } },
     ]);
 
-    const announcementsByAudience = await Announcement.aggregate([
-      { $group: { _id: "$target_audience", count: { $sum: 1 } } },
+    const announcementsByStatus = await Announcement.aggregate([
+      { $group: { _id: "$status", count: { $sum: 1 } } },
     ]);
 
     // Recent announcements
     const recentAnnouncements = await Announcement.find()
-      .populate("created_by", "name")
-      .sort({ created_at: -1 })
+      .populate("createdBy", "name")
+      .sort({ createdAt: -1 })
+      .limit(5);
+
+    // Most viewed announcements
+    const mostViewedAnnouncements = await Announcement.find()
+      .populate("createdBy", "name")
+      .sort({ views: -1 })
       .limit(5);
 
     res.json({
       success: true,
       data: {
-        total_announcements: totalAnnouncements,
-        active_announcements: activeAnnouncements,
-        expired_announcements: expiredAnnouncements,
-        announcements_by_type: announcementsByType,
-        announcements_by_priority: announcementsByPriority,
-        announcements_by_audience: announcementsByAudience,
-        recent_announcements: recentAnnouncements,
+        totalAnnouncements,
+        publishedAnnouncements,
+        draftAnnouncements,
+        expiredAnnouncements,
+        pinnedAnnouncements,
+        announcementsByType,
+        announcementsByPriority,
+        announcementsByStatus,
+        recentAnnouncements,
+        mostViewedAnnouncements,
       },
     });
   } catch (error) {
@@ -501,6 +728,40 @@ exports.getAnnouncementStats = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error fetching announcement statistics",
+      error: error.message,
+    });
+  }
+};
+
+// Get users for individual targeting
+exports.getUsersForTargeting = async (req, res) => {
+  try {
+    const { role, classId, search } = req.query;
+    const query = {};
+
+    if (role) query.role = role;
+    if (classId) query.classId = classId;
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const users = await User.find(query)
+      .select("name email role classId")
+      .populate("classId", "name section")
+      .limit(50);
+
+    res.json({
+      success: true,
+      data: users,
+    });
+  } catch (error) {
+    console.error("Error fetching users for targeting:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching users for targeting",
       error: error.message,
     });
   }

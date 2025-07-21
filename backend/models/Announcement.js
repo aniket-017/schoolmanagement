@@ -25,16 +25,22 @@ const announcementSchema = new mongoose.Schema(
     },
     expiryDate: Date,
 
-    // Targeting
+    // Enhanced Targeting
     targetAudience: {
       type: String,
-      enum: ["all", "students", "teachers", "staff"],
+      enum: ["all", "students", "teachers", "staff", "class", "individual"],
       default: "all",
     },
     targetClasses: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Class",
+      },
+    ],
+    targetIndividuals: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
       },
     ],
     targetRoles: [String],
@@ -80,6 +86,33 @@ const announcementSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+
+    // Read tracking
+    readBy: [
+      {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        readAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+
+    // Pinning
+    isPinned: {
+      type: Boolean,
+      default: false,
+    },
+
+    // Scheduling
+    scheduledFor: Date,
+    isScheduled: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
@@ -92,8 +125,11 @@ announcementSchema.pre("save", function (next) {
 
   if (this.expiryDate && now > this.expiryDate) {
     this.status = "expired";
-  } else if (this.publishDate <= now && this.status === "draft") {
+  } else if (this.publishDate <= now && this.status === "draft" && !this.isScheduled) {
     this.status = "published";
+  } else if (this.scheduledFor && this.scheduledFor <= now && this.status === "draft" && this.isScheduled) {
+    this.status = "published";
+    this.publishDate = now;
   }
 
   next();
@@ -105,5 +141,9 @@ announcementSchema.index({ status: 1 });
 announcementSchema.index({ targetAudience: 1 });
 announcementSchema.index({ priority: 1 });
 announcementSchema.index({ expiryDate: 1 });
+announcementSchema.index({ targetClasses: 1 });
+announcementSchema.index({ targetIndividuals: 1 });
+announcementSchema.index({ isPinned: 1 });
+announcementSchema.index({ scheduledFor: 1 });
 
 module.exports = mongoose.model("Announcement", announcementSchema);

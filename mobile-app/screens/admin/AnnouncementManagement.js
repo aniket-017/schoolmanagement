@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, ScrollView, StyleSheet, RefreshControl } from "react-native";
+import { View, ScrollView, StyleSheet, RefreshControl, Alert, Modal, TextInput } from "react-native";
 import {
   List,
   FAB,
@@ -10,15 +10,18 @@ import {
   Button,
   Dialog,
   Portal,
-  TextInput,
   Chip,
   IconButton,
   Menu,
   SegmentedButtons,
+  Text,
+  Switch,
+  Divider,
 } from "react-native-paper";
 import * as Animatable from "react-native-animatable";
 import { showMessage } from "react-native-flash-message";
 import { format } from "date-fns";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 import theme from "../../utils/theme";
 import axios from "../../utils/axios";
@@ -33,9 +36,28 @@ export default function AnnouncementManagement({ navigation }) {
   const [filter, setFilter] = useState("all");
   const [menuVisible, setMenuVisible] = useState(false);
   const [selectedAnnouncementId, setSelectedAnnouncementId] = useState(null);
+  const [classes, setClasses] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    title: "",
+    content: "",
+    priority: "medium",
+    targetAudience: "all",
+    targetClasses: [],
+    targetIndividuals: [],
+    expiryDate: null,
+    sendNotification: true,
+    isPinned: false,
+    scheduledFor: null,
+    isScheduled: false,
+    status: "draft",
+  });
 
   useEffect(() => {
     fetchAnnouncements();
+    fetchClasses();
+    fetchUsers();
   }, []);
 
   const fetchAnnouncements = async () => {
@@ -49,6 +71,24 @@ export default function AnnouncementManagement({ navigation }) {
         description: error.response?.data?.message || "Please try again later",
         type: "danger",
       });
+    }
+  };
+
+  const fetchClasses = async () => {
+    try {
+      const response = await axios.get("/api/classes");
+      setClasses(response.data.data || []);
+    } catch (error) {
+      console.error("Error fetching classes:", error);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const response = await axios.get("/api/users");
+      setUsers(response.data.data || []);
+    } catch (error) {
+      console.error("Error fetching users:", error);
     }
   };
 
@@ -107,22 +147,145 @@ export default function AnnouncementManagement({ navigation }) {
     }
   };
 
-  const handleDelete = async (announcementId) => {
+  const handleTogglePin = async (announcementId) => {
     try {
-      await axios.delete(`/api/announcements/${announcementId}`);
+      await axios.put(`/api/announcements/${announcementId}/pin`);
 
       showMessage({
-        message: "Announcement deleted successfully",
+        message: "Announcement pin status updated",
         type: "success",
       });
 
       fetchAnnouncements();
     } catch (error) {
       showMessage({
-        message: "Error deleting announcement",
+        message: "Error updating announcement pin status",
         description: error.response?.data?.message || "Please try again later",
         type: "danger",
       });
+    }
+  };
+
+  const handleDelete = async (announcementId) => {
+    Alert.alert(
+      "Delete Announcement",
+      "Are you sure you want to delete this announcement?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await axios.delete(`/api/announcements/${announcementId}`);
+
+              showMessage({
+                message: "Announcement deleted successfully",
+                type: "success",
+              });
+
+              fetchAnnouncements();
+            } catch (error) {
+              showMessage({
+                message: "Error deleting announcement",
+                description: error.response?.data?.message || "Please try again later",
+                type: "danger",
+              });
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleCreateAnnouncement = async () => {
+    try {
+      // Validate required fields
+      if (!createForm.title.trim() || !createForm.content.trim()) {
+        showMessage({
+          message: "Title and content are required",
+          type: "warning",
+        });
+        return;
+      }
+
+      if (createForm.targetAudience === "class" && createForm.targetClasses.length === 0) {
+        showMessage({
+          message: "Please select at least one class",
+          type: "warning",
+        });
+        return;
+      }
+
+      if (createForm.targetAudience === "individual" && createForm.targetIndividuals.length === 0) {
+        showMessage({
+          message: "Please select at least one individual",
+          type: "warning",
+        });
+        return;
+      }
+
+      const response = await axios.post("/api/announcements", createForm);
+
+      showMessage({
+        message: "Announcement created successfully",
+        type: "success",
+      });
+
+      setShowCreateModal(false);
+      setCreateForm({
+        title: "",
+        content: "",
+        priority: "medium",
+        targetAudience: "all",
+        targetClasses: [],
+        targetIndividuals: [],
+        expiryDate: null,
+        sendNotification: true,
+        isPinned: false,
+        scheduledFor: null,
+        isScheduled: false,
+        status: "draft",
+      });
+      fetchAnnouncements();
+    } catch (error) {
+      showMessage({
+        message: "Error creating announcement",
+        description: error.response?.data?.message || "Please try again later",
+        type: "danger",
+      });
+    }
+  };
+
+  const getTargetAudienceLabel = (audience, targetClasses, targetIndividuals) => {
+    switch (audience) {
+      case "all":
+        return "All Users";
+      case "students":
+        return "Students";
+      case "teachers":
+        return "Teachers";
+      case "staff":
+        return "Staff";
+      case "class":
+        return `Classes (${targetClasses?.length || 0})`;
+      case "individual":
+        return `Individuals (${targetIndividuals?.length || 0})`;
+      default:
+        return audience;
+    }
+  };
+
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case "high":
+        return theme.colors.error;
+      case "medium":
+        return theme.colors.warning;
+      case "low":
+        return theme.colors.success;
+      default:
+        return theme.colors.primary;
     }
   };
 
@@ -139,17 +302,32 @@ export default function AnnouncementManagement({ navigation }) {
           <View style={styles.cardHeader}>
             <View style={styles.titleContainer}>
               <Title style={styles.title}>{announcement.title}</Title>
-              <Chip
-                style={[
-                  styles.statusChip,
-                  {
-                    backgroundColor:
-                      announcement.status === "active" ? theme.colors.success + "20" : theme.colors.error + "20",
-                  },
-                ]}
-              >
-                {announcement.status}
-              </Chip>
+              <View style={styles.chipContainer}>
+                <Chip
+                  style={[
+                    styles.statusChip,
+                    {
+                      backgroundColor:
+                        announcement.status === "published" ? theme.colors.success + "20" : theme.colors.error + "20",
+                    },
+                  ]}
+                >
+                  {announcement.status}
+                </Chip>
+                {announcement.isPinned && (
+                  <Chip style={[styles.statusChip, { backgroundColor: theme.colors.warning + "20" }]}>
+                    Pinned
+                  </Chip>
+                )}
+                <Chip
+                  style={[
+                    styles.statusChip,
+                    { backgroundColor: getPriorityColor(announcement.priority) + "20" },
+                  ]}
+                >
+                  {announcement.priority}
+                </Chip>
+              </View>
             </View>
             <IconButton
               icon="dots-vertical"
@@ -164,9 +342,14 @@ export default function AnnouncementManagement({ navigation }) {
             {announcement.content}
           </Paragraph>
 
-          <View style={styles.metadata}>
-            <Chip style={styles.chip}>{announcement.targetAudience}</Chip>
-            <Paragraph style={styles.date}>{format(new Date(announcement.createdAt), "MMM dd, yyyy")}</Paragraph>
+          <View style={styles.cardFooter}>
+            <Chip style={styles.chip}>
+              {getTargetAudienceLabel(announcement.targetAudience, announcement.targetClasses, announcement.targetIndividuals)}
+            </Chip>
+            <Paragraph style={styles.date}>
+              {format(new Date(announcement.createdAt), "MMM dd, yyyy")}
+            </Paragraph>
+            <Paragraph style={styles.views}>{announcement.views || 0} views</Paragraph>
           </View>
         </Card.Content>
       </Card>
@@ -187,7 +370,8 @@ export default function AnnouncementManagement({ navigation }) {
           onValueChange={handleFilterChange}
           buttons={[
             { value: "all", label: "All" },
-            { value: "active", label: "Active" },
+            { value: "published", label: "Published" },
+            { value: "draft", label: "Draft" },
             { value: "archived", label: "Archived" },
           ]}
           style={styles.filterButtons}
@@ -203,6 +387,7 @@ export default function AnnouncementManagement({ navigation }) {
         ))}
       </ScrollView>
 
+      {/* Announcement Details Dialog */}
       <Portal>
         <Dialog visible={isDialogVisible} onDismiss={() => setIsDialogVisible(false)}>
           <Dialog.Title>Announcement Details</Dialog.Title>
@@ -212,10 +397,13 @@ export default function AnnouncementManagement({ navigation }) {
                 <Title>{selectedAnnouncement.title}</Title>
                 <Paragraph style={styles.dialogContent}>{selectedAnnouncement.content}</Paragraph>
                 <View style={styles.dialogMetadata}>
-                  <Chip style={styles.chip}>{selectedAnnouncement.targetAudience}</Chip>
+                  <Chip style={styles.chip}>
+                    {getTargetAudienceLabel(selectedAnnouncement.targetAudience, selectedAnnouncement.targetClasses, selectedAnnouncement.targetIndividuals)}
+                  </Chip>
                   <Paragraph style={styles.date}>
                     {format(new Date(selectedAnnouncement.createdAt), "MMM dd, yyyy")}
                   </Paragraph>
+                  <Paragraph style={styles.views}>{selectedAnnouncement.views || 0} views</Paragraph>
                 </View>
               </>
             )}
@@ -235,6 +423,7 @@ export default function AnnouncementManagement({ navigation }) {
           </Dialog.Actions>
         </Dialog>
 
+        {/* Action Menu */}
         <Menu
           visible={menuVisible}
           onDismiss={() => {
@@ -246,9 +435,23 @@ export default function AnnouncementManagement({ navigation }) {
           <Menu.Item
             onPress={() => {
               setMenuVisible(false);
-              handleStatusChange(selectedAnnouncementId, "active");
+              handleStatusChange(selectedAnnouncementId, "published");
             }}
-            title="Mark as Active"
+            title="Publish"
+          />
+          <Menu.Item
+            onPress={() => {
+              setMenuVisible(false);
+              handleStatusChange(selectedAnnouncementId, "draft");
+            }}
+            title="Mark as Draft"
+          />
+          <Menu.Item
+            onPress={() => {
+              setMenuVisible(false);
+              handleTogglePin(selectedAnnouncementId);
+            }}
+            title="Toggle Pin"
           />
           <Menu.Item
             onPress={() => {
@@ -268,7 +471,103 @@ export default function AnnouncementManagement({ navigation }) {
         </Menu>
       </Portal>
 
-      <FAB icon="plus" style={styles.fab} onPress={() => navigation.navigate("CreateAnnouncement")} />
+      <FAB icon="plus" style={styles.fab} onPress={() => setShowCreateModal(true)} />
+
+      {/* Create Announcement Modal */}
+      <Modal
+        visible={showCreateModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowCreateModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Create New Announcement</Text>
+            <IconButton icon="close" onPress={() => setShowCreateModal(false)} />
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            <TextInput
+              label="Title"
+              value={createForm.title}
+              onChangeText={(text) => setCreateForm({ ...createForm, title: text })}
+              style={styles.input}
+              mode="outlined"
+            />
+
+            <TextInput
+              label="Content"
+              value={createForm.content}
+              onChangeText={(text) => setCreateForm({ ...createForm, content: text })}
+              style={styles.input}
+              mode="outlined"
+              multiline
+              numberOfLines={4}
+            />
+
+            <Text style={styles.sectionTitle}>Priority</Text>
+            <SegmentedButtons
+              value={createForm.priority}
+              onValueChange={(value) => setCreateForm({ ...createForm, priority: value })}
+              buttons={[
+                { value: "low", label: "Low" },
+                { value: "medium", label: "Medium" },
+                { value: "high", label: "High" },
+              ]}
+              style={styles.segmentedButtons}
+            />
+
+            <Text style={styles.sectionTitle}>Target Audience</Text>
+            <SegmentedButtons
+              value={createForm.targetAudience}
+              onValueChange={(value) => setCreateForm({ ...createForm, targetAudience: value })}
+              buttons={[
+                { value: "all", label: "All" },
+                { value: "students", label: "Students" },
+                { value: "teachers", label: "Teachers" },
+                { value: "class", label: "Class" },
+                { value: "individual", label: "Individual" },
+              ]}
+              style={styles.segmentedButtons}
+            />
+
+            <Divider style={styles.divider} />
+
+            <View style={styles.switchContainer}>
+              <Text>Send Notification</Text>
+              <Switch
+                value={createForm.sendNotification}
+                onValueChange={(value) => setCreateForm({ ...createForm, sendNotification: value })}
+              />
+            </View>
+
+            <View style={styles.switchContainer}>
+              <Text>Pin Announcement</Text>
+              <Switch
+                value={createForm.isPinned}
+                onValueChange={(value) => setCreateForm({ ...createForm, isPinned: value })}
+              />
+            </View>
+
+            <View style={styles.switchContainer}>
+              <Text>Schedule for Later</Text>
+              <Switch
+                value={createForm.isScheduled}
+                onValueChange={(value) => setCreateForm({ ...createForm, isScheduled: value })}
+              />
+            </View>
+          </ScrollView>
+
+          <View style={styles.modalFooter}>
+            <Button mode="outlined" onPress={() => setShowCreateModal(false)} style={styles.modalButton}>
+              Cancel
+            </Button>
+            <Button mode="contained" onPress={handleCreateAnnouncement} style={styles.modalButton}>
+              Create
+            </Button>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -279,74 +578,130 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
   },
   header: {
-    padding: theme.spacing.md,
+    padding: 16,
     backgroundColor: theme.colors.surface,
-    ...theme.shadows.sm,
+    elevation: 2,
   },
   searchBar: {
-    marginBottom: theme.spacing.sm,
+    marginBottom: 16,
   },
   filterButtons: {
-    marginBottom: theme.spacing.sm,
+    marginBottom: 8,
   },
   scrollContent: {
-    padding: theme.spacing.md,
+    padding: 16,
   },
   card: {
-    marginBottom: theme.spacing.md,
-    ...theme.shadows.sm,
+    marginBottom: 16,
+    elevation: 2,
   },
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
+    marginBottom: 8,
   },
   titleContainer: {
     flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
   },
   title: {
-    ...theme.typography.subtitle1,
-    marginRight: theme.spacing.sm,
-    flex: 1,
+    fontSize: 16,
+    marginBottom: 8,
   },
-  content: {
-    ...theme.typography.body2,
-    color: theme.colors.textSecondary,
-    marginVertical: theme.spacing.sm,
-  },
-  metadata: {
+  chipContainer: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: theme.spacing.sm,
+    flexWrap: "wrap",
+    gap: 8,
   },
   statusChip: {
-    marginRight: theme.spacing.sm,
+    height: 24,
+  },
+  content: {
+    marginBottom: 12,
+    color: theme.colors.textSecondary,
+  },
+  cardFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
   chip: {
-    backgroundColor: theme.colors.primaryLight,
+    height: 24,
   },
   date: {
-    ...theme.typography.caption,
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+  },
+  views: {
+    fontSize: 12,
     color: theme.colors.textSecondary,
   },
   dialogContent: {
-    marginVertical: theme.spacing.md,
+    marginVertical: 16,
   },
   dialogMetadata: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: theme.spacing.md,
+    gap: 12,
+    marginTop: 16,
   },
   fab: {
     position: "absolute",
-    margin: theme.spacing.lg,
+    margin: 16,
     right: 0,
     bottom: 0,
     backgroundColor: theme.colors.primary,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.outline,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+  modalContent: {
+    flex: 1,
+    padding: 16,
+  },
+  input: {
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 8,
+    marginTop: 16,
+  },
+  segmentedButtons: {
+    marginBottom: 16,
+  },
+  divider: {
+    marginVertical: 16,
+  },
+  switchContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  modalFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.outline,
+  },
+  modalButton: {
+    flex: 1,
+    marginHorizontal: 8,
   },
 });

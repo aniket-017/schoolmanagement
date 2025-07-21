@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Megaphone,
@@ -18,28 +18,265 @@ import {
   Info,
   CheckCircle,
   FileText,
+  MoreVertical,
 } from "lucide-react";
 import Layout from "../components/Layout";
+import AnnouncementModal from "../components/AnnouncementModal";
 import { cn } from "../utils/cn";
+import appConfig from "../config/environment";
 
 const Announcements = () => {
   const [activeTab, setActiveTab] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingAnnouncement, setEditingAnnouncement] = useState(null);
+  const [announcements, setAnnouncements] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalAnnouncements: 0,
+    publishedAnnouncements: 0,
+    draftAnnouncements: 0,
+    pinnedAnnouncements: 0,
+  });
+  const [classes, setClasses] = useState([]);
+  const [users, setUsers] = useState([]);
 
-  // Sample data
-  const stats = [
+  useEffect(() => {
+    fetchAnnouncements();
+    fetchStats();
+    fetchClasses();
+    fetchUsers();
+  }, []);
+
+  const fetchAnnouncements = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${appConfig.API_BASE_URL}/announcements`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      if (data.success) {
+        setAnnouncements(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching announcements:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const response = await fetch(`${appConfig.API_BASE_URL}/announcements/stats/overview`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      if (data.success) {
+        setStats({
+          totalAnnouncements: data.data.totalAnnouncements,
+          publishedAnnouncements: data.data.publishedAnnouncements,
+          draftAnnouncements: data.data.draftAnnouncements,
+          pinnedAnnouncements: data.data.pinnedAnnouncements,
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
+  const fetchClasses = async () => {
+    try {
+      const response = await fetch(`${appConfig.API_BASE_URL}/classes`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      if (data.success) {
+        setClasses(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching classes:', error);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch(`${appConfig.API_BASE_URL}/users`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      if (data.success) {
+        setUsers(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
+
+  const handleSaveAnnouncement = async (formData) => {
+    try {
+      const url = editingAnnouncement 
+        ? `${appConfig.API_BASE_URL}/announcements/${editingAnnouncement._id}`
+        : `${appConfig.API_BASE_URL}/announcements`;
+      
+      const method = editingAnnouncement ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setShowCreateModal(false);
+        setEditingAnnouncement(null);
+        fetchAnnouncements();
+        fetchStats();
+        alert(editingAnnouncement ? 'Announcement updated successfully!' : 'Announcement created successfully!');
+      } else {
+        alert(data.message || 'Error saving announcement');
+      }
+    } catch (error) {
+      console.error('Error saving announcement:', error);
+      alert('Error saving announcement');
+    }
+  };
+
+  const handleEditAnnouncement = (announcement) => {
+    setEditingAnnouncement(announcement);
+    setShowCreateModal(true);
+  };
+
+  const handleDeleteAnnouncement = async (announcementId) => {
+    if (!confirm('Are you sure you want to delete this announcement?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${appConfig.API_BASE_URL}/announcements/${announcementId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        fetchAnnouncements();
+        fetchStats();
+        alert('Announcement deleted successfully!');
+      } else {
+        alert(data.message || 'Error deleting announcement');
+      }
+    } catch (error) {
+      console.error('Error deleting announcement:', error);
+      alert('Error deleting announcement');
+    }
+  };
+
+  const handleTogglePin = async (announcementId) => {
+    try {
+      const response = await fetch(`${appConfig.API_BASE_URL}/announcements/${announcementId}/pin`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        fetchAnnouncements();
+        fetchStats();
+      }
+    } catch (error) {
+      console.error('Error toggling pin:', error);
+    }
+  };
+
+  const handleStatusChange = async (announcementId, newStatus) => {
+    try {
+      const response = await fetch(`${appConfig.API_BASE_URL}/announcements/${announcementId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        fetchAnnouncements();
+        fetchStats();
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+    }
+  };
+
+  const statsData = [
     {
       name: "Total Announcements",
-      value: "47",
+      value: stats.totalAnnouncements.toString(),
       change: "+5",
       changeType: "increase",
       icon: Megaphone,
       color: "primary",
     },
     {
-      name: "Active Posts",
-      value: "23",
+      name: "Published Posts",
+      value: stats.publishedAnnouncements.toString(),
       change: "+2",
       changeType: "increase",
       icon: Bell,
@@ -47,92 +284,19 @@ const Announcements = () => {
     },
     {
       name: "Draft Posts",
-      value: "8",
+      value: stats.draftAnnouncements.toString(),
       change: "-1",
       changeType: "decrease",
       icon: FileText,
       color: "warning",
     },
     {
-      name: "Views This Month",
-      value: "2,847",
-      change: "+324",
+      name: "Pinned Posts",
+      value: stats.pinnedAnnouncements.toString(),
+      change: "+1",
       changeType: "increase",
-      icon: Eye,
+      icon: Pin,
       color: "secondary",
-    },
-  ];
-
-  const announcements = [
-    {
-      id: 1,
-      title: "Important: Final Exam Schedule Released",
-      content:
-        "The final examination schedule for all grades has been released. Students are advised to check their exam dates and prepare accordingly. The exams will begin from March 15, 2024.",
-      priority: "high",
-      status: "published",
-      targetAudience: "Students",
-      createdBy: "Dr. Sarah Wilson",
-      createdAt: "2024-01-15T10:30:00Z",
-      publishedAt: "2024-01-15T10:30:00Z",
-      views: 1247,
-      isPinned: true,
-    },
-    {
-      id: 2,
-      title: "New Library Hours - Effective Immediately",
-      content:
-        "Due to increased demand, the library will now be open until 9 PM on weekdays and 6 PM on weekends. New study rooms have also been added to accommodate more students.",
-      priority: "medium",
-      status: "published",
-      targetAudience: "All",
-      createdBy: "Ms. Jennifer Lee",
-      createdAt: "2024-01-14T14:20:00Z",
-      publishedAt: "2024-01-14T14:20:00Z",
-      views: 892,
-      isPinned: false,
-    },
-    {
-      id: 3,
-      title: "Sports Day Registration Open",
-      content:
-        "Registration for the annual sports day is now open. Students can register for various events through the student portal. Last date for registration is January 25, 2024.",
-      priority: "medium",
-      status: "published",
-      targetAudience: "Students",
-      createdBy: "Coach Michael Brown",
-      createdAt: "2024-01-13T09:15:00Z",
-      publishedAt: "2024-01-13T09:15:00Z",
-      views: 654,
-      isPinned: false,
-    },
-    {
-      id: 4,
-      title: "Faculty Meeting - Staff Only",
-      content:
-        "All faculty members are required to attend the monthly faculty meeting scheduled for January 20, 2024, at 3:00 PM in the main conference room.",
-      priority: "high",
-      status: "published",
-      targetAudience: "Staff",
-      createdBy: "Principal Davis",
-      createdAt: "2024-01-12T16:45:00Z",
-      publishedAt: "2024-01-12T16:45:00Z",
-      views: 234,
-      isPinned: true,
-    },
-    {
-      id: 5,
-      title: "New Scholarship Program Announcement",
-      content:
-        "We are pleased to announce a new merit-based scholarship program for deserving students. Applications will be accepted starting February 1, 2024.",
-      priority: "low",
-      status: "draft",
-      targetAudience: "Students",
-      createdBy: "Dr. Sarah Wilson",
-      createdAt: "2024-01-10T11:30:00Z",
-      publishedAt: null,
-      views: 0,
-      isPinned: false,
     },
   ];
 
@@ -186,6 +350,25 @@ const Announcements = () => {
     }
   };
 
+  const getTargetAudienceLabel = (audience, targetClasses, targetIndividuals) => {
+    switch (audience) {
+      case "all":
+        return "All Users";
+      case "students":
+        return "Students";
+      case "teachers":
+        return "Teachers";
+      case "staff":
+        return "Staff";
+      case "class":
+        return `Classes (${targetClasses?.length || 0})`;
+      case "individual":
+        return `Individuals (${targetIndividuals?.length || 0})`;
+      default:
+        return audience;
+    }
+  };
+
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
@@ -219,6 +402,19 @@ const Announcements = () => {
     },
   };
 
+  if (loading) {
+    return (
+      <Layout>
+        <div className="max-w-7xl mx-auto p-6 bg-gray-50 min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading announcements...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="max-w-7xl mx-auto p-6 bg-gray-50 min-h-screen">
@@ -233,7 +429,10 @@ const Announcements = () => {
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => setShowCreateModal(true)}
+                onClick={() => {
+                  setEditingAnnouncement(null);
+                  setShowCreateModal(true);
+                }}
                 className="flex items-center px-5 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl font-medium"
               >
                 <Plus className="w-5 h-5 mr-2" />
@@ -252,7 +451,7 @@ const Announcements = () => {
 
           {/* Statistics Cards */}
           <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {stats.map((stat, index) => {
+            {statsData.map((stat, index) => {
               const Icon = stat.icon;
               return (
                 <motion.div
@@ -359,7 +558,7 @@ const Announcements = () => {
 
                   return (
                     <motion.div
-                      key={announcement.id}
+                      key={announcement._id}
                       whileHover={{ scale: 1.01 }}
                       className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all duration-200"
                     >
@@ -400,13 +599,13 @@ const Announcements = () => {
                               </div>
                               <div className="flex items-center space-x-1">
                                 <Users className="w-4 h-4" />
-                                <span>{announcement.targetAudience}</span>
+                                <span>{getTargetAudienceLabel(announcement.targetAudience, announcement.targetClasses, announcement.targetIndividuals)}</span>
                               </div>
                               <div className="flex items-center space-x-1">
                                 <Eye className="w-4 h-4" />
-                                <span>{announcement.views} views</span>
+                                <span>{announcement.views || 0} views</span>
                               </div>
-                              <span>by {announcement.createdBy}</span>
+                              <span>by {announcement.createdBy?.name || 'Unknown'}</span>
                             </div>
                           </div>
                         </div>
@@ -416,20 +615,35 @@ const Announcements = () => {
                             className={cn(
                               "px-3 py-1 text-xs font-medium rounded-full",
                               announcement.status === "published" && "bg-green-100 text-green-700",
-                              announcement.status === "draft" && "bg-orange-100 text-orange-700"
+                              announcement.status === "draft" && "bg-orange-100 text-orange-700",
+                              announcement.status === "archived" && "bg-gray-100 text-gray-700"
                             )}
                           >
                             {announcement.status}
                           </span>
 
                           <div className="flex items-center space-x-1">
-                            <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                              <Eye className="w-4 h-4" />
+                            <button 
+                              onClick={() => handleTogglePin(announcement._id)}
+                              className={cn(
+                                "p-2 rounded-lg transition-colors",
+                                announcement.isPinned 
+                                  ? "text-orange-600 bg-orange-50" 
+                                  : "text-gray-400 hover:text-orange-600 hover:bg-orange-50"
+                              )}
+                            >
+                              <Pin className="w-4 h-4" />
                             </button>
-                            <button className="p-2 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors">
+                            <button 
+                              onClick={() => handleEditAnnouncement(announcement)}
+                              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            >
                               <Edit className="w-4 h-4" />
                             </button>
-                            <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                            <button 
+                              onClick={() => handleDeleteAnnouncement(announcement._id)}
+                              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            >
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
@@ -451,7 +665,10 @@ const Announcements = () => {
                   </p>
                   {activeTab === "all" && (
                     <button
-                      onClick={() => setShowCreateModal(true)}
+                      onClick={() => {
+                        setEditingAnnouncement(null);
+                        setShowCreateModal(true);
+                      }}
                       className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                     >
                       Create Announcement
@@ -462,6 +679,19 @@ const Announcements = () => {
             </div>
           </motion.div>
         </motion.div>
+
+        {/* Announcement Modal */}
+        <AnnouncementModal
+          isOpen={showCreateModal}
+          onClose={() => {
+            setShowCreateModal(false);
+            setEditingAnnouncement(null);
+          }}
+          announcement={editingAnnouncement}
+          onSave={handleSaveAnnouncement}
+          classes={classes}
+          users={users}
+        />
       </div>
     </Layout>
   );

@@ -273,6 +273,14 @@ export const apiService = {
       const response = await api.get(`/announcements/user/${userId}`, { params });
       return response.data;
     },
+    getTeacherAnnouncements: async (params = {}) => {
+      const response = await api.get("/announcements/teachers", { params });
+      return response.data;
+    },
+    createAnnouncement: async (data) => {
+      const response = await api.post("/announcements", data);
+      return response.data;
+    },
     markAsRead: async (announcementId, userId) => {
       const response = await api.put(`/announcements/${announcementId}/read`, { user_id: userId });
       return response.data;

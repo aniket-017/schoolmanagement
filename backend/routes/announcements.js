@@ -5,6 +5,7 @@ const {
   getAnnouncements,
   getAnnouncementById,
   getAnnouncementsForUser,
+  getTeacherAnnouncements,
   getAnnouncementsByClass,
   updateAnnouncement,
   updateAnnouncementStatus,
@@ -12,6 +13,8 @@ const {
   markAnnouncementAsRead,
   getAnnouncementReadStatus,
   getAnnouncementStats,
+  toggleAnnouncementPin,
+  getUsersForTargeting,
 } = require("../controllers/announcementController");
 const { auth } = require("../middleware/auth");
 
@@ -21,26 +24,35 @@ router.post("/", auth, createAnnouncement);
 // Get all announcements with filters
 router.get("/", auth, getAnnouncements);
 
-// Get announcement by ID
-router.get("/:id", auth, getAnnouncementById);
+// Get announcement statistics (must come before /:id routes)
+router.get("/stats/overview", auth, getAnnouncementStats);
 
-// Get announcement read status
+// Get users for individual targeting (must come before /:id routes)
+router.get("/users/targeting", auth, getUsersForTargeting);
+
+// Get announcements for a specific user (must come before /:id routes)
+router.get("/user/:userId", auth, getAnnouncementsForUser);
+
+// Get announcements for teachers (must come before /:id routes)
+router.get("/teachers", auth, getTeacherAnnouncements);
+
+// Get announcements by class (must come before /:id routes)
+router.get("/class/:classId", auth, getAnnouncementsByClass);
+
+// Get announcement read status (must come before /:id routes)
 router.get("/:id/read-status", auth, getAnnouncementReadStatus);
 
-// Get announcements for a specific user
-router.get("/user/:user_id", auth, getAnnouncementsForUser);
-
-// Get announcements by class
-router.get("/class/:class_id", auth, getAnnouncementsByClass);
-
-// Get announcement statistics
-router.get("/stats/overview", auth, getAnnouncementStats);
+// Get announcement by ID (must come last among GET routes)
+router.get("/:id", auth, getAnnouncementById);
 
 // Update announcement
 router.put("/:id", auth, updateAnnouncement);
 
 // Update announcement status
 router.put("/:id/status", auth, updateAnnouncementStatus);
+
+// Toggle announcement pin status
+router.put("/:id/pin", auth, toggleAnnouncementPin);
 
 // Mark announcement as read
 router.put("/:id/read", auth, markAnnouncementAsRead);

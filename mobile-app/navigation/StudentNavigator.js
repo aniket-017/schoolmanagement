@@ -5,6 +5,7 @@ import StudentDashboard from "../screens/student/StudentDashboard";
 import AttendanceScreen from "../screens/student/AttendanceScreen";
 import GradesScreen from "../screens/student/GradesScreen";
 import TimetableScreen from "../screens/student/TimetableScreen";
+import AnnouncementsScreen from "../screens/student/AnnouncementsScreen";
 import ProfileScreen from "../screens/student/ProfileScreen";
 
 const Stack = createStackNavigator();
@@ -23,6 +24,8 @@ export default function StudentNavigator({ navigation, route }) {
         navigation.navigate("StudentGrades");
       } else if (routeName === "StudentTimetable") {
         navigation.navigate("StudentTimetable");
+      } else if (routeName === "StudentAnnouncements") {
+        navigation.navigate("StudentAnnouncements");
       }
     }
   }, [route?.name, navigation]);
@@ -42,6 +45,7 @@ export default function StudentNavigator({ navigation, route }) {
       <Stack.Screen name="StudentAttendance" component={AttendanceScreen} options={{ headerShown: false }} />
       <Stack.Screen name="StudentGrades" component={GradesScreen} options={{ title: "Grades" }} />
       <Stack.Screen name="StudentTimetable" component={TimetableScreen} options={{ title: "Timetable" }} />
+      <Stack.Screen name="StudentAnnouncements" component={AnnouncementsScreen} options={{ title: "Announcements" }} />
       <Stack.Screen name="StudentProfile" component={ProfileScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
