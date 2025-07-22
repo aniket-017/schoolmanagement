@@ -9,7 +9,6 @@ const studentSchema = new mongoose.Schema(
     },
     firstName: {
       type: String,
-      required: [true, "First name is required"],
       trim: true,
       maxlength: [50, "First name cannot exceed 50 characters"],
     },
@@ -20,18 +19,15 @@ const studentSchema = new mongoose.Schema(
     },
     lastName: {
       type: String,
-      required: [true, "Last name is required"],
       trim: true,
       maxlength: [50, "Last name cannot exceed 50 characters"],
     },
     dateOfBirth: {
       type: Date,
-      required: [true, "Date of birth is required"],
     },
     gender: {
       type: String,
       enum: ["male", "female", "other"],
-      required: [true, "Gender is required"],
     },
     nationality: {
       type: String,
@@ -60,7 +56,6 @@ const studentSchema = new mongoose.Schema(
     // Contact & Address Details
     currentAddress: {
       type: String,
-      required: [true, "Current address is required"],
       trim: true,
     },
     permanentAddress: {
@@ -81,12 +76,10 @@ const studentSchema = new mongoose.Schema(
     },
     mobileNumber: {
       type: String,
-      required: [true, "Mobile number is required"],
       match: [/^[\+]?[\d\s\-\(\)]{7,15}$/, "Please enter a valid mobile number"],
     },
     email: {
       type: String,
-      required: [true, "Email is required"],
       lowercase: true,
       match: [/^\S+@\S+\.\S+$/, "Please enter a valid email"],
     },
@@ -118,7 +111,6 @@ const studentSchema = new mongoose.Schema(
     mother: {
       name: {
         type: String,
-        required: [true, "Mother's name is required"],
         trim: true,
         maxlength: [100, "Mother's name cannot exceed 100 characters"],
       },
@@ -128,7 +120,6 @@ const studentSchema = new mongoose.Schema(
       },
       phone: {
         type: String,
-        required: [true, "Parent's mobile number is required"],
         match: [/^[\+]?[\d\s\-\(\)]{7,15}$/, "Please enter a valid mobile number"],
       },
       email: {
@@ -172,11 +163,9 @@ const studentSchema = new mongoose.Schema(
     class: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Class",
-      required: [true, "Class is required"],
     },
     grade: {
       type: String,
-      required: [true, "Grade is required"],
     },
     section: {
       type: String,
@@ -502,13 +491,11 @@ const studentSchema = new mongoose.Schema(
     },
     mothersName: {
       type: String,
-      required: [true, "Mother's name is required"],
       trim: true,
       maxlength: [100, "Mother's name cannot exceed 100 characters"],
     },
     parentsMobileNumber: {
       type: String,
-      required: [true, "Parent's mobile number is required"],
       match: [/^[\+]?[\d\s\-\(\)]{7,15}$/, "Please enter a valid mobile number"],
     },
 
@@ -608,7 +595,7 @@ studentSchema.pre("save", function (next) {
 
   // Generate login password if not provided and roll number and mother's name exist
   if (!this.loginPassword && this.rollNumber && this.mother && this.mother.name) {
-    this.loginPassword = `${this.rollNumber}${this.mother.name.replace(/\s+/g, '')}`;
+    this.loginPassword = `${this.rollNumber}${this.mother.name.replace(/\s+/g, "")}`;
   }
 
   // Calculate BMI if height and weight are provided
@@ -671,7 +658,7 @@ studentSchema.methods.getGrades = async function (academicYear) {
 // Method to generate login password
 studentSchema.methods.generateLoginPassword = function () {
   if (this.rollNumber && this.mother && this.mother.name) {
-    this.loginPassword = `${this.rollNumber}${this.mother.name.replace(/\s+/g, '')}`;
+    this.loginPassword = `${this.rollNumber}${this.mother.name.replace(/\s+/g, "")}`;
     return this.loginPassword;
   }
   return null;
