@@ -11,6 +11,12 @@ const {
   getTimetableStats,
   createOrUpdateClassTimetable,
   getTeacherAvailability,
+  createTimetableOutline,
+  getTimetableOutlines,
+  getTimetableOutlineById,
+  updateTimetableOutline,
+  deleteTimetableOutline,
+  deleteClassTimetable,
 } = require("../controllers/timetableController.js");
 const { auth } = require("../middleware/auth.js");
 
@@ -19,6 +25,16 @@ router.post("/", auth, createTimetable);
 
 // Get all timetable entries with filters
 router.get("/", auth, getTimetables);
+
+// Timetable Outline CRUD
+router.post("/outlines", auth, createTimetableOutline);
+router.get("/outlines", auth, getTimetableOutlines);
+router.get("/outlines/:id", auth, getTimetableOutlineById);
+router.put("/outlines/:id", auth, updateTimetableOutline);
+router.delete("/outlines/:id", auth, deleteTimetableOutline);
+
+// Delete all timetable entries for a class and academic year
+router.delete("/class/:classId", auth, deleteClassTimetable);
 
 // Get timetable by ID
 router.get("/:id", auth, getTimetableById);

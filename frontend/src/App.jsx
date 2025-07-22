@@ -11,6 +11,7 @@ import ClassDetails from "./pages/ClassDetails";
 import AddStudent from "./pages/AddStudent";
 import FeeManagement from "./pages/FeeManagement";
 import Announcements from "./pages/Announcements";
+import TimetableOutlineManager from "./pages/TimetableOutlineManager";
 
 import StudentDemo from "./pages/StudentDemo";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -103,6 +104,14 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <Announcements />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/timetable-outlines"
+          element={
+            <ProtectedRoute>
+              <TimetableOutlineManager />
             </ProtectedRoute>
           }
         />

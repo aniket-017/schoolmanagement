@@ -57,6 +57,12 @@ const timetableSchema = new mongoose.Schema(
     },
     effectiveTo: Date,
 
+    outlineId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "TimetableOutline",
+      required: false,
+    },
+
     isActive: {
       type: Boolean,
       default: true,

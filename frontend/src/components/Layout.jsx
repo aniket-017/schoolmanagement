@@ -38,14 +38,7 @@ const Layout = ({ children }) => {
       href: "/users",
       icon: Users,
       color: "emerald",
-      description: "Manage students and staff",
-    },
-    {
-      name: "Teacher Management",
-      href: "/teachers",
-      icon: UserCheck,
-      color: "amber",
-      description: "Manage teacher schedules",
+      description: "Manage teachers and staff",
     },
     {
       name: "Class Management",

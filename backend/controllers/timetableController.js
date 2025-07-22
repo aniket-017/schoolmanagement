@@ -2,6 +2,7 @@ const Timetable = require("../models/Timetable");
 const Class = require("../models/Class");
 const Subject = require("../models/Subject");
 const User = require("../models/User");
+const TimetableOutline = require("../models/TimetableOutline");
 
 // Create a new timetable entry
 exports.createTimetable = async (req, res) => {
@@ -187,11 +188,14 @@ exports.getClassTimetable = async (req, res) => {
       }
     });
 
+    // In getClassTimetable, return outlineId if present in any timetable
+    const outlineId = timetables.find((t) => t.outlineId)?.outlineId || null;
     res.json({
       success: true,
       data: {
         classId,
         academicYear: academicYear || new Date().getFullYear().toString(),
+        outlineId,
         weeklyTimetable,
       },
     });
@@ -216,7 +220,7 @@ exports.createOrUpdateClassTimetable = async (req, res) => {
     console.log("Request params:", req.params);
 
     const { classId } = req.params;
-    const { weeklyTimetable, academicYear, semester } = req.body;
+    const { weeklyTimetable, academicYear, semester, outlineId } = req.body;
 
     console.log("Received timetable save request:", {
       classId,
@@ -283,6 +287,7 @@ exports.createOrUpdateClassTimetable = async (req, res) => {
           periods,
           academicYear,
           semester,
+          outlineId: outlineId || undefined,
         });
         await timetable.save();
         createdTimetables.push(timetable);
@@ -304,6 +309,7 @@ exports.createOrUpdateClassTimetable = async (req, res) => {
       data: {
         classId,
         academicYear,
+        outlineId: outlineId || null,
         createdTimetables,
       },
     });
@@ -315,6 +321,21 @@ exports.createOrUpdateClassTimetable = async (req, res) => {
       message: "Error creating/updating class timetable",
       error: error.message,
     });
+  }
+};
+
+// Delete all timetable entries for a class and academic year
+exports.deleteClassTimetable = async (req, res) => {
+  try {
+    const { classId } = req.params;
+    const { academicYear } = req.query;
+    if (!classId || !academicYear) {
+      return res.status(400).json({ success: false, message: "classId and academicYear are required" });
+    }
+    const result = await Timetable.deleteMany({ classId, academicYear });
+    res.json({ success: true, message: `Deleted ${result.deletedCount} timetable entries.` });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -564,6 +585,56 @@ exports.getTimetableStats = async (req, res) => {
       message: "Error fetching timetable statistics",
       error: error.message,
     });
+  }
+};
+
+// Timetable Outline CRUD
+exports.createTimetableOutline = async (req, res) => {
+  try {
+    const outline = new TimetableOutline({ ...req.body, createdBy: req.user._id });
+    await outline.save();
+    res.status(201).json({ success: true, data: outline });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+exports.getTimetableOutlines = async (req, res) => {
+  try {
+    const outlines = await TimetableOutline.find().sort({ createdAt: -1 });
+    res.json({ success: true, data: outlines });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getTimetableOutlineById = async (req, res) => {
+  try {
+    const outline = await TimetableOutline.findById(req.params.id);
+    if (!outline) return res.status(404).json({ success: false, message: "Not found" });
+    res.json({ success: true, data: outline });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.updateTimetableOutline = async (req, res) => {
+  try {
+    const outline = await TimetableOutline.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!outline) return res.status(404).json({ success: false, message: "Not found" });
+    res.json({ success: true, data: outline });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+exports.deleteTimetableOutline = async (req, res) => {
+  try {
+    const outline = await TimetableOutline.findByIdAndDelete(req.params.id);
+    if (!outline) return res.status(404).json({ success: false, message: "Not found" });
+    res.json({ success: true, message: "Deleted" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 

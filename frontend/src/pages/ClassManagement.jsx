@@ -343,15 +343,15 @@ const ClassManagement = () => {
                   </div>
                   <div className="flex items-center">
                     <CheckCircle className="w-4 h-4 mr-1 text-green-500" />
-                    {classes.filter(cls => cls.classTeacher).length} Teachers Assigned
+                    {classes.filter((cls) => cls.classTeacher).length} Teachers Assigned
                   </div>
                   <div className="flex items-center">
                     <CheckCircle className="w-4 h-4 mr-1 text-green-500" />
-                    {classes.filter(cls => cls.isActive).length} Active Classes
+                    {classes.filter((cls) => cls.isActive).length} Active Classes
                   </div>
                 </div>
               </div>
-              <div className="mt-6 lg:mt-0">
+              <div className="mt-6 lg:mt-0 flex space-x-3">
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -360,6 +360,15 @@ const ClassManagement = () => {
                 >
                   <Plus className="w-5 h-5 mr-2" />
                   Add New Class
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => navigate("/timetable-outlines")}
+                  className="flex items-center px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all duration-200 shadow-lg hover:shadow-xl font-medium"
+                >
+                  <Calendar className="w-5 h-5 mr-2" />
+                  Timetables
                 </motion.button>
               </div>
             </div>
@@ -503,7 +512,7 @@ const ClassManagement = () => {
                 </div>
 
                 <div className="flex flex-wrap items-center justify-end gap-2 mt-6 pt-4 border-t border-gray-100">
-                  <button 
+                  <button
                     onClick={() => navigate(`/classes/${classItem._id}`)}
                     className="flex items-center px-2 py-1 text-sm text-blue-600 rounded hover:bg-blue-50 transition-colors focus:outline-none focus:ring-1 focus:ring-blue-300"
                   >

@@ -38,8 +38,13 @@ const TimetableTab = ({ classId, classData }) => {
   const [academicYear, setAcademicYear] = useState(new Date().getFullYear().toString());
   const [availableTeachers, setAvailableTeachers] = useState([]);
   const [loadingTeachers, setLoadingTeachers] = useState(false);
+  const [outlines, setOutlines] = useState([]);
+  const [selectedOutlineId, setSelectedOutlineId] = useState("");
+  const [customTimeSlots, setCustomTimeSlots] = useState(null);
+  const [fetchedOutlineId, setFetchedOutlineId] = useState(null);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
-  const timeSlots = [
+  const timeSlots = customTimeSlots || [
     { period: 1, startTime: "08:00", endTime: "08:45" },
     { period: 2, startTime: "08:45", endTime: "09:30" },
     { period: 3, startTime: "09:30", endTime: "10:15" },
@@ -54,7 +59,28 @@ const TimetableTab = ({ classId, classData }) => {
 
   useEffect(() => {
     fetchTimetableData();
+    fetchOutlines();
   }, [classId, academicYear]);
+
+  // After both outlines and fetchedOutlineId are available, set selectedOutlineId and customTimeSlots
+  useEffect(() => {
+    if (outlines.length > 0 && fetchedOutlineId) {
+      setSelectedOutlineId(fetchedOutlineId);
+      const outline = outlines.find((o) => o._id === fetchedOutlineId);
+      if (outline) {
+        setCustomTimeSlots(
+          outline.periods.map((p, idx) => ({
+            period: idx + 1,
+            startTime: p.startTime,
+            endTime: p.endTime,
+            name: p.name,
+            type: p.type,
+            duration: p.duration,
+          }))
+        );
+      }
+    }
+  }, [outlines, fetchedOutlineId]);
 
   const fetchTimetableData = async () => {
     try {
@@ -79,6 +105,9 @@ const TimetableTab = ({ classId, classData }) => {
 
       if (timetableData.success) {
         setTimetable(timetableData.data.weeklyTimetable);
+        if (timetableData.data.outlineId) {
+          setFetchedOutlineId(timetableData.data.outlineId);
+        }
       }
       if (subjectsData.success) {
         setSubjects(subjectsData.data || []);
@@ -93,6 +122,43 @@ const TimetableTab = ({ classId, classData }) => {
       setLoading(false);
     }
   };
+
+  const fetchOutlines = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${appConfig.API_BASE_URL}/timetables/outlines`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success) setOutlines(data.data);
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  // When outline is selected, update timeSlots
+  const handleOutlineChange = (e) => {
+    const outlineId = e.target.value;
+    setSelectedOutlineId(outlineId);
+    const outline = outlines.find((o) => o._id === outlineId);
+    if (outline) {
+      setCustomTimeSlots(
+        outline.periods.map((p, idx) => ({
+          period: idx + 1,
+          startTime: p.startTime,
+          endTime: p.endTime,
+          name: p.name,
+          type: p.type,
+          duration: p.duration,
+        }))
+      );
+    } else {
+      setCustomTimeSlots(null);
+    }
+  };
+
+  // Prevent changing outline if timetable already has periods
+  const timetableHasPeriods = Object.values(timetable).some((arr) => arr && arr.length > 0);
 
   const handleSlotClick = (day, period) => {
     setSelectedSlot({ day, period });
@@ -131,7 +197,7 @@ const TimetableTab = ({ classId, classData }) => {
 
   const handleAddPeriod = async (periodData) => {
     try {
-      const { day, period, subjectId, teacherId, room, type } = periodData;
+      const { day, period, subjectId, teacherId, room, type, applyAllDays } = periodData;
 
       // Check for conflicts
       const conflicts = await checkConflicts(day, period, teacherId, room);
@@ -151,10 +217,26 @@ const TimetableTab = ({ classId, classData }) => {
         type: type || "theory",
       };
 
-      setTimetable((prev) => ({
-        ...prev,
-        [day]: [...(prev[day] || []), newPeriod].sort((a, b) => a.periodNumber - b.periodNumber),
-      }));
+      if (applyAllDays) {
+        // Assign to all days
+        setTimetable((prev) => {
+          const updated = { ...prev };
+          days.forEach((d) => {
+            // Only add if not a break
+            if (!(timeSlots[period - 1].type === "break")) {
+              updated[d] = [...(prev[d] || []).filter((p) => p.periodNumber !== period), { ...newPeriod }].sort(
+                (a, b) => a.periodNumber - b.periodNumber
+              );
+            }
+          });
+          return updated;
+        });
+      } else {
+        setTimetable((prev) => ({
+          ...prev,
+          [day]: [...(prev[day] || []), newPeriod].sort((a, b) => a.periodNumber - b.periodNumber),
+        }));
+      }
 
       setShowAddPeriodModal(false);
       setSelectedSlot(null);
@@ -214,6 +296,7 @@ const TimetableTab = ({ classId, classData }) => {
           weeklyTimetable: timetable,
           academicYear,
           semester: "1",
+          outlineId: selectedOutlineId || null,
         }),
       });
 
@@ -231,6 +314,36 @@ const TimetableTab = ({ classId, classData }) => {
     } catch (error) {
       console.error("Error saving timetable:", error);
       toast.error("Error saving timetable");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Clear timetable and outline
+  const handleClearTimetable = async () => {
+    setShowClearConfirm(false);
+    try {
+      setSaving(true);
+      const token = localStorage.getItem("token");
+      // Backend: delete all timetable entries for this class and year
+      await fetch(`${appConfig.API_BASE_URL}/timetables/class/${classId}?academicYear=${academicYear}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setTimetable({
+        Monday: [],
+        Tuesday: [],
+        Wednesday: [],
+        Thursday: [],
+        Friday: [],
+        Saturday: [],
+      });
+      setSelectedOutlineId("");
+      setCustomTimeSlots(null);
+      setFetchedOutlineId(null);
+      toast.success("Timetable and outline cleared.");
+    } catch (error) {
+      toast.error("Failed to clear timetable.");
     } finally {
       setSaving(false);
     }
@@ -290,6 +403,23 @@ const TimetableTab = ({ classId, classData }) => {
           </p>
         </div>
         <div className="flex items-center space-x-4">
+          {/* Outline selection */}
+          <select
+            value={selectedOutlineId}
+            onChange={handleOutlineChange}
+            className="px-3 py-2 border border-green-400 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            disabled={timetableHasPeriods}
+            style={{ minWidth: 180 }}
+          >
+            <option value="">
+              {timetableHasPeriods ? "Outline locked (periods exist)" : "Select Timetable Outline"}
+            </option>
+            {outlines.map((outline) => (
+              <option key={outline._id} value={outline._id}>
+                {outline.name} ({outline.periods.length} periods)
+              </option>
+            ))}
+          </select>
           <select
             value={academicYear}
             onChange={(e) => setAcademicYear(e.target.value)}
@@ -309,8 +439,42 @@ const TimetableTab = ({ classId, classData }) => {
             <Save className="w-4 h-4 mr-2" />
             {saving ? "Saving..." : "Save Timetable"}
           </button>
+          <button
+            onClick={() => setShowClearConfirm(true)}
+            className="flex items-center px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 border border-red-300"
+            disabled={saving}
+          >
+            Clear Timetable & Outline
+          </button>
         </div>
       </div>
+      {/* Confirm Clear Modal */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl p-8 w-full max-w-md relative">
+            <h2 className="text-xl font-bold mb-4 text-red-700">Clear Timetable & Outline?</h2>
+            <p className="mb-6 text-gray-700">
+              This will remove all assigned periods and the selected outline for this class and year. You can select a
+              new outline and build a new timetable after clearing.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                className="px-5 py-2 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleClearTimetable}
+                className="px-5 py-2 rounded bg-red-600 text-white hover:bg-red-700"
+                disabled={saving}
+              >
+                Yes, Clear All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Timetable Grid */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -342,6 +506,20 @@ const TimetableTab = ({ classId, classData }) => {
                     <div className="text-xs text-gray-500 mt-1">{slot.endTime}</div>
                   </td>
                   {days.map((day) => {
+                    // If this slot is a break, show a break cell
+                    if (slot.type === "break") {
+                      return (
+                        <td
+                          key={`${day}-${slot.period}`}
+                          className="px-4 py-3 bg-yellow-50 text-center text-yellow-700 font-semibold"
+                          colSpan={1}
+                        >
+                          <div className="flex flex-col items-center justify-center">
+                            <span className="text-sm">{slot.name || "Break"}</span>
+                          </div>
+                        </td>
+                      );
+                    }
                     const periodData = getPeriodData(day, slot.period);
                     return (
                       <td key={`${day}-${slot.period}`} className="px-4 py-3">
@@ -456,6 +634,7 @@ const AddPeriodModal = ({
     room: "",
     type: "theory",
   });
+  const [applyAllDays, setApplyAllDays] = useState(false);
 
   const timeSlot = timeSlots[selectedSlot?.period - 1];
 
@@ -474,6 +653,7 @@ const AddPeriodModal = ({
       day: selectedSlot.day,
       period: selectedSlot.period,
       ...formData,
+      applyAllDays,
     });
   };
 
@@ -494,7 +674,7 @@ const AddPeriodModal = ({
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900">Add Period</h3>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
 
@@ -646,6 +826,19 @@ const AddPeriodModal = ({
                 <option value="sports">Sports</option>
                 <option value="library">Library</option>
               </select>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <input
+                type="checkbox"
+                id="applyAllDays"
+                checked={applyAllDays}
+                onChange={(e) => setApplyAllDays(e.target.checked)}
+                className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+              />
+              <label htmlFor="applyAllDays" className="text-sm text-gray-700">
+                Apply to all days
+              </label>
             </div>
 
             <div className="flex items-center justify-end space-x-3 pt-4">
