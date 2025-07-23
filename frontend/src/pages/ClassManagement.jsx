@@ -199,7 +199,19 @@ const ClassManagement = () => {
   };
 
   const handleDeleteClass = async (classId) => {
-    if (!window.confirm("Are you sure you want to delete this class?")) return;
+    const classToDelete = classes.find((cls) => cls._id === classId);
+    const studentCount = classToDelete?.currentStrength || 0;
+
+    const warningMessage =
+      studentCount > 0
+        ? `Are you sure you want to delete this class?\n\nThis will permanently delete:\n• The class: ${
+            classToDelete?.name || "Unknown"
+          }\n• ${studentCount} enrolled student${
+            studentCount !== 1 ? "s" : ""
+          }\n• All student data (grades, attendance, fees, etc.)\n\nThis action cannot be undone!`
+        : `Are you sure you want to delete the class: ${classToDelete?.name || "Unknown"}?`;
+
+    if (!window.confirm(warningMessage)) return;
 
     try {
       const response = await fetch(`${appConfig.API_BASE_URL}/classes/${classId}`, {
@@ -210,12 +222,14 @@ const ClassManagement = () => {
       });
       const data = await response.json();
       if (data.success) {
+        toast.success(data.message || "Class deleted successfully");
         fetchClasses();
       } else {
-        alert(data.message);
+        toast.error(data.message || "Failed to delete class");
       }
     } catch (error) {
       console.error("Error deleting class:", error);
+      toast.error("Error deleting class");
     }
   };
 

@@ -22,7 +22,7 @@ exports.getAllTeachers = async (req, res) => {
         { path: "lectureSchedule.subjectId", select: "name code" },
       ])
       .select("-password")
-      .sort({ name: 1 })
+      .sort({ firstName: 1, lastName: 1 })
       .skip(skip)
       .limit(parseInt(limit));
 
@@ -273,7 +273,9 @@ exports.getAvailableTeachersForSubject = async (req, res) => {
         { path: "subjects", select: "name code" },
         { path: "preferredSubjects", select: "name code" },
       ])
-      .select("name email phone availability maxPeriodsPerDay totalPeriodsPerWeek lectureSchedule");
+      .select(
+        "name firstName middleName lastName email phone availability maxPeriodsPerDay totalPeriodsPerWeek lectureSchedule"
+      );
 
     console.log("Found teachers:", teachers.length);
 
@@ -291,8 +293,15 @@ exports.getAvailableTeachersForSubject = async (req, res) => {
     for (const teacher of teachers) {
       const availability = await checkTeacherDetailedAvailability(teacher._id, day, startTime, endTime, excludeClassId);
 
+      // Create display name using new schema with fallback
+      const displayName =
+        teacher.firstName || teacher.lastName
+          ? [teacher.firstName, teacher.middleName, teacher.lastName].filter(Boolean).join(" ")
+          : teacher.name || "Unnamed Teacher";
+
       const teacherInfo = {
         ...teacher.toObject(),
+        name: displayName,
         availability: availability.isAvailable ? "available" : "conflict",
         conflicts: availability.conflicts,
         currentPeriods: availability.currentPeriods,

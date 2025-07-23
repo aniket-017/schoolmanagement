@@ -8,10 +8,10 @@ const Student = require("../models/Student");
 const getAllClasses = async (req, res) => {
   try {
     const classes = await Class.find({ isActive: true })
-      .populate("classTeacher", "name email")
+      .populate("classTeacher", "name firstName middleName lastName email")
       .populate("students", "name studentId")
       .populate("subjects.subject", "name code")
-      .populate("subjects.teacher", "name email")
+      .populate("subjects.teacher", "name firstName middleName lastName email")
       .sort({ grade: 1, division: 1 });
 
     res.json({
@@ -34,10 +34,10 @@ const getAllClasses = async (req, res) => {
 const getClassById = async (req, res) => {
   try {
     const classData = await Class.findById(req.params.id)
-      .populate("classTeacher", "name email phone")
+      .populate("classTeacher", "name firstName middleName lastName email phone")
       .populate("students", "name studentId email phone")
       .populate("subjects.subject", "name code")
-      .populate("subjects.teacher", "name email");
+      .populate("subjects.teacher", "name firstName middleName lastName email");
 
     if (!classData) {
       return res.status(404).json({
@@ -163,7 +163,7 @@ const updateClass = async (req, res) => {
 // @access  Private (Admin only)
 const deleteClass = async (req, res) => {
   try {
-    const classData = await Class.findById(req.params.id);
+    const classData = await Class.findById(req.params.id).populate("students");
 
     if (!classData) {
       return res.status(404).json({
@@ -172,19 +172,57 @@ const deleteClass = async (req, res) => {
       });
     }
 
-    // Check if class has students
-    if (classData.students.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Cannot delete class with enrolled students",
+    // Get all student IDs in the class
+    const studentIds = classData.students.map((student) => student._id);
+
+    if (studentIds.length > 0) {
+      console.log(`Implementing cascading delete for class ${classData.name} with ${studentIds.length} students`);
+
+      // Import required models
+      const Attendance = require("../models/Attendance");
+      const Grade = require("../models/Grade");
+      const Fee = require("../models/Fee");
+      const StudentTransport = require("../models/StudentTransport");
+      const AssignmentSubmission = require("../models/AssignmentSubmission");
+      const LibraryTransaction = require("../models/LibraryTransaction");
+      const Communication = require("../models/Communication");
+
+      // Delete related data for all students in the class
+      console.log("Cleaning up attendance records...");
+      await Attendance.deleteMany({ studentId: { $in: studentIds } });
+
+      console.log("Cleaning up grade records...");
+      await Grade.deleteMany({ studentId: { $in: studentIds } });
+
+      console.log("Cleaning up fee records...");
+      await Fee.deleteMany({ studentId: { $in: studentIds } });
+
+      console.log("Cleaning up student transport records...");
+      await StudentTransport.deleteMany({ studentId: { $in: studentIds } });
+
+      console.log("Cleaning up assignment submission records...");
+      await AssignmentSubmission.deleteMany({ studentId: { $in: studentIds } });
+
+      console.log("Cleaning up library transaction records...");
+      await LibraryTransaction.deleteMany({ userId: { $in: studentIds } });
+
+      console.log("Cleaning up communication records...");
+      await Communication.deleteMany({
+        $or: [{ senderId: { $in: studentIds } }, { receiverId: { $in: studentIds } }],
       });
+
+      // Delete all students in the class
+      console.log("Deleting student records...");
+      await Student.deleteMany({ _id: { $in: studentIds } });
     }
 
+    // Delete the class itself
     await Class.findByIdAndDelete(req.params.id);
 
     res.json({
       success: true,
-      message: "Class deleted successfully",
+      message: `Class deleted successfully along with ${studentIds.length} students and all related data`,
+      deletedStudents: studentIds.length,
     });
   } catch (error) {
     console.error("Error deleting class:", error);
@@ -240,7 +278,7 @@ const assignClassTeacher = async (req, res) => {
       { classTeacher: teacherId },
       { new: true, runValidators: true }
     )
-      .populate("classTeacher", "name email")
+      .populate("classTeacher", "name firstName middleName lastName email")
       .populate("students", "name studentId");
 
     if (!updatedClass) {
@@ -251,7 +289,12 @@ const assignClassTeacher = async (req, res) => {
     }
 
     // Prepare response message
-    let message = `Teacher ${teacher.name} assigned to ${updatedClass.grade}${getOrdinalSuffix(
+    const teacherDisplayName =
+      teacher.firstName || teacher.lastName
+        ? [teacher.firstName, teacher.middleName, teacher.lastName].filter(Boolean).join(" ")
+        : teacher.name || "Teacher";
+
+    let message = `Teacher ${teacherDisplayName} assigned to ${updatedClass.grade}${getOrdinalSuffix(
       updatedClass.grade
     )} Class - ${updatedClass.division}`;
 
@@ -283,10 +326,10 @@ const assignClassTeacher = async (req, res) => {
 // @access  Private (Admin only)
 const getAvailableTeachers = async (req, res) => {
   try {
-    // Get all teachers
+    // Get all teachers with updated name fields
     const teachers = await User.find({ role: "teacher" })
       .populate("subjects", "name")
-      .select("name email subjects experience");
+      .select("name firstName middleName lastName email subjects experience");
 
     // Get current class assignments for each teacher
     const teachersWithAssignments = await Promise.all(
@@ -296,9 +339,18 @@ const getAvailableTeachers = async (req, res) => {
           isActive: true,
         }).select("name grade division");
 
+        // Create display name using new schema with fallback
+        const displayName =
+          teacher.firstName || teacher.lastName
+            ? [teacher.firstName, teacher.middleName, teacher.lastName].filter(Boolean).join(" ")
+            : teacher.name || "Unnamed Teacher";
+
         return {
           _id: teacher._id,
-          name: teacher.name,
+          name: displayName,
+          firstName: teacher.firstName,
+          middleName: teacher.middleName,
+          lastName: teacher.lastName,
           email: teacher.email,
           subjects: teacher.subjects,
           experience: teacher.experience,
@@ -351,14 +403,14 @@ const getTeacherAssignedClasses = async (req, res) => {
       assignedClasses.map(async (classItem) => {
         // Get student count
         const studentCount = classItem.students ? classItem.students.length : 0;
-        
+
         // Get subjects count
         const subjectsCount = classItem.subjects ? classItem.subjects.length : 0;
-        
+
         // Get recent assignments count (last 30 days)
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        
+
         const Assignment = require("../models/Assignment");
         const recentAssignments = await Assignment.countDocuments({
           classId: classItem._id,

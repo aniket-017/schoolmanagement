@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, ScrollView, StyleSheet, RefreshControl } from "react-native";
+import { View, ScrollView, StyleSheet, RefreshControl, Alert } from "react-native";
 import {
   List,
   FAB,
@@ -99,6 +99,45 @@ export default function ClassManagement({ navigation }) {
     return "th";
   };
 
+  const handleDeleteClass = async (classItem) => {
+    const studentCount = classItem.currentStrength || 0;
+
+    const alertTitle = "Delete Class";
+    const alertMessage =
+      studentCount > 0
+        ? `Are you sure you want to delete this class?\n\nThis will permanently delete:\n• The class: ${
+            classItem.name
+          }\n• ${studentCount} enrolled student${
+            studentCount !== 1 ? "s" : ""
+          }\n• All student data (grades, attendance, fees, etc.)\n\nThis action cannot be undone!`
+        : `Are you sure you want to delete the class: ${classItem.name}?`;
+
+    Alert.alert(alertTitle, alertMessage, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await axios.delete(`/api/classes/${classItem._id}`);
+            showMessage({
+              message: "Success",
+              description: "Class deleted successfully",
+              type: "success",
+            });
+            fetchClasses();
+          } catch (error) {
+            showMessage({
+              message: "Error deleting class",
+              description: error.response?.data?.message || "Please try again later",
+              type: "danger",
+            });
+          }
+        },
+      },
+    ]);
+  };
+
   const ClassCard = ({ cls }) => (
     <Animatable.View animation="fadeIn" duration={500}>
       <Card style={styles.card} onPress={() => handleClassPress(cls)}>
@@ -110,7 +149,15 @@ export default function ClassManagement({ navigation }) {
                 {getOrdinalSuffix(cls.grade)} Class - {cls.division}
               </Title>
               <Paragraph style={styles.classGrade}>
-                {cls.classTeacher ? `Teacher: ${cls.classTeacher.name}` : "No teacher assigned"}
+                {cls.classTeacher
+                  ? `Teacher: ${
+                      cls.classTeacher.firstName || cls.classTeacher.lastName
+                        ? [cls.classTeacher.firstName, cls.classTeacher.middleName, cls.classTeacher.lastName]
+                            .filter(Boolean)
+                            .join(" ")
+                        : cls.classTeacher.name
+                    }`
+                  : "No teacher assigned"}
               </Paragraph>
               <View style={styles.chips}>
                 <Chip style={styles.chip}>
@@ -190,7 +237,18 @@ export default function ClassManagement({ navigation }) {
                 <Paragraph>Division: {selectedClass.division}</Paragraph>
                 <Paragraph>Academic Year: {selectedClass.academicYear}</Paragraph>
                 <Paragraph>
-                  Teacher: {selectedClass.classTeacher ? selectedClass.classTeacher.name : "Not assigned"}
+                  Teacher:{" "}
+                  {selectedClass.classTeacher
+                    ? selectedClass.classTeacher.firstName || selectedClass.classTeacher.lastName
+                      ? [
+                          selectedClass.classTeacher.firstName,
+                          selectedClass.classTeacher.middleName,
+                          selectedClass.classTeacher.lastName,
+                        ]
+                          .filter(Boolean)
+                          .join(" ")
+                      : selectedClass.classTeacher.name
+                    : "Not assigned"}
                 </Paragraph>
                 <Paragraph>
                   Students: {selectedClass.currentStrength || 0}/{selectedClass.maxStudents}
@@ -238,6 +296,18 @@ export default function ClassManagement({ navigation }) {
                     }}
                   >
                     View Details
+                  </Button>
+                  <Button
+                    mode="outlined"
+                    buttonColor={theme.colors.error}
+                    textColor="white"
+                    onPress={() => {
+                      setIsDialogVisible(false);
+                      handleDeleteClass(selectedClass);
+                    }}
+                    style={styles.deleteButton}
+                  >
+                    Delete Class
                   </Button>
                 </View>
               </>
@@ -335,6 +405,10 @@ const styles = StyleSheet.create({
   },
   editButton: {
     marginRight: theme.spacing.md,
+  },
+  deleteButton: {
+    marginTop: theme.spacing.sm,
+    borderColor: theme.colors.error,
   },
   emptyState: {
     flex: 1,

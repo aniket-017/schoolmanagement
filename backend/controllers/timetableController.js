@@ -54,7 +54,7 @@ exports.createTimetable = async (req, res) => {
     await timetable.populate([
       { path: "classId", select: "grade division" },
       { path: "periods.subject", select: "name code" },
-      { path: "periods.teacher", select: "name email" },
+      { path: "periods.teacher", select: "name firstName middleName lastName email" },
     ]);
 
     res.status(201).json({
@@ -89,7 +89,7 @@ exports.getTimetables = async (req, res) => {
       .populate([
         { path: "classId", select: "grade division classroom" },
         { path: "periods.subject", select: "name code description" },
-        { path: "periods.teacher", select: "name email phone" },
+        { path: "periods.teacher", select: "name firstName middleName lastName email phone" },
       ])
       .sort({ day: 1, "periods.periodNumber": 1 })
       .skip(skip)
@@ -168,7 +168,7 @@ exports.getClassTimetable = async (req, res) => {
       .populate([
         { path: "classId", select: "grade division classroom" },
         { path: "periods.subject", select: "name code description" },
-        { path: "periods.teacher", select: "name email phone" },
+        { path: "periods.teacher", select: "name firstName middleName lastName email phone" },
       ])
       .sort({ day: 1, "periods.periodNumber": 1 });
 
@@ -298,7 +298,7 @@ exports.createOrUpdateClassTimetable = async (req, res) => {
     await Timetable.populate(createdTimetables, [
       { path: "classId", select: "grade division" },
       { path: "periods.subject", select: "name code" },
-      { path: "periods.teacher", select: "name email" },
+      { path: "periods.teacher", select: "name firstName middleName lastName email" },
     ]);
 
     console.log("Successfully created/updated timetable. Total created:", createdTimetables.length);
@@ -405,7 +405,7 @@ exports.getTeacherTimetable = async (req, res) => {
       .populate([
         { path: "classId", select: "grade division classroom" },
         { path: "periods.subject", select: "name code description" },
-        { path: "periods.teacher", select: "name email phone" },
+        { path: "periods.teacher", select: "name firstName middleName lastName email phone" },
       ])
       .sort({ day: 1, "periods.periodNumber": 1 });
 
