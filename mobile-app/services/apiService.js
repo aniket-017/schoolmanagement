@@ -273,6 +273,10 @@ export const apiService = {
       const response = await api.get(`/announcements/user/${userId}`, { params });
       return response.data;
     },
+    getAnnouncementsForStudent: async (studentId, params = {}) => {
+      const response = await api.get(`/announcements/student/${studentId}`, { params });
+      return response.data;
+    },
     getTeacherAnnouncements: async (params = {}) => {
       const response = await api.get("/announcements/teachers", { params });
       return response.data;

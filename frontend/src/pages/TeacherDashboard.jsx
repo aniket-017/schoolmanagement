@@ -15,6 +15,8 @@ import Layout from "../components/Layout";
 import { cn } from "../utils/cn";
 import appConfig from "../config/environment";
 import { toast } from "react-toastify";
+import AnnouncementModal from "../components/AnnouncementModal";
+import { useAuth } from "../context/AuthContext";
 
 // Helper function to get ordinal suffix
 const getOrdinalSuffix = (num) => {
@@ -38,9 +40,18 @@ const TeacherDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [recentNotifications, setRecentNotifications] = useState([]);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
+  const { user } = useAuth();
+  const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
+  const [classes, setClasses] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [announcementLoading, setAnnouncementLoading] = useState(false);
+  const [myAnnouncements, setMyAnnouncements] = useState([]);
 
   useEffect(() => {
     loadDashboardData();
+    fetchClasses();
+    fetchUsers();
+    fetchMyAnnouncements();
   }, []);
 
   const loadDashboardData = async () => {
@@ -112,6 +123,96 @@ const TeacherDashboard = () => {
     }
   };
 
+  const fetchClasses = async () => {
+    try {
+      const response = await fetch(`${appConfig.API_BASE_URL}/classes`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) setClasses(data.data);
+      }
+    } catch (error) {
+      // handle error
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch(`${appConfig.API_BASE_URL}/users`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) setUsers(data.data);
+      }
+    } catch (error) {
+      // handle error
+    }
+  };
+
+  const fetchMyAnnouncements = async () => {
+    if (!user) return;
+    try {
+      // Try backend filter if supported, else fetch all and filter
+      const response = await fetch(`${appConfig.API_BASE_URL}/announcements?createdBy=${user._id}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setMyAnnouncements(data.data);
+          return;
+        }
+      }
+      // fallback: fetch all and filter (if backend doesn't support createdBy)
+      const allRes = await fetch(`${appConfig.API_BASE_URL}/announcements`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      if (allRes.ok) {
+        const allData = await allRes.json();
+        if (allData.success) {
+          setMyAnnouncements(allData.data.filter(a => a.createdBy?._id === user._id));
+        }
+      }
+    } catch (error) {
+      setMyAnnouncements([]);
+    }
+  };
+
+  const handleSaveAnnouncement = async (formData) => {
+    setAnnouncementLoading(true);
+    try {
+      const response = await fetch(`${appConfig.API_BASE_URL}/announcements`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify(formData),
+      });
+      if (response.ok) {
+        setShowAnnouncementModal(false);
+        toast.success('Announcement created successfully!');
+        fetchMyAnnouncements(); // Refresh announcements after creation
+      } else {
+        toast.error('Error creating announcement');
+      }
+    } catch (error) {
+      toast.error('Error creating announcement');
+    } finally {
+      setAnnouncementLoading(false);
+    }
+  };
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good Morning";
@@ -177,6 +278,23 @@ const TeacherDashboard = () => {
           </div>
         </motion.div>
 
+        {/* Add this button at the top, e.g. after the header */}
+        <motion.div variants={itemVariants} className="flex justify-end">
+          <button
+            className="px-5 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 shadow-lg font-medium"
+            onClick={() => setShowAnnouncementModal(true)}
+          >
+            + Create Announcement
+          </button>
+        </motion.div>
+        <AnnouncementModal
+          isOpen={showAnnouncementModal}
+          onClose={() => setShowAnnouncementModal(false)}
+          onSave={handleSaveAnnouncement}
+          classes={classes}
+          users={users}
+        />
+
         {/* Summary Cards */}
         <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-white rounded-xl p-6 shadow-sm border border-secondary-200">
@@ -225,6 +343,36 @@ const TeacherDashboard = () => {
                 <TrendingUp className="w-6 h-6 text-orange-600" />
               </div>
             </div>
+          </div>
+        </motion.div>
+
+        {/* My Announcements */}
+        <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm border border-secondary-200 mt-6">
+          <div className="p-6 border-b border-secondary-200 flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-secondary-900">My Announcements</h2>
+            <span className="text-sm text-secondary-600">(Created by you)</span>
+          </div>
+          <div className="p-6">
+            {myAnnouncements.length > 0 ? (
+              <div className="space-y-4">
+                {myAnnouncements.map((a) => (
+                  <div key={a._id} className="border border-gray-100 rounded-lg p-4 hover:shadow transition-all">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-lg font-bold text-secondary-900">{a.title}</h3>
+                      <span className={
+                        a.status === 'published' ? 'bg-green-100 text-green-700 px-2 py-1 rounded text-xs' :
+                        a.status === 'draft' ? 'bg-orange-100 text-orange-700 px-2 py-1 rounded text-xs' :
+                        'bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs'
+                      }>{a.status}</span>
+                    </div>
+                    <p className="text-secondary-700 mb-1 line-clamp-2">{a.content}</p>
+                    <div className="text-xs text-secondary-500">{new Date(a.createdAt).toLocaleString()}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-secondary-500 py-8">You have not created any announcements yet.</div>
+            )}
           </div>
         </motion.div>
 

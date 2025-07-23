@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity, Modal, TextInput, Button, ScrollView } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity, Modal, TextInput, Button, ScrollView, Alert } from 'react-native';
 import apiService from '../../services/apiService';
+import { useAuth } from '../../context/AuthContext';
 
 export default function TeacherAnnouncementsPage() {
+  const { user } = useAuth();
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -13,6 +15,8 @@ export default function TeacherAnnouncementsPage() {
   const [createForm, setCreateForm] = useState({ title: '', content: '', classId: '' });
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [showMineOnly, setShowMineOnly] = useState(false);
 
   useEffect(() => {
     fetchAnnouncements();
@@ -69,6 +73,7 @@ export default function TeacherAnnouncementsPage() {
         setShowCreateModal(false);
         setCreateForm({ title: '', content: '', classId: '' });
         fetchAnnouncements();
+        Alert.alert('Success', 'Announcement created successfully!');
       } else {
         setCreateError(response.message || 'Failed to create announcement');
       }
@@ -77,6 +82,72 @@ export default function TeacherAnnouncementsPage() {
     } finally {
       setCreating(false);
     }
+  };
+
+  // Edit announcement
+  const handleEditAnnouncement = (announcement) => {
+    setEditingId(announcement._id);
+    setCreateForm({
+      title: announcement.title,
+      content: announcement.content || announcement.message,
+      classId: announcement.targetClasses && announcement.targetClasses[0],
+    });
+    setShowCreateModal(true);
+  };
+
+  const handleUpdateAnnouncement = async () => {
+    if (!createForm.title.trim() || !createForm.content.trim() || !createForm.classId) {
+      setCreateError('All fields are required.');
+      return;
+    }
+    setCreating(true);
+    setCreateError(null);
+    try {
+      const payload = {
+        title: createForm.title,
+        content: createForm.content,
+        targetAudience: 'class',
+        targetClasses: [createForm.classId],
+        status: 'published',
+      };
+      const response = await apiService.announcements.updateAnnouncement(editingId, payload);
+      if (response.success) {
+        setShowCreateModal(false);
+        setCreateForm({ title: '', content: '', classId: '' });
+        setEditingId(null);
+        fetchAnnouncements();
+        Alert.alert('Success', 'Announcement updated successfully!');
+      } else {
+        setCreateError(response.message || 'Failed to update announcement');
+      }
+    } catch (err) {
+      setCreateError(err.message || 'Failed to update announcement');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  // Delete announcement
+  const handleDeleteAnnouncement = async (id) => {
+    Alert.alert('Delete Announcement', 'Are you sure you want to delete this announcement?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete', style: 'destructive', onPress: async () => {
+          try {
+            const response = await apiService.announcements.deleteAnnouncement(id);
+            if (response.success) {
+              fetchAnnouncements();
+              setShowDetailModal(false);
+              Alert.alert('Deleted', 'Announcement deleted successfully!');
+            } else {
+              Alert.alert('Error', response.message || 'Failed to delete announcement');
+            }
+          } catch (err) {
+            Alert.alert('Error', err.message || 'Failed to delete announcement');
+          }
+        }
+      }
+    ]);
   };
 
   const renderAnnouncement = ({ item }) => (
@@ -101,12 +172,37 @@ export default function TeacherAnnouncementsPage() {
       ) : announcements.length === 0 ? (
         <View style={styles.center}><Text>No announcements found.</Text></View>
       ) : (
-        <FlatList
-          data={announcements}
-          keyExtractor={(item) => item._id || item.id || Math.random().toString()}
-          renderItem={renderAnnouncement}
-          scrollEnabled={false}
-        />
+        <>
+          <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 16 }}>
+            <TouchableOpacity
+              style={{
+                backgroundColor: !showMineOnly ? '#1976d2' : '#eee',
+                padding: 10,
+                borderRadius: 6,
+                marginRight: 8,
+              }}
+              onPress={() => setShowMineOnly(false)}
+            >
+              <Text style={{ color: !showMineOnly ? '#fff' : '#1976d2', fontWeight: 'bold' }}>All Announcements</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                backgroundColor: showMineOnly ? '#1976d2' : '#eee',
+                padding: 10,
+                borderRadius: 6,
+              }}
+              onPress={() => setShowMineOnly(true)}
+            >
+              <Text style={{ color: showMineOnly ? '#fff' : '#1976d2', fontWeight: 'bold' }}>My Announcements</Text>
+            </TouchableOpacity>
+          </View>
+          <FlatList
+            data={showMineOnly ? announcements.filter(a => a.createdBy && user && a.createdBy._id === user._id) : announcements}
+            keyExtractor={(item) => item._id || item.id || Math.random().toString()}
+            renderItem={renderAnnouncement}
+            scrollEnabled={false}
+          />
+        </>
       )}
 
       {/* Simple Create Button at bottom if teacher has classes */}
@@ -125,18 +221,26 @@ export default function TeacherAnnouncementsPage() {
               <Text style={styles.meta}>{selectedAnnouncement?.createdBy?.name ? `By ${selectedAnnouncement.createdBy.name}` : ''}</Text>
               <Text style={styles.meta}>{selectedAnnouncement?.createdAt ? new Date(selectedAnnouncement.createdAt).toLocaleString() : ''}</Text>
               <Text style={styles.message}>{selectedAnnouncement?.message || selectedAnnouncement?.content}</Text>
+              {/* Edit/Delete buttons if created by current teacher */}
+              {selectedAnnouncement && user && selectedAnnouncement.createdBy && selectedAnnouncement.createdBy._id === user._id && (
+                <View style={{ flexDirection: 'row', marginTop: 16 }}>
+                  <Button title="Edit" onPress={() => { handleEditAnnouncement(selectedAnnouncement); setShowDetailModal(false); }} />
+                  <View style={{ width: 16 }} />
+                  <Button title="Delete" color="red" onPress={() => handleDeleteAnnouncement(selectedAnnouncement._id)} />
+                </View>
+              )}
               <Button title="Close" onPress={() => setShowDetailModal(false)} />
             </ScrollView>
           </View>
         </View>
       </Modal>
 
-      {/* Create Announcement Modal */}
+      {/* Create/Edit Announcement Modal */}
       <Modal visible={showCreateModal} transparent animationType="slide" onRequestClose={() => setShowCreateModal(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <ScrollView>
-              <Text style={styles.title}>Create Announcement for Students</Text>
+              <Text style={styles.title}>{editingId ? 'Edit Announcement' : 'Create Announcement for Students'}</Text>
               <TextInput
                 placeholder="Title"
                 value={createForm.title}
@@ -170,9 +274,13 @@ export default function TeacherAnnouncementsPage() {
               </View>
               {createError ? <Text style={{ color: 'red', marginTop: 8 }}>{createError}</Text> : null}
               <View style={{ flexDirection: 'row', marginTop: 16 }}>
-                <Button title="Cancel" onPress={() => setShowCreateModal(false)} />
+                <Button title="Cancel" onPress={() => { setShowCreateModal(false); setEditingId(null); }} />
                 <View style={{ width: 16 }} />
-                <Button title={creating ? 'Creating...' : 'Create'} onPress={handleCreateAnnouncement} disabled={creating} />
+                <Button
+                  title={creating ? (editingId ? 'Updating...' : 'Creating...') : (editingId ? 'Update' : 'Create')}
+                  onPress={editingId ? handleUpdateAnnouncement : handleCreateAnnouncement}
+                  disabled={creating}
+                />
               </View>
             </ScrollView>
           </View>

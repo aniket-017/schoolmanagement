@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Alert } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Alert, Modal } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -9,12 +9,6 @@ import apiService from "../../services/apiService";
 import theme from "../../utils/theme";
 import Card from "../../components/ui/Card";
 
-const notificationData = [
-  { id: 1, text: "New announcement from Administration." },
-  { id: 2, text: "Parent-teacher meeting scheduled for tomorrow." },
-  { id: 3, text: "School holiday notice for next week." },
-];
-
 export default function StudentDashboard({ navigation }) {
   const { user, refreshUser } = useAuth();
   const insets = useSafeAreaInsets();
@@ -22,9 +16,15 @@ export default function StudentDashboard({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [todayAttendance, setTodayAttendance] = useState(null);
+  // Add state for recent announcements
+  const [recentAnnouncements, setRecentAnnouncements] = useState([]);
+  const [announcementsLoading, setAnnouncementsLoading] = useState(true);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
+  const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
 
   useEffect(() => {
     initializeDashboard();
+    fetchRecentAnnouncements();
   }, []);
 
   const initializeDashboard = async () => {
@@ -39,23 +39,50 @@ export default function StudentDashboard({ navigation }) {
     }
   };
 
+  // Fetch recent announcements for the student
+  const fetchRecentAnnouncements = async () => {
+    try {
+      setAnnouncementsLoading(true);
+      const userId = user?._id || user?.id;
+      if (!userId) {
+        setRecentAnnouncements([]);
+        return;
+      }
+      let response;
+      // Use the correct endpoint for students collection
+      if (user?.role === 'student' || user?.studentId || user?.admissionNumber) {
+        response = await apiService.announcements.getAnnouncementsForStudent(userId, { activeOnly: true, limit: 3 });
+      } else {
+        response = await apiService.announcements.getAnnouncementsForUser(userId, { activeOnly: true, limit: 3 });
+      }
+      if (response.success && Array.isArray(response.data)) {
+        setRecentAnnouncements(response.data);
+      } else {
+        setRecentAnnouncements([]);
+      }
+    } catch (error) {
+      console.error("Error fetching recent announcements:", error);
+      setRecentAnnouncements([]);
+    } finally {
+      setAnnouncementsLoading(false);
+    }
+  };
+
   const loadTimetable = async () => {
     try {
       setLoading(true);
-
       const userId = user?.id || user?._id;
       if (!userId) {
         setTimetable(null);
         return;
       }
-
-      if (!user?.class) {
+      // Defensive check for class
+      const classId = user?.class?._id || user?.class;
+      if (!classId) {
         setTimetable(null);
         return;
       }
-
-      const response = await apiService.timetable.getClassTimetable(user.class._id || user.class);
-
+      const response = await apiService.timetable.getClassTimetable(classId);
       if (response.success) {
         setTimetable(response.data);
       } else {
@@ -73,6 +100,7 @@ export default function StudentDashboard({ navigation }) {
   const onRefresh = () => {
     setRefreshing(true);
     initializeDashboard();
+    fetchRecentAnnouncements();
   };
 
   const loadTodayAttendance = async () => {
@@ -92,8 +120,13 @@ export default function StudentDashboard({ navigation }) {
         setTodayAttendance(null);
       }
     } catch (error) {
-      console.error("Error loading today's attendance:", error);
-      setTodayAttendance(null);
+      // If 404, treat as no attendance, not an error
+      if (error.response && error.response.status === 404) {
+        setTodayAttendance(null);
+      } else {
+        console.error("Error loading today's attendance:", error);
+        setTodayAttendance(null);
+      }
     }
   };
 
@@ -286,21 +319,71 @@ export default function StudentDashboard({ navigation }) {
           </View>
         </Animatable.View>
 
-        {/* Recent Notifications */}
+        {/* Recent Announcements */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Notifications</Text>
-          <Card style={styles.infoCard}>
-            {notificationData.map((item, index) => (
-              <View
-                key={item.id}
-                style={[styles.notificationItem, index === notificationData.length - 1 && styles.lastItem]}
-              >
-                <Ionicons name="notifications-outline" size={20} color={theme.colors.primary} />
-                <Text style={styles.notificationText}>{item.text}</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recent Announcements</Text>
+            <TouchableOpacity style={styles.viewAllButton} onPress={() => navigation.navigate("StudentAnnouncements")}>
+              <Text style={styles.viewAllText}>View All</Text>
+            </TouchableOpacity>
+          </View>
+          {announcementsLoading ? (
+            <Card style={styles.infoCard}>
+              <View style={styles.loadingContainer}>
+                <Ionicons name="megaphone-outline" size={32} color={theme.colors.textSecondary} />
+                <Text style={styles.loadingText}>Loading announcements...</Text>
               </View>
-            ))}
-          </Card>
+            </Card>
+          ) : recentAnnouncements.length === 0 ? (
+            <Card style={styles.infoCard}>
+              <View style={styles.emptyContainer}>
+                <Ionicons name="megaphone-outline" size={32} color={theme.colors.textSecondary} />
+                <Text style={styles.emptyText}>No recent announcements</Text>
+              </View>
+            </Card>
+          ) : (
+            recentAnnouncements.map((announcement, index) => (
+              <TouchableOpacity
+                key={announcement._id}
+                onPress={() => {
+                  setSelectedAnnouncement(announcement);
+                  setShowAnnouncementModal(true);
+                }}
+                activeOpacity={0.8}
+                style={{ marginBottom: 16 }}
+              >
+                <Card style={styles.card}>
+                  <Card.Content>
+                    <Text style={styles.title}>{announcement.title}</Text>
+                    <Text style={styles.content} numberOfLines={3}>{announcement.content}</Text>
+                    <Text style={styles.date}>{announcement.createdAt ? new Date(announcement.createdAt).toLocaleDateString() : ''}</Text>
+                  </Card.Content>
+                </Card>
+              </TouchableOpacity>
+            ))
+          )}
         </View>
+        {/* Announcement Details Modal */}
+        <Modal
+          visible={showAnnouncementModal && !!selectedAnnouncement}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowAnnouncementModal(false)}
+        >
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' }}>
+            <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 24, width: '90%' }}>
+              <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 8 }}>{selectedAnnouncement?.title}</Text>
+              <Text style={{ color: theme.colors.textSecondary, marginBottom: 12 }}>{selectedAnnouncement?.content}</Text>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 16 }}>{selectedAnnouncement?.createdAt ? new Date(selectedAnnouncement.createdAt).toLocaleDateString() : ''}</Text>
+              <TouchableOpacity
+                style={{ alignSelf: 'flex-end', backgroundColor: theme.colors.primary, borderRadius: 6, paddingVertical: 8, paddingHorizontal: 20 }}
+                onPress={() => setShowAnnouncementModal(false)}
+              >
+                <Text style={{ color: '#fff', fontWeight: 'bold' }}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
 
         {/* Quick Actions */}
         <View style={styles.section}>
@@ -586,5 +669,22 @@ const styles = StyleSheet.create({
     ...theme.typography.body2,
     color: theme.colors.textLight,
     fontWeight: "bold",
+  },
+  card: {
+    marginBottom: 16,
+    elevation: 2,
+  },
+  title: {
+    fontSize: 16,
+    marginBottom: 8,
+  },
+  content: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    marginBottom: 8,
+  },
+  date: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
   },
 });

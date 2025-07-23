@@ -133,14 +133,6 @@ export default function MainNavigator() {
             tabBarIcon: ({ focused, color }) => <TabIcon name="time" focused={focused} color={color} />,
           }}
         />
-        <Tab.Screen
-          name="StudentAnnouncementsTab"
-          component={StudentNavigator}
-          options={{
-            title: "Announcements",
-            tabBarIcon: ({ focused, color }) => <TabIcon name="megaphone" focused={focused} color={color} />,
-          }}
-        />
       </Tab.Navigator>
     );
   }

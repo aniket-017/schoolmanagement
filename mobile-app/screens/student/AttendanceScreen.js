@@ -47,18 +47,36 @@ export default function AttendanceScreen({ navigation }) {
 
       // Load today's attendance
       const today = new Date();
-      const todayResponse = await apiService.attendance.getStudentAttendance(userId, {
-        startDate: today.toISOString().split('T')[0],
-        endDate: today.toISOString().split('T')[0],
-      });
+      let todayResponse = null;
+      try {
+        todayResponse = await apiService.attendance.getStudentAttendance(userId, {
+          startDate: today.toISOString().split('T')[0],
+          endDate: today.toISOString().split('T')[0],
+        });
+      } catch (error) {
+        if (error.response && error.response.status === 404) {
+          todayResponse = { data: { attendance: [] } };
+        } else {
+          throw error;
+        }
+      }
 
       // Load monthly statistics
       const currentMonth = today.getMonth() + 1;
       const currentYear = today.getFullYear();
-      const monthlyResponse = await apiService.attendance.getStudentAttendance(userId, {
-        month: currentMonth,
-        year: currentYear,
-      });
+      let monthlyResponse = null;
+      try {
+        monthlyResponse = await apiService.attendance.getStudentAttendance(userId, {
+          month: currentMonth,
+          year: currentYear,
+        });
+      } catch (error) {
+        if (error.response && error.response.status === 404) {
+          monthlyResponse = { data: { statistics: {}, attendance: [] } };
+        } else {
+          throw error;
+        }
+      }
 
       setAttendanceData(todayResponse.data);
       setMonthlyStats(monthlyResponse.data);
@@ -80,12 +98,19 @@ export default function AttendanceScreen({ navigation }) {
     try {
       const userId = user?.id || user?._id;
       const dateString = date.toISOString().split('T')[0];
-      
-      const response = await apiService.attendance.getStudentAttendance(userId, {
-        startDate: dateString,
-        endDate: dateString,
-      });
-
+      let response = null;
+      try {
+        response = await apiService.attendance.getStudentAttendance(userId, {
+          startDate: dateString,
+          endDate: dateString,
+        });
+      } catch (error) {
+        if (error.response && error.response.status === 404) {
+          response = { data: { attendance: [] } };
+        } else {
+          throw error;
+        }
+      }
       return response.data;
     } catch (error) {
       console.error("Error checking attendance for date:", error);

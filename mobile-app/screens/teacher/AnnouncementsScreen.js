@@ -6,6 +6,7 @@ import {
   RefreshControl,
   TouchableOpacity,
   Alert,
+  TextInput,
 } from "react-native";
 import {
   Card,
@@ -38,6 +39,11 @@ export default function AnnouncementsScreen({ navigation }) {
   const [filter, setFilter] = useState("all");
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [editingAnnouncement, setEditingAnnouncement] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({ title: '', content: '' });
+  const [editLoading, setEditLoading] = useState(false);
+  const [showMineOnly, setShowMineOnly] = useState(false);
 
   useEffect(() => {
     fetchAnnouncements();
@@ -46,11 +52,18 @@ export default function AnnouncementsScreen({ navigation }) {
   const fetchAnnouncements = async () => {
     try {
       setLoading(true);
-      const response = await apiService.announcements.getTeacherAnnouncements({
-        activeOnly: true,
-      });
-      setAnnouncements(response.data || []);
-      filterAnnouncements(response.data || [], searchQuery, filter);
+      // Fetch all announcements targeted to teachers
+      const response = await apiService.announcements.getTeacherAnnouncements({ activeOnly: true });
+      let all = response.data || [];
+      // Fetch announcements created by this teacher (if not already included)
+      const mineResponse = await apiService.announcements.getAnnouncementsForUser(user._id, { activeOnly: true });
+      let mine = mineResponse.data || [];
+      // Merge and deduplicate by _id
+      const allMap = new Map();
+      all.concat(mine).forEach(a => allMap.set(a._id, a));
+      const merged = Array.from(allMap.values());
+      setAnnouncements(merged);
+      filterAnnouncements(merged, searchQuery, filter);
     } catch (error) {
       console.error("Error fetching announcements:", error);
       showMessage({
@@ -226,6 +239,63 @@ export default function AnnouncementsScreen({ navigation }) {
     );
   }
 
+  // Edit handler
+  const handleEditAnnouncement = (announcement) => {
+    setEditingAnnouncement(announcement);
+    setEditForm({ title: announcement.title, content: announcement.content });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateAnnouncement = async () => {
+    if (!editForm.title.trim() || !editForm.content.trim()) {
+      Alert.alert('Error', 'Title and content are required.');
+      return;
+    }
+    setEditLoading(true);
+    try {
+      const payload = {
+        title: editForm.title,
+        content: editForm.content,
+        status: 'published',
+      };
+      const response = await apiService.announcements.updateAnnouncement(editingAnnouncement._id, payload);
+      if (response.success) {
+        setShowEditModal(false);
+        setEditingAnnouncement(null);
+        fetchAnnouncements();
+        Alert.alert('Success', 'Announcement updated successfully!');
+      } else {
+        Alert.alert('Error', response.message || 'Failed to update announcement');
+      }
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Failed to update announcement');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleDeleteAnnouncement = async (id) => {
+    Alert.alert('Delete Announcement', 'Are you sure you want to delete this announcement?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete', style: 'destructive', onPress: async () => {
+          try {
+            const response = await apiService.announcements.deleteAnnouncement(id);
+            if (response.success) {
+              fetchAnnouncements();
+              setShowDetails(false);
+              Alert.alert('Deleted', 'Announcement deleted successfully!');
+            } else {
+              Alert.alert('Error', response.message || 'Failed to delete announcement');
+            }
+          } catch (err) {
+            Alert.alert('Error', err.message || 'Failed to delete announcement');
+          }
+        }
+      }
+    ]);
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -247,12 +317,42 @@ export default function AnnouncementsScreen({ navigation }) {
         />
       </View>
 
+      <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 16 }}>
+        <TouchableOpacity
+          style={{
+            backgroundColor: !showMineOnly ? '#1976d2' : '#eee',
+            padding: 10,
+            borderRadius: 6,
+            marginRight: 8,
+          }}
+          onPress={() => setShowMineOnly(false)}
+        >
+          <Text style={{ color: !showMineOnly ? '#fff' : '#1976d2', fontWeight: 'bold' }}>All Announcements</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{
+            backgroundColor: showMineOnly ? '#1976d2' : '#eee',
+            padding: 10,
+            borderRadius: 6,
+          }}
+          onPress={() => setShowMineOnly(true)}
+        >
+          <Text style={{ color: showMineOnly ? '#fff' : '#1976d2', fontWeight: 'bold' }}>My Announcements</Text>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         contentContainerStyle={styles.scrollContent}
       >
         {filteredAnnouncements.length > 0 ? (
-          filteredAnnouncements.map((announcement) => (
+          (showMineOnly
+            ? filteredAnnouncements.filter(a => a.createdBy && user && a.createdBy._id === user._id)
+            : filteredAnnouncements.filter(a =>
+                (a.targetAudience === 'teachers' || a.targetAudience === 'all') ||
+                (a.createdBy && user && a.createdBy._id === user._id)
+              )
+          ).map((announcement) => (
             <AnnouncementCard key={announcement._id} announcement={announcement} />
           ))
         ) : (
@@ -326,6 +426,44 @@ export default function AnnouncementsScreen({ navigation }) {
             <View style={styles.modalFooter}>
               <Button mode="contained" onPress={() => setShowDetails(false)}>
                 Close
+              </Button>
+              {selectedAnnouncement && user && selectedAnnouncement.createdBy && selectedAnnouncement.createdBy._id === user._id && (
+                <View style={{ flexDirection: 'row', marginTop: 16 }}>
+                  <Button mode="outlined" onPress={() => { handleEditAnnouncement(selectedAnnouncement); setShowDetails(false); }} style={{ marginRight: 8 }}>Edit</Button>
+                  <Button mode="outlined" color="red" onPress={() => handleDeleteAnnouncement(selectedAnnouncement._id)}>Delete</Button>
+                </View>
+              )}
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Edit Announcement Modal */}
+      {showEditModal && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit Announcement</Text>
+              <IconButton icon="close" onPress={() => setShowEditModal(false)} />
+            </View>
+            <ScrollView style={styles.modalContent}>
+              <TextInput
+                placeholder="Title"
+                value={editForm.title}
+                onChangeText={text => setEditForm({ ...editForm, title: text })}
+                style={styles.input}
+              />
+              <TextInput
+                placeholder="Content"
+                value={editForm.content}
+                onChangeText={text => setEditForm({ ...editForm, content: text })}
+                style={[styles.input, { height: 80 }]}
+                multiline
+              />
+            </ScrollView>
+            <View style={styles.modalFooter}>
+              <Button mode="contained" onPress={handleUpdateAnnouncement} loading={editLoading} disabled={editLoading}>
+                Update
               </Button>
             </View>
           </View>
@@ -488,5 +626,13 @@ const styles = StyleSheet.create({
     padding: 16,
     borderTopWidth: 1,
     borderTopColor: theme.colors.outline,
+  },
+  input: {
+    marginBottom: 16,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.outline,
   },
 }); 

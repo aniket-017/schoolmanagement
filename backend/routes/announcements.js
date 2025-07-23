@@ -15,6 +15,7 @@ const {
   getAnnouncementStats,
   toggleAnnouncementPin,
   getUsersForTargeting,
+  getAnnouncementsForStudent,
 } = require("../controllers/announcementController");
 const { auth } = require("../middleware/auth");
 
@@ -38,6 +39,9 @@ router.get("/teachers", auth, getTeacherAnnouncements);
 
 // Get announcements by class (must come before /:id routes)
 router.get("/class/:classId", auth, getAnnouncementsByClass);
+
+// Get announcements for a specific student (Student collection)
+router.get("/student/:studentId", auth, getAnnouncementsForStudent);
 
 // Get announcement read status (must come before /:id routes)
 router.get("/:id/read-status", auth, getAnnouncementReadStatus);

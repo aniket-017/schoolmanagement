@@ -24,6 +24,7 @@ import Layout from "../components/Layout";
 import AnnouncementModal from "../components/AnnouncementModal";
 import { cn } from "../utils/cn";
 import appConfig from "../config/environment";
+import { useAuth } from "../context/AuthContext";
 
 const Announcements = () => {
   const [activeTab, setActiveTab] = useState("all");
@@ -40,6 +41,7 @@ const Announcements = () => {
   });
   const [classes, setClasses] = useState([]);
   const [users, setUsers] = useState([]);
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchAnnouncements();
@@ -300,8 +302,10 @@ const Announcements = () => {
     },
   ];
 
+  const isTeacher = user && user.role === 'teacher';
   const tabConfig = [
     { id: "all", name: "All Announcements", count: announcements.length },
+    ...(isTeacher ? [{ id: "mine", name: "My Announcements", count: announcements.filter(a => a.createdBy?._id === user._id).length }] : []),
     { id: "published", name: "Published", count: announcements.filter((a) => a.status === "published").length },
     { id: "draft", name: "Drafts", count: announcements.filter((a) => a.status === "draft").length },
     { id: "pinned", name: "Pinned", count: announcements.filter((a) => a.isPinned).length },
@@ -311,7 +315,9 @@ const Announcements = () => {
     const matchesSearch =
       announcement.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       announcement.content.toLowerCase().includes(searchTerm.toLowerCase());
-
+    if (activeTab === "mine" && isTeacher) {
+      return matchesSearch && announcement.createdBy?._id === user._id;
+    }
     switch (activeTab) {
       case "published":
         return matchesSearch && announcement.status === "published";

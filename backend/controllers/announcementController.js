@@ -81,6 +81,17 @@ exports.createAnnouncement = async (req, res) => {
       { path: "targetIndividuals", select: "name email role" },
     ]);
 
+    if (targetAudience === "class") {
+      // Find all students in the target classes
+      const students = await User.find({ role: "student", class: { $in: targetClasses } }).select('_id name email');
+      console.log('Announcement will be visible to students in classes:', targetClasses, 'Student IDs:', students.map(s => s._id));
+    }
+    if (targetAudience === "individual") {
+      // Log the targeted individual students
+      const students = await User.find({ _id: { $in: targetIndividuals }, role: "student" }).select('_id name email');
+      console.log('Announcement will be visible to individual students:', students.map(s => s._id));
+    }
+
     res.status(201).json({
       success: true,
       message: "Announcement created successfully",
@@ -113,7 +124,25 @@ exports.getAnnouncements = async (req, res) => {
       sortOrder = "desc",
     } = req.query;
 
-    const query = {};
+    let query = {};
+
+    // Role-based filtering
+    if (req.user.role === 'teacher') {
+      query.$or = [
+        { createdBy: req.user._id },
+        { targetAudience: 'teachers' },
+      ];
+    } else if (req.user.role === 'student') {
+      query.$or = [
+        { targetAudience: 'all' },
+        { targetAudience: 'students' },
+        { targetAudience: 'class', targetClasses: req.user.class },
+        { targetIndividuals: req.user._id },
+      ];
+    } else if (req.user.role === 'admin') {
+      // Admins see all announcements
+      query = {};
+    }
 
     // Build query filters
     if (targetAudience) query.targetAudience = targetAudience;
@@ -126,9 +155,14 @@ exports.getAnnouncements = async (req, res) => {
     // Filter active announcements only
     if (activeOnly === "true") {
       query.status = "published";
-      query.$or = [
-        { expiryDate: { $gt: new Date() } },
-        { expiryDate: { $exists: false } },
+      query.$or = query.$or || [];
+      query.$and = [
+        {
+          $or: [
+            { expiryDate: { $gt: new Date() } },
+            { expiryDate: { $exists: false } },
+          ],
+        },
       ];
     }
 
@@ -290,6 +324,7 @@ exports.getTeacherAnnouncements = async (req, res) => {
       $or: [
         { targetAudience: "all" },
         { targetAudience: "teachers" },
+        { createdBy: req.user._id }, // Always include announcements created by this teacher
       ],
     };
 
@@ -762,6 +797,88 @@ exports.getUsersForTargeting = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error fetching users for targeting",
+      error: error.message,
+    });
+  }
+};
+
+// Get announcements for a specific student (using Student collection)
+exports.getAnnouncementsForStudent = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const { activeOnly, page = 1, limit = 10 } = req.query;
+
+    if (!studentId || studentId === "undefined") {
+      return res.status(400).json({
+        success: false,
+        message: "Student ID is required",
+      });
+    }
+
+    // Use Student collection
+    const Student = require("../models/Student");
+    const student = await Student.findById(studentId).populate("class");
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found",
+      });
+    }
+
+    const query = {
+      $or: [
+        { targetAudience: "all" },
+        { targetAudience: "students" },
+        { targetIndividuals: studentId },
+      ],
+    };
+    // Add class-specific announcements for students
+    if (student.class) {
+      query.$or.push({
+        targetAudience: "class",
+        targetClasses: student.class._id,
+      });
+    }
+
+    // Filter active announcements only
+    if (activeOnly === "true") {
+      query.status = "published";
+      query.$and = [
+        {
+          $or: [
+            { expiryDate: { $gt: new Date() } },
+            { expiryDate: { $exists: false } },
+          ],
+        },
+      ];
+    }
+
+    const skip = (page - 1) * limit;
+
+    const announcements = await Announcement.find(query)
+      .populate("createdBy", "name email")
+      .populate("targetClasses", "name section")
+      .populate("targetIndividuals", "name email role")
+      .sort({ isPinned: -1, priority: 1, createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await Announcement.countDocuments(query);
+
+    res.json({
+      success: true,
+      data: announcements,
+      pagination: {
+        current: parseInt(page),
+        total: Math.ceil(total / limit),
+        count: total,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching student announcements:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching student announcements",
       error: error.message,
     });
   }
