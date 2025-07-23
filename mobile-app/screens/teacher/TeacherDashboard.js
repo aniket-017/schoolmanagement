@@ -66,10 +66,10 @@ export default function TeacherDashboard({ navigation }) {
       if (response.success) {
         setAnnouncements(response.data);
       } else {
-        setAnnError(response.message || 'Failed to load announcements');
+        setAnnError(response.message || "Failed to load announcements");
       }
     } catch (error) {
-      setAnnError(error?.response?.data?.message || error.message || 'Failed to load announcements');
+      setAnnError(error?.response?.data?.message || error.message || "Failed to load announcements");
     } finally {
       setAnnLoading(false);
     }
@@ -108,6 +108,13 @@ export default function TeacherDashboard({ navigation }) {
     return colors[type] || theme.colors.primary;
   };
 
+  // Helper to get full name
+  const getTeacherFullName = (user) =>
+    user?.fullName ||
+    user?.name ||
+    [user?.firstName, user?.middleName, user?.lastName].filter(Boolean).join(" ") ||
+    user?.email;
+
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -116,7 +123,7 @@ export default function TeacherDashboard({ navigation }) {
       >
         <View>
           <Text style={styles.welcomeText}>Welcome back,</Text>
-          <Text style={styles.nameText}>{user?.name}</Text>
+          <Text style={styles.nameText}>{getTeacherFullName(user)}</Text>
         </View>
         <TouchableOpacity style={styles.profileIconContainer} onPress={() => navigation.navigate("TeacherProfile")}>
           <Ionicons name="person-outline" size={28} color={theme.colors.primary} />
@@ -198,7 +205,7 @@ export default function TeacherDashboard({ navigation }) {
         </Animatable.View>
 
         {/* Recent Announcements */}
-        <TouchableOpacity onPress={() => navigation.navigate('TeacherAnnouncementsPage')} activeOpacity={0.8}>
+        <TouchableOpacity onPress={() => navigation.navigate("TeacherAnnouncementsPage")} activeOpacity={0.8}>
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Recent Announcements</Text>
             <Card style={styles.infoCard}>
@@ -212,7 +219,7 @@ export default function TeacherDashboard({ navigation }) {
                   <Ionicons name="alert-circle-outline" size={24} color={theme.colors.error} />
                   <Text style={styles.emptyText}>{annError}</Text>
                   <TouchableOpacity onPress={loadAnnouncements} style={{ marginTop: 8 }}>
-                    <Text style={{ color: theme.colors.primary, fontWeight: 'bold' }}>Retry</Text>
+                    <Text style={{ color: theme.colors.primary, fontWeight: "bold" }}>Retry</Text>
                   </TouchableOpacity>
                 </View>
               ) : announcements.length === 0 ? (
@@ -228,16 +235,22 @@ export default function TeacherDashboard({ navigation }) {
                   >
                     <Ionicons name="megaphone-outline" size={20} color={theme.colors.primary} />
                     <View style={{ flex: 1, marginLeft: 12 }}>
-                      <Text style={[styles.notificationText, { fontWeight: 'bold' }]} numberOfLines={1}>
-                        {item.title || 'Announcement'}
+                      <Text style={[styles.notificationText, { fontWeight: "bold" }]} numberOfLines={1}>
+                        {item.title || "Announcement"}
                       </Text>
                       {item.message && (
                         <Text style={styles.notificationText} numberOfLines={2}>
                           {item.message}
                         </Text>
                       )}
-                      <Text style={[styles.notificationText, { fontSize: 11, color: theme.colors.textSecondary, marginTop: 2 }]}> 
-                        {item.createdBy?.name ? `By ${item.createdBy.name}` : ''} {item.createdAt ? `• ${new Date(item.createdAt).toLocaleDateString()}` : ''}
+                      <Text
+                        style={[
+                          styles.notificationText,
+                          { fontSize: 11, color: theme.colors.textSecondary, marginTop: 2 },
+                        ]}
+                      >
+                        {item.createdBy?.name ? `By ${item.createdBy.name}` : ""}{" "}
+                        {item.createdAt ? `• ${new Date(item.createdAt).toLocaleDateString()}` : ""}
                       </Text>
                     </View>
                   </View>

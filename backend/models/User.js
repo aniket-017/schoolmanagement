@@ -81,7 +81,7 @@ const userSchema = new mongoose.Schema(
     inclusiveEducationTraining: { type: Boolean, default: false },
     // Posting & Work Details
     classesTaught: { type: String },
-    subjectsTaught: [{ type: String }],
+    subjectsTaught: [{ type: mongoose.Schema.Types.ObjectId, ref: "Subject" }],
     periodsPerWeek: { type: Number },
     multipleSubjectsOrGrades: { type: Boolean, default: false },
     nonTeachingDuties: { type: Boolean, default: false },

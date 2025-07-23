@@ -121,7 +121,10 @@ const UserManagement = () => {
         },
       });
 
+ 
+
       const data = await response.json();
+      console.log(data);
       if (data.success) {
         setUsers(data.users);
         setPagination(data.pagination);
@@ -142,6 +145,7 @@ const UserManagement = () => {
           Authorization: `Bearer ${token}`,
         },
       });
+   
 
       const data = await response.json();
       if (data.success) {

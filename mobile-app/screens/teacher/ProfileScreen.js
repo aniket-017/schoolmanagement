@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,22 +10,28 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal,
+  RefreshControl,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../../context/AuthContext";
 import theme from "../../utils/theme";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 
 export default function ProfileScreen({ navigation }) {
-  const { user, logout, updateProfile, changePassword } = useAuth();
+  const { user, logout, updateProfile, changePassword, refreshUser } = useAuth();
+  const insets = useSafeAreaInsets();
   const [isEditing, setIsEditing] = useState(false);
   const [isChangePasswordModalVisible, setIsChangePasswordModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Profile editing state
   const [profileData, setProfileData] = useState({
-    name: user?.name || "",
+    firstName: user?.firstName || "",
+    middleName: user?.middleName || "",
+    lastName: user?.lastName || "",
     phone: user?.phone || "",
     qualification: user?.qualification || "",
     experience: user?.experience?.toString() || "",
@@ -41,6 +47,56 @@ export default function ProfileScreen({ navigation }) {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Refresh profile data on component mount and when needed
+  useEffect(() => {
+    handleRefreshProfile();
+  }, []);
+
+  const handleRefreshProfile = async () => {
+    try {
+      setRefreshing(true);
+      await refreshUser();
+    } catch (error) {
+      console.error("Failed to refresh profile:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Helper to get full name
+  const getTeacherFullName = (user) =>
+    user?.fullName ||
+    user?.name ||
+    [user?.firstName, user?.middleName, user?.lastName].filter(Boolean).join(" ") ||
+    user?.email;
+
+  const getSubjectsTaught = (user) => {
+    // Helper function to get subject name from various formats
+    const getSubjectName = (subject) => {
+      if (typeof subject === "string") {
+        // If it's just an ObjectId string, we can't show the name
+        // This indicates the data wasn't properly populated
+        return subject.length === 24 ? "Subject ID: " + subject.slice(-6) : subject;
+      }
+      return subject?.name || "Unknown Subject";
+    };
+
+    // Check all possible subject fields and return the first non-empty array
+    const subjectFields = [user?.subjects, user?.subjectsTaught, user?.subjectsSpecializedIn].filter(
+      (field) => field && field.length > 0
+    );
+
+    if (subjectFields.length === 0) {
+      return [];
+    }
+
+    // Return the first available subject array with processed names
+    return subjectFields[0].map((subject) => ({
+      _id: subject._id || subject,
+      name: getSubjectName(subject),
+    }));
+  };
+
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
@@ -53,8 +109,8 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const handleSaveProfile = async () => {
-    if (!profileData.name.trim()) {
-      Alert.alert("Error", "Name is required");
+    if (!profileData.firstName.trim() && !profileData.lastName.trim()) {
+      Alert.alert("Error", "First or Last Name is required");
       return;
     }
 
@@ -72,7 +128,9 @@ export default function ProfileScreen({ navigation }) {
 
   const handleCancelEdit = () => {
     setProfileData({
-      name: user?.name || "",
+      firstName: user?.firstName || "",
+      middleName: user?.middleName || "",
+      lastName: user?.lastName || "",
       phone: user?.phone || "",
       qualification: user?.qualification || "",
       experience: user?.experience?.toString() || "",
@@ -116,6 +174,11 @@ export default function ProfileScreen({ navigation }) {
 
   const renderProfileInfo = () => (
     <View style={styles.profileDetails}>
+      {/* Contact Information */}
+      <View style={[styles.sectionHeader, { marginTop: 0, paddingTop: 0, borderTopWidth: 0 }]}>
+        <Ionicons name="call-outline" size={20} color={theme.colors.textSecondary} />
+        <Text style={styles.sectionTitle}>Contact Information</Text>
+      </View>
       <View style={styles.detailRow}>
         <Ionicons name="mail-outline" size={20} color={theme.colors.textSecondary} />
         <Text style={styles.detailText}>{user?.email}</Text>
@@ -124,9 +187,55 @@ export default function ProfileScreen({ navigation }) {
         <Ionicons name="call-outline" size={20} color={theme.colors.textSecondary} />
         <Text style={styles.detailText}>{user?.phone || "Not provided"}</Text>
       </View>
+      {user?.alternatePhone && (
+        <View style={styles.detailRow}>
+          <Ionicons name="call-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>{user.alternatePhone} (Alternate)</Text>
+        </View>
+      )}
+
+      {/* Personal Information */}
+      <View style={styles.sectionHeader}>
+        <Ionicons name="person-outline" size={20} color={theme.colors.textSecondary} />
+        <Text style={styles.sectionTitle}>Personal Information</Text>
+      </View>
       <View style={styles.detailRow}>
-        <Ionicons name="school-outline" size={20} color={theme.colors.textSecondary} />
-        <Text style={styles.detailText}>{user?.qualification || "Not provided"}</Text>
+        <Ionicons name="calendar-outline" size={20} color={theme.colors.textSecondary} />
+        <Text style={styles.detailText}>
+          {user?.dateOfBirth ? new Date(user.dateOfBirth).toLocaleDateString() : "Date of birth not provided"}
+        </Text>
+      </View>
+      <View style={styles.detailRow}>
+        <Ionicons name="people-outline" size={20} color={theme.colors.textSecondary} />
+        <Text style={styles.detailText}>{user?.gender || "Gender not provided"}</Text>
+      </View>
+      {user?.bloodGroup && (
+        <View style={styles.detailRow}>
+          <Ionicons name="medical-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>Blood Group: {user.bloodGroup}</Text>
+        </View>
+      )}
+      {user?.nationality && (
+        <View style={styles.detailRow}>
+          <Ionicons name="flag-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>Nationality: {user.nationality}</Text>
+        </View>
+      )}
+      {user?.religion && (
+        <View style={styles.detailRow}>
+          <Ionicons name="leaf-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>Religion: {user.religion}</Text>
+        </View>
+      )}
+
+      {/* Professional Information */}
+      <View style={styles.sectionHeader}>
+        <Ionicons name="briefcase-outline" size={20} color={theme.colors.textSecondary} />
+        <Text style={styles.sectionTitle}>Professional Information</Text>
+      </View>
+      <View style={styles.detailRow}>
+        <Ionicons name="id-card-outline" size={20} color={theme.colors.textSecondary} />
+        <Text style={styles.detailText}>{user?.employeeId || "Employee ID not provided"}</Text>
       </View>
       <View style={styles.detailRow}>
         <Ionicons name="time-outline" size={20} color={theme.colors.textSecondary} />
@@ -135,26 +244,155 @@ export default function ProfileScreen({ navigation }) {
         </Text>
       </View>
       <View style={styles.detailRow}>
-        <Ionicons name="id-card-outline" size={20} color={theme.colors.textSecondary} />
-        <Text style={styles.detailText}>{user?.employeeId || "Not provided"}</Text>
+        <Ionicons name="calendar-outline" size={20} color={theme.colors.textSecondary} />
+        <Text style={styles.detailText}>
+          {user?.dateOfJoiningService
+            ? `Joined service: ${new Date(user.dateOfJoiningService).toLocaleDateString()}`
+            : "Service joining date not provided"}
+        </Text>
       </View>
+      <View style={styles.detailRow}>
+        <Ionicons name="school-outline" size={20} color={theme.colors.textSecondary} />
+        <Text style={styles.detailText}>
+          {user?.dateOfJoiningPresentSchool
+            ? `Joined current school: ${new Date(user.dateOfJoiningPresentSchool).toLocaleDateString()}`
+            : "Current school joining date not provided"}
+        </Text>
+      </View>
+      {user?.teacherType && (
+        <View style={styles.detailRow}>
+          <Ionicons name="person-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>Teacher Type: {user.teacherType}</Text>
+        </View>
+      )}
+      {user?.workingStatus && (
+        <View style={styles.detailRow}>
+          <Ionicons name="checkmark-circle-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>Status: {user.workingStatus}</Text>
+        </View>
+      )}
+
+      {/* Educational Qualifications */}
+      <View style={styles.sectionHeader}>
+        <Ionicons name="school-outline" size={20} color={theme.colors.textSecondary} />
+        <Text style={styles.sectionTitle}>Educational Qualifications</Text>
+      </View>
+      <View style={styles.detailRow}>
+        <Ionicons name="school-outline" size={20} color={theme.colors.textSecondary} />
+        <Text style={styles.detailText}>
+          Academic: {user?.highestAcademicQualification || user?.qualification || "Not provided"}
+        </Text>
+      </View>
+      <View style={styles.detailRow}>
+        <Ionicons name="ribbon-outline" size={20} color={theme.colors.textSecondary} />
+        <Text style={styles.detailText}>Professional: {user?.highestProfessionalQualification || "Not provided"}</Text>
+      </View>
+      {user?.mediumOfInstruction && (
+        <View style={styles.detailRow}>
+          <Ionicons name="language-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>Medium of Instruction: {user.mediumOfInstruction}</Text>
+        </View>
+      )}
+
+      {/* Work Details */}
+      <View style={styles.sectionHeader}>
+        <Ionicons name="clipboard-outline" size={20} color={theme.colors.textSecondary} />
+        <Text style={styles.sectionTitle}>Work Details</Text>
+      </View>
+      {user?.classesTaught && (
+        <View style={styles.detailRow}>
+          <Ionicons name="people-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>Classes Taught: {user.classesTaught}</Text>
+        </View>
+      )}
+      {user?.periodsPerWeek && (
+        <View style={styles.detailRow}>
+          <Ionicons name="time-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>Periods per Week: {user.periodsPerWeek}</Text>
+        </View>
+      )}
+      {user?.nonTeachingDuties && (
+        <View style={styles.detailRow}>
+          <Ionicons name="briefcase-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>Non-Teaching Duties: {user.nonTeachingDutiesDetails || "Yes"}</Text>
+        </View>
+      )}
+
+      {/* Training Information */}
+      {(user?.inServiceTraining || user?.ictTraining || user?.flnTraining || user?.inclusiveEducationTraining) && (
+        <>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="library-outline" size={20} color={theme.colors.textSecondary} />
+            <Text style={styles.sectionTitle}>Training Completed</Text>
+          </View>
+          {user?.inServiceTraining && (
+            <View style={styles.detailRow}>
+              <Ionicons name="checkmark-circle-outline" size={20} color={theme.colors.success} />
+              <Text style={styles.detailText}>In-Service Training</Text>
+            </View>
+          )}
+          {user?.ictTraining && (
+            <View style={styles.detailRow}>
+              <Ionicons name="checkmark-circle-outline" size={20} color={theme.colors.success} />
+              <Text style={styles.detailText}>ICT Training</Text>
+            </View>
+          )}
+          {user?.flnTraining && (
+            <View style={styles.detailRow}>
+              <Ionicons name="checkmark-circle-outline" size={20} color={theme.colors.success} />
+              <Text style={styles.detailText}>FLN Training</Text>
+            </View>
+          )}
+          {user?.inclusiveEducationTraining && (
+            <View style={styles.detailRow}>
+              <Ionicons name="checkmark-circle-outline" size={20} color={theme.colors.success} />
+              <Text style={styles.detailText}>Inclusive Education Training</Text>
+            </View>
+          )}
+        </>
+      )}
 
       {/* Subjects Section */}
-      {user?.subjects && user.subjects.length > 0 && (
-        <View style={styles.subjectsSection}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="book-outline" size={20} color={theme.colors.textSecondary} />
-            <Text style={styles.sectionTitle}>Subjects Taught</Text>
-          </View>
-          <View style={styles.subjectsList}>
-            {user.subjects.map((subject, index) => (
-              <View key={subject._id || index} style={styles.subjectItem}>
-                <Text style={styles.subjectName}>{subject.name}</Text>
-                {subject.code && <Text style={styles.subjectCode}>({subject.code})</Text>}
-              </View>
-            ))}
-          </View>
+      <View style={styles.sectionHeader}>
+        <Ionicons name="book-outline" size={20} color={theme.colors.textSecondary} />
+        <Text style={styles.sectionTitle}>Subjects Taught</Text>
+      </View>
+      {getSubjectsTaught(user).length > 0 ? (
+        <View style={styles.subjectsList}>
+          {getSubjectsTaught(user).map((subject, index) => (
+            <View key={subject._id || index} style={styles.subjectItem}>
+              <Text style={styles.subjectName}>{subject.name}</Text>
+            </View>
+          ))}
         </View>
+      ) : (
+        <Text style={{ color: theme.colors.textSecondary, fontStyle: "italic", marginLeft: 16 }}>
+          No subjects assigned
+        </Text>
+      )}
+
+      {/* Address Information */}
+      {(user?.address?.street || user?.address?.city || user?.address?.state) && (
+        <>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="location-outline" size={20} color={theme.colors.textSecondary} />
+            <Text style={styles.sectionTitle}>Address</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Ionicons name="home-outline" size={20} color={theme.colors.textSecondary} />
+            <Text style={styles.detailText}>
+              {[
+                user.address?.street,
+                user.address?.city,
+                user.address?.state,
+                user.address?.zipCode,
+                user.address?.country,
+              ]
+                .filter(Boolean)
+                .join(", ") || "Address not provided"}
+            </Text>
+          </View>
+        </>
       )}
     </View>
   );
@@ -162,12 +400,32 @@ export default function ProfileScreen({ navigation }) {
   const renderEditForm = () => (
     <View style={styles.editForm}>
       <View style={styles.inputContainer}>
-        <Text style={styles.inputLabel}>Full Name</Text>
+        <Text style={styles.inputLabel}>First Name</Text>
         <TextInput
           style={styles.input}
-          value={profileData.name}
-          onChangeText={(text) => setProfileData({ ...profileData, name: text })}
-          placeholder="Enter your full name"
+          value={profileData.firstName}
+          onChangeText={(text) => setProfileData({ ...profileData, firstName: text })}
+          placeholder="Enter your first name"
+          placeholderTextColor={theme.colors.placeholder}
+        />
+      </View>
+      <View style={styles.inputContainer}>
+        <Text style={styles.inputLabel}>Middle Name</Text>
+        <TextInput
+          style={styles.input}
+          value={profileData.middleName}
+          onChangeText={(text) => setProfileData({ ...profileData, middleName: text })}
+          placeholder="Enter your middle name"
+          placeholderTextColor={theme.colors.placeholder}
+        />
+      </View>
+      <View style={styles.inputContainer}>
+        <Text style={styles.inputLabel}>Last Name</Text>
+        <TextInput
+          style={styles.input}
+          value={profileData.lastName}
+          onChangeText={(text) => setProfileData({ ...profileData, lastName: text })}
+          placeholder="Enter your last name"
           placeholderTextColor={theme.colors.placeholder}
         />
       </View>
@@ -349,38 +607,54 @@ export default function ProfileScreen({ navigation }) {
   );
 
   return (
-    <ScrollView style={styles.container}>
-      <Card style={styles.profileCard}>
-        <View style={styles.profileHeader}>
-          <View style={styles.profileIcon}>
-            <Ionicons name="person-outline" size={32} color={theme.colors.textLight} />
+    <View style={{ flex: 1 }}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={{
+          paddingBottom: insets.bottom + theme.spacing.lg, // Normal bottom padding
+        }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefreshProfile}
+            colors={[theme.colors.primary]}
+            tintColor={theme.colors.primary}
+          />
+        }
+      >
+        <Card style={styles.profileCard}>
+          <View style={styles.profileHeader}>
+            <View style={styles.profileIcon}>
+              <Ionicons name="person-outline" size={32} color={theme.colors.textLight} />
+            </View>
+            <View style={styles.profileInfo}>
+              <Text style={styles.profileName}>{getTeacherFullName(user)}</Text>
+              <Text style={styles.profileRole}>{user?.role}</Text>
+            </View>
+            {!isEditing && (
+              <TouchableOpacity style={styles.editIcon} onPress={handleEditProfile}>
+                <Ionicons name="create-outline" size={24} color={theme.colors.primary} />
+              </TouchableOpacity>
+            )}
           </View>
-          <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{user?.name}</Text>
-            <Text style={styles.profileRole}>{user?.role}</Text>
-          </View>
+          {isEditing ? renderEditForm() : renderProfileInfo()}
+
+          {/* Change Password Button */}
           {!isEditing && (
-            <TouchableOpacity style={styles.editIcon} onPress={handleEditProfile}>
-              <Ionicons name="create-outline" size={24} color={theme.colors.primary} />
+            <TouchableOpacity style={styles.changePasswordButton} onPress={() => setIsChangePasswordModalVisible(true)}>
+              <Ionicons name="key-outline" size={20} color={theme.colors.textLight} />
+              <Text style={styles.changePasswordButtonText}>Change Password</Text>
             </TouchableOpacity>
           )}
-        </View>
 
-        {isEditing ? renderEditForm() : renderProfileInfo()}
-
-        <TouchableOpacity style={styles.profileActionButton} onPress={() => setIsChangePasswordModalVisible(true)}>
-          <Ionicons name="key-outline" size={20} color={theme.colors.textSecondary} />
-          <Text style={styles.profileActionButtonText}>Change Password</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={20} color={theme.colors.error} />
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
-      </Card>
-
-      {renderChangePasswordModal()}
-    </ScrollView>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={20} color={theme.colors.error} />
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+        </Card>
+        {renderChangePasswordModal()}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -473,17 +747,30 @@ const styles = StyleSheet.create({
   saveButton: {
     backgroundColor: theme.colors.primary,
   },
-  profileActionButton: {
+  changePasswordButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: theme.spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.divider,
+    justifyContent: "center",
+    paddingVertical: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.lg,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.md,
+    marginTop: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
+    shadowColor: theme.colors.shadow,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
-  profileActionButtonText: {
+  changePasswordButtonText: {
     ...theme.typography.button,
-    color: theme.colors.textSecondary,
+    color: theme.colors.textLight,
     marginLeft: theme.spacing.sm,
+    fontWeight: "600",
   },
   logoutButton: {
     flexDirection: "row",
@@ -570,17 +857,15 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: theme.spacing.xs,
   },
-  // Subjects Section Styles
-  subjectsSection: {
-    marginTop: theme.spacing.lg,
-    paddingTop: theme.spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.divider,
-  },
+  // Section Styles
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: theme.spacing.md,
+    marginTop: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.divider,
   },
   sectionTitle: {
     ...theme.typography.subtitle2,

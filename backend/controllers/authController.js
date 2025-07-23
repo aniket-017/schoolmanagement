@@ -158,7 +158,11 @@ const login = async (req, res) => {
 // @access  Private
 const getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).populate("class", "name grade section").populate("subjects", "name");
+    const user = await User.findById(req.user.id)
+      .populate("class", "name grade section")
+      .populate("subjects", "name")
+      .populate("subjectsTaught", "name")
+      .populate("subjectsSpecializedIn", "name");
 
     res.json({
       success: true,

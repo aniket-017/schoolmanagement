@@ -27,8 +27,6 @@ export default function LoginScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [userType, setUserType] = useState("teacher"); // "teacher" or "student"
   const { login } = useAuth();
-  
-
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -40,8 +38,12 @@ export default function LoginScreen({ navigation }) {
     try {
       const result = await login(email, password, userType);
       if (result.requirePasswordChange) {
-        // Navigate to change password screen if it's a first-time login
-        navigation.navigate("ChangePassword");
+        // Show alert for password change requirement - user can change it in profile later
+        Alert.alert(
+          "Password Change Required",
+          "This is your first login. Please change your password in your profile settings for security.",
+          [{ text: "OK" }]
+        );
       }
       // Navigation for regular login is handled by AuthContext
     } catch (error) {
@@ -60,7 +62,10 @@ export default function LoginScreen({ navigation }) {
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
         >
-          <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }} keyboardShouldPersistTaps="handled">
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
+            keyboardShouldPersistTaps="handled"
+          >
             {/* Header */}
             <Animatable.View animation="fadeInDown" delay={200} style={styles.header}>
               <View style={styles.logoContainer}>
@@ -81,10 +86,7 @@ export default function LoginScreen({ navigation }) {
                     <Text style={styles.inputLabel}>Login As</Text>
                     <View style={styles.userTypeButtons}>
                       <TouchableOpacity
-                        style={[
-                          styles.userTypeButton,
-                          userType === "teacher" && styles.userTypeButtonActive,
-                        ]}
+                        style={[styles.userTypeButton, userType === "teacher" && styles.userTypeButtonActive]}
                         onPress={() => setUserType("teacher")}
                       >
                         <Ionicons
@@ -93,19 +95,13 @@ export default function LoginScreen({ navigation }) {
                           color={userType === "teacher" ? theme.colors.white : theme.colors.primary}
                         />
                         <Text
-                          style={[
-                            styles.userTypeButtonText,
-                            userType === "teacher" && styles.userTypeButtonTextActive,
-                          ]}
+                          style={[styles.userTypeButtonText, userType === "teacher" && styles.userTypeButtonTextActive]}
                         >
                           Teacher
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={[
-                          styles.userTypeButton,
-                          userType === "student" && styles.userTypeButtonActive,
-                        ]}
+                        style={[styles.userTypeButton, userType === "student" && styles.userTypeButtonActive]}
                         onPress={() => setUserType("student")}
                       >
                         <Ionicons
@@ -114,10 +110,7 @@ export default function LoginScreen({ navigation }) {
                           color={userType === "student" ? theme.colors.white : theme.colors.primary}
                         />
                         <Text
-                          style={[
-                            styles.userTypeButtonText,
-                            userType === "student" && styles.userTypeButtonTextActive,
-                          ]}
+                          style={[styles.userTypeButtonText, userType === "student" && styles.userTypeButtonTextActive]}
                         >
                           Student
                         </Text>
