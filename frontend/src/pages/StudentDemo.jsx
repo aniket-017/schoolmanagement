@@ -49,13 +49,15 @@ const StudentDemo = () => {
     {
       icon: UserPlus,
       title: "Individual Student Creation",
-      description: "Add students one by one with comprehensive information including personal details, parent information, and contact details.",
+      description:
+        "Add students one by one with comprehensive information including personal details, parent information, and contact details.",
       color: "blue",
     },
     {
       icon: Upload,
       title: "Bulk Upload",
-      description: "Upload multiple students at once using Excel files. Download templates and upload filled data efficiently.",
+      description:
+        "Upload multiple students at once using Excel files. Download templates and upload filled data efficiently.",
       color: "green",
     },
     {
@@ -67,7 +69,8 @@ const StudentDemo = () => {
     {
       icon: BookOpen,
       title: "Class Integration",
-      description: "Students are automatically assigned to classes with proper capacity management and enrollment tracking.",
+      description:
+        "Students are automatically assigned to classes with proper capacity management and enrollment tracking.",
       color: "orange",
     },
   ];
@@ -116,12 +119,8 @@ const StudentDemo = () => {
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
           <div className="text-center">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">
-              Student Management System
-            </h1>
-            <p className="text-xl text-gray-600 mb-6">
-              Comprehensive student creation and management functionality
-            </p>
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">Student Management System</h1>
+            <p className="text-xl text-gray-600 mb-6">Comprehensive student creation and management functionality</p>
             <div className="flex items-center justify-center space-x-4 text-sm text-gray-500">
               <div className="flex items-center">
                 <CheckCircle className="w-4 h-4 mr-1 text-green-500" />
@@ -151,21 +150,19 @@ const StudentDemo = () => {
                 transition={{ delay: index * 0.1 }}
                 className="bg-white rounded-2xl shadow-lg p-6"
               >
-                <div className={cn(
-                  "w-12 h-12 rounded-lg flex items-center justify-center mb-4",
-                  feature.color === "blue" && "bg-blue-100 text-blue-600",
-                  feature.color === "green" && "bg-green-100 text-green-600",
-                  feature.color === "purple" && "bg-purple-100 text-purple-600",
-                  feature.color === "orange" && "bg-orange-100 text-orange-600"
-                )}>
+                <div
+                  className={cn(
+                    "w-12 h-12 rounded-lg flex items-center justify-center mb-4",
+                    feature.color === "blue" && "bg-blue-100 text-blue-600",
+                    feature.color === "green" && "bg-green-100 text-green-600",
+                    feature.color === "purple" && "bg-purple-100 text-purple-600",
+                    feature.color === "orange" && "bg-orange-100 text-orange-600"
+                  )}
+                >
                   <Icon className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  {feature.title}
-                </h3>
-                <p className="text-gray-600">
-                  {feature.description}
-                </p>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">{feature.title}</h3>
+                <p className="text-gray-600">{feature.description}</p>
               </motion.div>
             );
           })}
@@ -187,19 +184,13 @@ const StudentDemo = () => {
                   {step.step}
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                    {step.title}
-                  </h3>
-                  <p className="text-gray-600 mb-2">
-                    {step.description}
-                  </p>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1">{step.title}</h3>
+                  <p className="text-gray-600 mb-2">{step.description}</p>
                   <span className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
                     {step.action}
                   </span>
                 </div>
-                {index < steps.length - 1 && (
-                  <ArrowRight className="w-5 h-5 text-gray-400 mt-1" />
-                )}
+                {index < steps.length - 1 && <ArrowRight className="w-5 h-5 text-gray-400 mt-1" />}
               </motion.div>
             ))}
           </div>
@@ -231,35 +222,39 @@ const StudentDemo = () => {
             <div className="bg-gray-50 rounded-lg p-4">
               <div className="flex items-center space-x-2 mb-2">
                 <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">GET</span>
-                <code className="text-sm font-mono">/classes/{selectedClass?._id || ':classId'}/students</code>
+                <code className="text-sm font-mono">/classes/{selectedClass?._id || ":classId"}/students</code>
               </div>
               <p className="text-gray-600 text-sm">Get all students in a class</p>
             </div>
             <div className="bg-gray-50 rounded-lg p-4">
               <div className="flex items-center space-x-2 mb-2">
                 <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium">POST</span>
-                <code className="text-sm font-mono">/classes/{selectedClass?._id || ':classId'}/students</code>
+                <code className="text-sm font-mono">/classes/{selectedClass?._id || ":classId"}/students</code>
               </div>
               <p className="text-gray-600 text-sm">Add individual student to class</p>
             </div>
             <div className="bg-gray-50 rounded-lg p-4">
               <div className="flex items-center space-x-2 mb-2">
                 <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium">POST</span>
-                <code className="text-sm font-mono">/classes/{selectedClass?._id || ':classId'}/students/bulk</code>
+                <code className="text-sm font-mono">/classes/{selectedClass?._id || ":classId"}/students/bulk</code>
               </div>
               <p className="text-gray-600 text-sm">Bulk upload students via Excel</p>
             </div>
             <div className="bg-gray-50 rounded-lg p-4">
               <div className="flex items-center space-x-2 mb-2">
                 <span className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-medium">DELETE</span>
-                <code className="text-sm font-mono">/classes/{selectedClass?._id || ':classId'}/students/:studentId</code>
+                <code className="text-sm font-mono">
+                  /classes/{selectedClass?._id || ":classId"}/students/:studentId
+                </code>
               </div>
               <p className="text-gray-600 text-sm">Remove student from class</p>
             </div>
             <div className="bg-gray-50 rounded-lg p-4">
               <div className="flex items-center space-x-2 mb-2">
                 <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-medium">GET</span>
-                <code className="text-sm font-mono">/classes/{selectedClass?._id || ':classId'}/students/excel-template</code>
+                <code className="text-sm font-mono">
+                  /classes/{selectedClass?._id || ":classId"}/students/excel-template
+                </code>
               </div>
               <p className="text-gray-600 text-sm">Download Excel template for bulk upload</p>
             </div>
@@ -271,21 +266,21 @@ const StudentDemo = () => {
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Quick Actions</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button
-              onClick={() => window.location.href = '/classes'}
+              onClick={() => (window.location.href = "/classes")}
               className="flex items-center justify-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               <Users className="w-5 h-5" />
               <span>View Classes</span>
             </button>
             <button
-              onClick={() => window.location.href = '/users'}
+              onClick={() => (window.location.href = "/users")}
               className="flex items-center justify-center space-x-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
             >
               <UserPlus className="w-5 h-5" />
-              <span>User Management</span>
+              <span>Teacher Management</span>
             </button>
             <button
-              onClick={() => window.location.href = '/dashboard'}
+              onClick={() => (window.location.href = "/dashboard")}
               className="flex items-center justify-center space-x-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
             >
               <BookOpen className="w-5 h-5" />
@@ -298,4 +293,4 @@ const StudentDemo = () => {
   );
 };
 
-export default StudentDemo; 
+export default StudentDemo;

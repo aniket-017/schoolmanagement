@@ -34,7 +34,7 @@ const Layout = ({ children }) => {
       description: "Overview and analytics",
     },
     {
-      name: "User Management",
+      name: "Teacher Management",
       href: "/users",
       icon: Users,
       color: "emerald",

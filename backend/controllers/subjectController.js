@@ -60,43 +60,16 @@ const getSubjectById = async (req, res) => {
 // @access  Private (Admin only)
 const createSubject = async (req, res) => {
   try {
-    const {
-      name,
-      code,
-      description,
-      department,
-      credits,
-      syllabus,
-      textbooks,
-      references,
-      totalMarks,
-      passingMarks,
-      assessmentPattern,
-    } = req.body;
-
-    // Check if subject code already exists
-    const existingSubject = await Subject.findOne({ code });
+    const { name } = req.body;
+    // Check if subject name already exists
+    const existingSubject = await Subject.findOne({ name });
     if (existingSubject) {
       return res.status(400).json({
         success: false,
-        message: "Subject code already exists",
+        message: "Subject name already exists",
       });
     }
-
-    const subject = await Subject.create({
-      name,
-      code,
-      description,
-      department,
-      credits,
-      syllabus,
-      textbooks,
-      references,
-      totalMarks,
-      passingMarks,
-      assessmentPattern,
-    });
-
+    const subject = await Subject.create({ name });
     res.status(201).json({
       success: true,
       message: "Subject created successfully",
@@ -104,14 +77,12 @@ const createSubject = async (req, res) => {
     });
   } catch (error) {
     console.error("Create subject error:", error);
-
     if (error.code === 11000) {
       return res.status(400).json({
         success: false,
-        message: "Subject code already exists",
+        message: "Subject name already exists",
       });
     }
-
     res.status(500).json({
       success: false,
       message: "Server error while creating subject",
@@ -125,31 +96,28 @@ const createSubject = async (req, res) => {
 const updateSubject = async (req, res) => {
   try {
     const subject = await Subject.findById(req.params.id);
-
     if (!subject) {
       return res.status(404).json({
         success: false,
         message: "Subject not found",
       });
     }
-
-    const updatedSubject = await Subject.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
-
+    const { name } = req.body;
+    subject.name = name || subject.name;
+    await subject.save();
     res.json({
       success: true,
       message: "Subject updated successfully",
-      data: updatedSubject,
+      data: subject,
     });
   } catch (error) {
     console.error("Update subject error:", error);
-
     if (error.code === 11000) {
       return res.status(400).json({
         success: false,
-        message: "Subject code already exists",
+        message: "Subject name already exists",
       });
     }
-
     res.status(500).json({
       success: false,
       message: "Server error while updating subject",

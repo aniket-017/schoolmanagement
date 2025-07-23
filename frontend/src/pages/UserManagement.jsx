@@ -38,14 +38,47 @@ const UserManagement = () => {
 
   // Teacher form state
   const [teacherForm, setTeacherForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    qualification: "",
-    experience: "",
+    // Personal Information
+    firstName: "",
+    middleName: "",
+    lastName: "",
+    gender: "",
     dateOfBirth: "",
-    salary: "",
-    subjects: [],
+    socialCategory: "",
+    disabilityStatus: "",
+    aadhaarNumber: "",
+    // Professional Information
+    teacherType: "",
+    natureOfAppointment: "",
+    appointedUnder: "",
+    dateOfJoiningService: "",
+    dateOfJoiningPresentSchool: "",
+    udiseCodePreviousSchool: "",
+    // Educational Qualification
+    highestAcademicQualification: "",
+    highestProfessionalQualification: "",
+    subjectsSpecializedIn: [],
+    mediumOfInstruction: "",
+    // Training Details
+    inServiceTraining: false,
+    ictTraining: false,
+    flnTraining: false,
+    inclusiveEducationTraining: false,
+    // Posting & Work Details
+    classesTaught: "",
+    subjectsTaught: [],
+    periodsPerWeek: "",
+    multipleSubjectsOrGrades: false,
+    nonTeachingDuties: false,
+    nonTeachingDutiesDetails: "",
+    // Salary & Employment
+    salaryBand: "",
+    salaryPaymentMode: "",
+    workingStatus: "",
+    // Contact
+    phone: "",
+    email: "",
+    // Address
     address: {
       street: "",
       city: "",
@@ -54,6 +87,10 @@ const UserManagement = () => {
       country: "",
     },
   });
+  // Remove localSubjects and newSubjectName, add newSubject state for name/code
+  const [newSubject, setNewSubject] = useState({ name: "" });
+  const [addingSubject, setAddingSubject] = useState(false);
+  const [subjectLoading, setSubjectLoading] = useState(false);
 
   // Bulk upload state
   const [uploadResults, setUploadResults] = useState(null);
@@ -306,8 +343,38 @@ const UserManagement = () => {
     }
   };
 
+  // Add this function to create a new subject globally
+  const handleAddSubject = async () => {
+    if (!newSubject.name.trim()) return;
+    setSubjectLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${appConfig.API_BASE_URL}/subjects`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name: newSubject.name }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setNewSubject({ name: "" });
+        setAddingSubject(false);
+        fetchSubjects(); // Refresh global subject list
+        toast.success("Subject added!");
+      } else {
+        toast.error(data.message || "Error adding subject");
+      }
+    } catch (err) {
+      toast.error("Error adding subject");
+    } finally {
+      setSubjectLoading(false);
+    }
+  };
+
   const tabConfig = [
-    { id: "list", name: "User List", icon: UsersIcon, color: "indigo" },
+    { id: "list", name: "Teacher List", icon: UsersIcon, color: "indigo" },
     { id: "add", name: "Add Teacher", icon: UserPlusIcon, color: "emerald" },
     { id: "bulk", name: "Bulk Upload", icon: DocumentArrowUpIcon, color: "purple" },
   ];
@@ -319,8 +386,8 @@ const UserManagement = () => {
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">User Management</h1>
-            <p className="text-gray-600">Manage teachers and staff members efficiently</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Teacher Management</h1>
+            <p className="text-gray-600">Manage teachers efficiently</p>
           </div>
 
           {/* Tab Navigation */}
@@ -427,9 +494,6 @@ const UserManagement = () => {
                             Role
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Status
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Subjects
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -451,16 +515,24 @@ const UserManagement = () => {
                                 <div className="flex-shrink-0 h-10 w-10">
                                   <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
                                     <span className="text-sm font-medium text-indigo-700">
-                                      {user.name.charAt(0).toUpperCase()}
+                                      {(
+                                        user.name?.charAt(0) ||
+                                        user.firstName?.charAt(0) ||
+                                        user.fullName?.charAt(0) ||
+                                        user.email?.charAt(0) ||
+                                        "?"
+                                      ).toUpperCase()}
                                     </span>
                                   </div>
                                 </div>
                                 <div className="ml-4">
-                                  <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {user.name ||
+                                      user.fullName ||
+                                      [user.firstName, user.middleName, user.lastName].filter(Boolean).join(" ") ||
+                                      user.email}
+                                  </div>
                                   <div className="text-sm text-gray-500">{user.email}</div>
-                                  {user.employeeId && (
-                                    <div className="text-xs text-gray-400">ID: {user.employeeId}</div>
-                                  )}
                                 </div>
                               </div>
                             </td>
@@ -479,22 +551,6 @@ const UserManagement = () => {
                                 {user.role}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span
-                                className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                  user.status === "approved"
-                                    ? "bg-green-100 text-green-800"
-                                    : user.status === "pending"
-                                    ? "bg-yellow-100 text-yellow-800"
-                                    : user.status === "suspended"
-                                    ? "bg-red-100 text-red-800"
-                                    : "bg-gray-100 text-gray-800"
-                                }`}
-                              >
-                                {user.status}
-                              </span>
-                            </td>
-
                             <td className="px-6 py-4 whitespace-nowrap">
                               {user.role === "teacher" && user.subjects && user.subjects.length > 0 ? (
                                 <div className="flex flex-wrap gap-1">
@@ -518,7 +574,6 @@ const UserManagement = () => {
                                 <span className="text-xs text-gray-400 italic">-</span>
                               )}
                             </td>
-
                             <td className="px-6 py-4 whitespace-nowrap">
                               {user.isFirstLogin ? (
                                 <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">
@@ -532,7 +587,6 @@ const UserManagement = () => {
                                 </span>
                               )}
                             </td>
-
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {new Date(user.createdAt).toLocaleDateString()}
                             </td>
@@ -598,136 +652,544 @@ const UserManagement = () => {
                 </div>
 
                 <form onSubmit={handleTeacherSubmit} className="space-y-8">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Basic Information */}
-                    <div className="space-y-6">
+                  {/* Personal Information */}
+                  <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                    <h3 className="text-lg font-semibold mb-4">Personal Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                          <AcademicCapIcon className="h-5 w-5 mr-2 text-indigo-600" />
-                          Basic Information
-                        </h3>
-                        <div className="space-y-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
-                            <input
-                              type="text"
-                              name="name"
-                              placeholder="Enter full name"
-                              value={teacherForm.name}
-                              onChange={handleInputChange}
-                              required
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Email Address *</label>
-                            <input
-                              type="email"
-                              name="email"
-                              placeholder="teacher@school.com"
-                              value={teacherForm.email}
-                              onChange={handleInputChange}
-                              required
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                            <input
-                              type="tel"
-                              name="phone"
-                              placeholder="+1 (555) 123-4567"
-                              value={teacherForm.phone}
-                              onChange={handleInputChange}
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
-                            <input
-                              type="date"
-                              name="dateOfBirth"
-                              value={teacherForm.dateOfBirth}
-                              onChange={handleInputChange}
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                            />
-                          </div>
-                        </div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+                        <input
+                          type="text"
+                          name="firstName"
+                          value={teacherForm.firstName}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        />
                       </div>
-                    </div>
-
-                    {/* Professional Information */}
-                    <div className="space-y-6">
                       <div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                          <BuildingLibraryIcon className="h-5 w-5 mr-2 text-indigo-600" />
-                          Professional Information
-                        </h3>
-                        <div className="space-y-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Qualification</label>
-                            <input
-                              type="text"
-                              name="qualification"
-                              placeholder="e.g., M.Sc Mathematics, B.Ed"
-                              value={teacherForm.qualification}
-                              onChange={handleInputChange}
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Years of Experience</label>
-                            <input
-                              type="number"
-                              name="experience"
-                              placeholder="0"
-                              value={teacherForm.experience}
-                              onChange={handleInputChange}
-                              min="0"
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Monthly Salary</label>
-                            <input
-                              type="number"
-                              name="salary"
-                              placeholder="50000"
-                              value={teacherForm.salary}
-                              onChange={handleInputChange}
-                              min="0"
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                            />
-                          </div>
-                        </div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Middle Name</label>
+                        <input
+                          type="text"
+                          name="middleName"
+                          value={teacherForm.middleName}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        />
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Subjects */}
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Subjects</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {subjects.map((subject) => (
-                        <label
-                          key={subject._id}
-                          className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+                        <input
+                          type="text"
+                          name="lastName"
+                          value={teacherForm.lastName}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
+                        <select
+                          name="gender"
+                          value={teacherForm.gender}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                         >
-                          <input
-                            type="checkbox"
-                            checked={teacherForm.subjects.includes(subject._id)}
-                            onChange={() => handleSubjectChange(subject._id)}
-                            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                          />
-                          <div className="ml-3">
-                            <div className="text-sm font-medium text-gray-900">{subject.name}</div>
-                          </div>
-                        </label>
-                      ))}
+                          <option value="">Select</option>
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
+                        <input
+                          type="date"
+                          name="dateOfBirth"
+                          value={teacherForm.dateOfBirth}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Social Category</label>
+                        <select
+                          name="socialCategory"
+                          value={teacherForm.socialCategory}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        >
+                          <option value="">Select</option>
+                          <option value="General">General</option>
+                          <option value="SC">SC</option>
+                          <option value="ST">ST</option>
+                          <option value="OBC">OBC</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Disability Status</label>
+                        <input
+                          type="text"
+                          name="disabilityStatus"
+                          value={teacherForm.disabilityStatus}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Aadhaar Number</label>
+                        <input
+                          type="text"
+                          name="aadhaarNumber"
+                          value={teacherForm.aadhaarNumber}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
                     </div>
                   </div>
-
-                  {/* Address Information */}
+                  {/* Professional Information */}
+                  <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                    <h3 className="text-lg font-semibold mb-4">Professional Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Teacher Type</label>
+                        <select
+                          name="teacherType"
+                          value={teacherForm.teacherType}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        >
+                          <option value="">Select</option>
+                          <option value="Head Teacher">Head Teacher</option>
+                          <option value="Assistant Teacher">Assistant Teacher</option>
+                          <option value="Principal">Principal</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Nature of Appointment</label>
+                        <select
+                          name="natureOfAppointment"
+                          value={teacherForm.natureOfAppointment}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        >
+                          <option value="">Select</option>
+                          <option value="Regular">Regular</option>
+                          <option value="Contractual">Contractual</option>
+                          <option value="Part-time">Part-time</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Appointed Under</label>
+                        <select
+                          name="appointedUnder"
+                          value={teacherForm.appointedUnder}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        >
+                          <option value="">Select</option>
+                          <option value="State Govt">State Govt</option>
+                          <option value="Central Govt">Central Govt</option>
+                          <option value="SSA">SSA</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Date of Joining Service</label>
+                        <input
+                          type="date"
+                          name="dateOfJoiningService"
+                          value={teacherForm.dateOfJoiningService}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Date of Joining Present School
+                        </label>
+                        <input
+                          type="date"
+                          name="dateOfJoiningPresentSchool"
+                          value={teacherForm.dateOfJoiningPresentSchool}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          UDISE Code of Previous School
+                        </label>
+                        <input
+                          type="text"
+                          name="udiseCodePreviousSchool"
+                          value={teacherForm.udiseCodePreviousSchool}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  {/* Educational Qualification */}
+                  <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                    <h3 className="text-lg font-semibold mb-4">Educational Qualification</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Highest Academic Qualification
+                        </label>
+                        <input
+                          type="text"
+                          name="highestAcademicQualification"
+                          value={teacherForm.highestAcademicQualification}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Highest Professional Qualification
+                        </label>
+                        <input
+                          type="text"
+                          name="highestProfessionalQualification"
+                          value={teacherForm.highestProfessionalQualification}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Subjects Specialized In</label>
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {subjects.map((subject) => (
+                            <label
+                              key={subject._id}
+                              className="flex items-center gap-2 border border-gray-200 rounded px-2 py-1 cursor-pointer"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={(teacherForm.subjectsSpecializedIn || []).includes(subject._id)}
+                                onChange={() => {
+                                  setTeacherForm((prev) => {
+                                    const current = prev.subjectsSpecializedIn || [];
+                                    const updated = current.includes(subject._id)
+                                      ? current.filter((id) => id !== subject._id)
+                                      : [...current, subject._id];
+                                    return {
+                                      ...prev,
+                                      subjectsSpecializedIn: updated,
+                                      subjectsTaught: updated, // keep in sync
+                                    };
+                                  });
+                                }}
+                                className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                              />
+                              <span>{subject.name}</span>
+                            </label>
+                          ))}
+                        </div>
+                        {addingSubject ? (
+                          <div className="flex gap-2 items-center">
+                            <input
+                              type="text"
+                              placeholder="Add New Subject"
+                              value={newSubject.name}
+                              onChange={(e) => setNewSubject((s) => ({ ...s, name: e.target.value }))}
+                              className="px-3 py-2 border border-gray-300 rounded-lg"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleAddSubject}
+                              disabled={subjectLoading}
+                              className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+                            >
+                              {subjectLoading ? "Adding..." : "Add"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setAddingSubject(false)}
+                              className="px-2 py-2 text-gray-500 hover:text-gray-700"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setAddingSubject(true)}
+                            className="mt-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
+                          >
+                            + Add New Subject
+                          </button>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Medium of Instruction Known
+                        </label>
+                        <input
+                          type="text"
+                          name="mediumOfInstruction"
+                          value={teacherForm.mediumOfInstruction}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  {/* Training Details */}
+                  <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                    <h3 className="text-lg font-semibold mb-4">Training Details</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          name="inServiceTraining"
+                          checked={teacherForm.inServiceTraining}
+                          onChange={(e) => setTeacherForm((prev) => ({ ...prev, inServiceTraining: e.target.checked }))}
+                          className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                        />
+                        In-service Training Received
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          name="ictTraining"
+                          checked={teacherForm.ictTraining}
+                          onChange={(e) => setTeacherForm((prev) => ({ ...prev, ictTraining: e.target.checked }))}
+                          className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                        />
+                        ICT Training Received
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          name="flnTraining"
+                          checked={teacherForm.flnTraining}
+                          onChange={(e) => setTeacherForm((prev) => ({ ...prev, flnTraining: e.target.checked }))}
+                          className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                        />
+                        Foundational Literacy and Numeracy (FLN) Training
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          name="inclusiveEducationTraining"
+                          checked={teacherForm.inclusiveEducationTraining}
+                          onChange={(e) =>
+                            setTeacherForm((prev) => ({ ...prev, inclusiveEducationTraining: e.target.checked }))
+                          }
+                          className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                        />
+                        Inclusive Education Training
+                      </label>
+                    </div>
+                  </div>
+                  {/* Posting & Work Details */}
+                  <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                    <h3 className="text-lg font-semibold mb-4">Posting & Work Details</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Class or Classes Taught</label>
+                        <input
+                          type="text"
+                          name="classesTaught"
+                          value={teacherForm.classesTaught}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Subjects Taught</label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {teacherForm.subjectsTaught?.map((subjectId) => (
+                            <label
+                              key={subjectId}
+                              className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={teacherForm.subjectsTaught.includes(subjectId)}
+                                onChange={() => {
+                                  setTeacherForm((prev) => ({
+                                    ...prev,
+                                    subjectsTaught: prev.subjectsTaught.includes(subjectId)
+                                      ? prev.subjectsTaught.filter((id) => id !== subjectId)
+                                      : [...prev.subjectsTaught, subjectId],
+                                  }));
+                                }}
+                                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                              />
+                              <div className="ml-3">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {subjects.find((s) => s._id === subjectId)?.name}
+                                </div>
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                        <div className="mt-4">
+                          {addingSubject ? (
+                            <div className="flex gap-2 items-center">
+                              <input
+                                type="text"
+                                placeholder="Subject Name"
+                                value={newSubject.name}
+                                onChange={(e) => setNewSubject((s) => ({ ...s, name: e.target.value }))}
+                                className="px-3 py-2 border border-gray-300 rounded-lg"
+                              />
+                              <button
+                                type="button"
+                                onClick={handleAddSubject}
+                                disabled={subjectLoading}
+                                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+                              >
+                                {subjectLoading ? "Adding..." : "Add"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setAddingSubject(false)}
+                                className="px-2 py-2 text-gray-500 hover:text-gray-700"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setAddingSubject(true)}
+                              className="mt-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
+                            >
+                              + Add New Subject
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Number of periods per week
+                        </label>
+                        <input
+                          type="number"
+                          name="periodsPerWeek"
+                          value={teacherForm.periodsPerWeek}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          name="multipleSubjectsOrGrades"
+                          checked={teacherForm.multipleSubjectsOrGrades}
+                          onChange={(e) =>
+                            setTeacherForm((prev) => ({ ...prev, multipleSubjectsOrGrades: e.target.checked }))
+                          }
+                          className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                        />
+                        Handling multiple subjects or grades
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          name="nonTeachingDuties"
+                          checked={teacherForm.nonTeachingDuties}
+                          onChange={(e) => setTeacherForm((prev) => ({ ...prev, nonTeachingDuties: e.target.checked }))}
+                          className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                        />
+                        Involved in non-teaching duties
+                      </label>
+                      {teacherForm.nonTeachingDuties && (
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Non-teaching Duties Details
+                          </label>
+                          <input
+                            type="text"
+                            name="nonTeachingDutiesDetails"
+                            value={teacherForm.nonTeachingDutiesDetails}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {/* Salary & Employment */}
+                  <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                    <h3 className="text-lg font-semibold mb-4">Salary & Employment</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Salary Band</label>
+                        <input
+                          type="text"
+                          name="salaryBand"
+                          value={teacherForm.salaryBand}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Mode of Salary Payment</label>
+                        <select
+                          name="salaryPaymentMode"
+                          value={teacherForm.salaryPaymentMode}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        >
+                          <option value="">Select</option>
+                          <option value="Bank Transfer">Bank Transfer</option>
+                          <option value="Cash">Cash</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Working Status</label>
+                        <select
+                          name="workingStatus"
+                          value={teacherForm.workingStatus}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        >
+                          <option value="">Select</option>
+                          <option value="Active">Active</option>
+                          <option value="Transferred">Transferred</option>
+                          <option value="Retired">Retired</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Contact Information */}
+                  <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                    <h3 className="text-lg font-semibold mb-4">Contact Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Mobile Number</label>
+                        <input
+                          type="text"
+                          name="phone"
+                          value={teacherForm.phone}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Email ID</label>
+                        <input
+                          type="email"
+                          name="email"
+                          value={teacherForm.email}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  {/* Address Information (keep as is) */}
                   <div>
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Address Information</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -871,78 +1333,25 @@ const UserManagement = () => {
                           : "bg-red-50 border border-red-200"
                       }`}
                     >
-                      <h3
-                        className={`text-lg font-medium mb-2 ${
-                          uploadResults.success ? "text-green-900" : "text-red-900"
-                        }`}
-                      >
-                        Upload Results
-                      </h3>
-                      <p className={`${uploadResults.success ? "text-green-700" : "text-red-700"}`}>
-                        {uploadResults.message}
-                      </p>
+                      <h4 className="text-lg font-semibold text-gray-900 mb-2">Upload Results</h4>
+                      <p className="text-gray-700">{uploadResults.message}</p>
+                      {uploadResults.success && uploadResults.data && uploadResults.data.length > 0 && (
+                        <div className="mt-4">
+                          <h5 className="text-md font-medium text-gray-900 mb-2">Created Teachers:</h5>
+                          <ul className="list-disc list-inside text-gray-700">
+                            {uploadResults.data.map((teacher, index) => (
+                              <li key={index}>
+                                {teacher.name} (ID: {teacher.employeeId})
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {uploadResults.success && uploadResults.data && uploadResults.data.length === 0 && (
+                        <p className="text-gray-700">No new teachers were created from the uploaded file.</p>
+                      )}
+                      {!uploadResults.success && <p className="text-red-700">{uploadResults.message}</p>}
                     </div>
-
-                    {uploadResults.results && (
-                      <div className="space-y-6">
-                        {/* Successful uploads */}
-                        {uploadResults.results.successful?.length > 0 && (
-                          <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-                            <h4 className="text-lg font-medium text-green-900 mb-4">
-                              ✅ Successfully Created ({uploadResults.results.successful.length})
-                            </h4>
-                            <div className="space-y-3 max-h-60 overflow-y-auto">
-                              {uploadResults.results.successful.map((item, index) => (
-                                <div key={index} className="bg-white p-4 rounded-lg border border-green-200">
-                                  <div className="flex justify-between items-start">
-                                    <div>
-                                      <div className="font-medium text-green-900">{item.teacher.name}</div>
-                                      <div className="text-sm text-green-700">{item.teacher.email}</div>
-                                      <div className="text-xs text-green-600 mt-1">
-                                        Employee ID: {item.teacher.employeeId} | Temp Password:{" "}
-                                        {item.teacher.tempPassword}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Duplicate entries */}
-                        {uploadResults.results.duplicates?.length > 0 && (
-                          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-                            <h4 className="text-lg font-medium text-yellow-900 mb-4">
-                              ⚠️ Duplicate Entries ({uploadResults.results.duplicates.length})
-                            </h4>
-                            <div className="space-y-2 max-h-40 overflow-y-auto">
-                              {uploadResults.results.duplicates.map((item, index) => (
-                                <div key={index} className="text-sm text-yellow-700 bg-white p-2 rounded">
-                                  Row {item.row}: {item.data.Name} - {item.error}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Failed uploads */}
-                        {uploadResults.results.failed?.length > 0 && (
-                          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-                            <h4 className="text-lg font-medium text-red-900 mb-4">
-                              ❌ Failed Entries ({uploadResults.results.failed.length})
-                            </h4>
-                            <div className="space-y-2 max-h-40 overflow-y-auto">
-                              {uploadResults.results.failed.map((item, index) => (
-                                <div key={index} className="text-sm text-red-700 bg-white p-2 rounded">
-                                  Row {item.row}: {item.error}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -950,8 +1359,6 @@ const UserManagement = () => {
           </div>
         </div>
       </div>
-
-      {/* Teacher Credentials Modal */}
       {showCredentials && newTeacher && (
         <TeacherCredentials
           teacher={newTeacher}

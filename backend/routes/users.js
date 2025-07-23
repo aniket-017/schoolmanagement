@@ -32,8 +32,7 @@ const generateTempPassword = () => {
 router.get("/subjects", auth, adminOrPrincipal, async (req, res) => {
   try {
     const Subject = require("../models/Subject");
-    const subjects = await Subject.find({ isActive: true }).select("name code").sort({ name: 1 });
-
+    const subjects = await Subject.find({}).select("name").sort({ name: 1 });
     res.json({
       success: true,
       subjects,
@@ -102,8 +101,43 @@ router.get("/", auth, adminOrPrincipal, async (req, res) => {
 // @access  Private (Admin/Principal only)
 router.post("/teacher", auth, adminOrPrincipal, async (req, res) => {
   try {
-    const { name, email, phone, qualification, experience, subjects, dateOfBirth, address, salary, joiningDate } =
-      req.body;
+    // Destructure all new fields from req.body
+    const {
+      firstName,
+      middleName,
+      lastName,
+      gender,
+      dateOfBirth,
+      socialCategory,
+      disabilityStatus,
+      aadhaarNumber,
+      teacherType,
+      natureOfAppointment,
+      appointedUnder,
+      dateOfJoiningService,
+      dateOfJoiningPresentSchool,
+      udiseCodePreviousSchool,
+      highestAcademicQualification,
+      highestProfessionalQualification,
+      subjectsSpecializedIn,
+      mediumOfInstruction,
+      inServiceTraining,
+      ictTraining,
+      flnTraining,
+      inclusiveEducationTraining,
+      classesTaught,
+      subjectsTaught,
+      periodsPerWeek,
+      multipleSubjectsOrGrades,
+      nonTeachingDuties,
+      nonTeachingDutiesDetails,
+      salaryBand,
+      salaryPaymentMode,
+      workingStatus,
+      phone,
+      email,
+      address,
+    } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -120,22 +154,48 @@ router.post("/teacher", auth, adminOrPrincipal, async (req, res) => {
 
     // Create teacher
     const teacher = await User.create({
-      name,
+      firstName,
+      middleName,
+      lastName,
+      gender,
+      dateOfBirth,
+      socialCategory,
+      disabilityStatus,
+      aadhaarNumber,
+      teacherType,
+      natureOfAppointment,
+      appointedUnder,
+      dateOfJoiningService,
+      dateOfJoiningPresentSchool,
+      udiseCodePreviousSchool,
+      highestAcademicQualification,
+      highestProfessionalQualification,
+      subjectsSpecializedIn,
+      mediumOfInstruction,
+      inServiceTraining,
+      ictTraining,
+      flnTraining,
+      inclusiveEducationTraining,
+      classesTaught,
+      subjectsTaught,
+      periodsPerWeek,
+      multipleSubjectsOrGrades,
+      nonTeachingDuties,
+      nonTeachingDutiesDetails,
+      salaryBand,
+      salaryPaymentMode,
+      workingStatus,
+      phone,
       email,
+      address,
       password: tempPassword,
       role: "teacher",
-      phone,
-      qualification,
-      experience,
-      subjects,
-      dateOfBirth,
-      address,
-      salary,
-      joiningDate: joiningDate || new Date(),
       employeeId,
-      status: "approved", // Teachers created by admin are auto-approved
+      status: "approved",
       approvedBy: req.user.id,
       approvedAt: new Date(),
+      // Set 'subjects' for compatibility with user list rendering
+      subjects: subjectsTaught,
     });
 
     res.status(201).json({
@@ -143,7 +203,8 @@ router.post("/teacher", auth, adminOrPrincipal, async (req, res) => {
       message: "Teacher created successfully",
       teacher: {
         id: teacher._id,
-        name: teacher.name,
+        firstName: teacher.firstName,
+        lastName: teacher.lastName,
         email: teacher.email,
         employeeId: teacher.employeeId,
         tempPassword: tempPassword,
@@ -151,7 +212,6 @@ router.post("/teacher", auth, adminOrPrincipal, async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating teacher:", error);
-
     if (error.code === 11000) {
       const field = Object.keys(error.keyValue)[0];
       return res.status(400).json({
@@ -159,7 +219,6 @@ router.post("/teacher", auth, adminOrPrincipal, async (req, res) => {
         message: `${field} already exists`,
       });
     }
-
     res.status(500).json({
       success: false,
       message: "Server error while creating teacher",

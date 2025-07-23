@@ -29,7 +29,7 @@ const TeacherCredentials = ({ teacher, onClose }) => {
   const copyAllCredentials = async () => {
     const credentials = `Teacher Login Credentials
     
-Name: ${teacher.name}
+Name: ${getTeacherFullName(teacher)}
 Email: ${teacher.email}
 Employee ID: ${teacher.employeeId}
 Temporary Password: ${teacher.tempPassword}
@@ -44,6 +44,13 @@ Login URL: ${window.location.origin}/login`;
       toast.error("Failed to copy credentials");
     }
   };
+
+  // Helper to get full name
+  const getTeacherFullName = (teacher) =>
+    teacher.fullName ||
+    teacher.name ||
+    [teacher.firstName, teacher.middleName, teacher.lastName].filter(Boolean).join(" ") ||
+    teacher.email;
 
   return (
     <div
@@ -71,7 +78,9 @@ Login URL: ${window.location.origin}/login`;
                 <CheckIcon className="h-5 w-5 text-green-600 mr-2 flex-shrink-0" />
                 <span className="text-green-800 font-medium text-sm">Teacher Profile Created</span>
               </div>
-              <p className="text-green-700 text-sm">{teacher.name} has been successfully added to the system.</p>
+              <p className="text-green-700 text-sm">
+                {getTeacherFullName(teacher)} has been successfully added to the system.
+              </p>
             </div>
 
             <div className="space-y-3">
@@ -79,9 +88,11 @@ Login URL: ${window.location.origin}/login`;
               <div className="bg-gray-50 rounded-lg p-3">
                 <label className="text-sm font-medium text-gray-700 block mb-1">Full Name</label>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-900 font-medium text-sm truncate flex-1 mr-2">{teacher.name}</span>
+                  <span className="text-gray-900 font-medium text-sm truncate flex-1 mr-2">
+                    {getTeacherFullName(teacher)}
+                  </span>
                   <button
-                    onClick={() => copyToClipboard(teacher.name, "Name")}
+                    onClick={() => copyToClipboard(getTeacherFullName(teacher), "Name")}
                     className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
                   >
                     {copied.Name ? (

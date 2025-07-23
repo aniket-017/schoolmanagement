@@ -5,9 +5,9 @@ const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, "Name is required"],
       trim: true,
       maxlength: [100, "Name cannot exceed 100 characters"],
+      // No longer required
     },
     email: {
       type: String,
@@ -54,12 +54,43 @@ const userSchema = new mongoose.Schema(
     },
 
     // Personal Information
+    firstName: { type: String, trim: true },
+    middleName: { type: String, trim: true },
+    lastName: { type: String, trim: true },
+    gender: { type: String, enum: ["male", "female", "other", "Male", "Female", "Other", ""], default: "" },
     dateOfBirth: Date,
+    socialCategory: { type: String },
+    disabilityStatus: { type: String },
+    aadhaarNumber: { type: String },
+    // Professional Information
+    teacherType: { type: String },
+    natureOfAppointment: { type: String },
+    appointedUnder: { type: String },
+    dateOfJoiningService: Date,
+    dateOfJoiningPresentSchool: Date,
+    udiseCodePreviousSchool: { type: String },
+    // Educational Qualification
+    highestAcademicQualification: { type: String },
+    highestProfessionalQualification: { type: String },
+    subjectsSpecializedIn: [{ type: String }],
+    mediumOfInstruction: { type: String },
+    // Training Details
+    inServiceTraining: { type: Boolean, default: false },
+    ictTraining: { type: Boolean, default: false },
+    flnTraining: { type: Boolean, default: false },
+    inclusiveEducationTraining: { type: Boolean, default: false },
+    // Posting & Work Details
+    classesTaught: { type: String },
+    subjectsTaught: [{ type: String }],
+    periodsPerWeek: { type: Number },
+    multipleSubjectsOrGrades: { type: Boolean, default: false },
+    nonTeachingDuties: { type: Boolean, default: false },
+    nonTeachingDutiesDetails: { type: String },
+    // Salary & Employment
+    salaryBand: { type: String },
+    salaryPaymentMode: { type: String },
+    workingStatus: { type: String },
     bloodGroup: String,
-    gender: {
-      type: String,
-      enum: ["male", "female", "other"],
-    },
     religion: String,
     nationality: String,
     profilePicture: String,
@@ -205,6 +236,11 @@ const userSchema = new mongoose.Schema(
 
 // Create indexes
 userSchema.index({ role: 1 });
+
+// Add a virtual for backward compatibility
+userSchema.virtual("fullName").get(function () {
+  return [this.firstName, this.middleName, this.lastName].filter(Boolean).join(" ");
+});
 
 // Hash password before saving
 userSchema.pre("save", async function (next) {
