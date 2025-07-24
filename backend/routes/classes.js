@@ -260,7 +260,7 @@ router.get("/:id/students/excel-template", auth, adminOnly, async (req, res) => 
         // Contact & Address Details
         CurrentAddress: "123 Main Street, City, State",
         PermanentAddress: "123 Main Street, City, State",
-        City: "Mumbai",
+        City: "Chhatrapati Sambhajinagar",
         State: "Maharashtra",
         PinCode: "400001",
 

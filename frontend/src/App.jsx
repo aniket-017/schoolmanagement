@@ -2,6 +2,20 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+
+// Public Pages
+import PublicLayout from "./components/PublicLayout";
+import Home from "./pages/Home";
+import About from "./pages/About";
+import Admission from "./pages/Admission";
+import Academic from "./pages/Academic";
+import Achievements from "./pages/Achievements";
+import Infrastructure from "./pages/Infrastructure";
+import Gallery from "./pages/Gallery";
+import MandatoryDisclosure from "./pages/MandatoryDisclosure";
+import Contact from "./pages/Contact";
+
+// Admin/Management Pages
 import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
 import UserManagement from "./pages/UserManagement";
@@ -14,7 +28,6 @@ import Announcements from "./pages/Announcements";
 import TimetableOutlineManager from "./pages/TimetableOutlineManager";
 import AnnualCalendarAdmin from "./pages/AnnualCalendarAdmin";
 import AnnualCalendarView from "./pages/AnnualCalendarView";
-
 import StudentDemo from "./pages/StudentDemo";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ChangePassword from "./components/ChangePassword";
@@ -43,10 +56,85 @@ function AppContent() {
       />
 
       <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        {/* Public School Website Routes */}
         <Route
-          path="/dashboard"
+          path="/"
+          element={
+            <PublicLayout>
+              <Home />
+            </PublicLayout>
+          }
+        />
+        <Route
+          path="/about"
+          element={
+            <PublicLayout>
+              <About />
+            </PublicLayout>
+          }
+        />
+        <Route
+          path="/admission"
+          element={
+            <PublicLayout>
+              <Admission />
+            </PublicLayout>
+          }
+        />
+        <Route
+          path="/academic"
+          element={
+            <PublicLayout>
+              <Academic />
+            </PublicLayout>
+          }
+        />
+        <Route
+          path="/achievements"
+          element={
+            <PublicLayout>
+              <Achievements />
+            </PublicLayout>
+          }
+        />
+        <Route
+          path="/infrastructure"
+          element={
+            <PublicLayout>
+              <Infrastructure />
+            </PublicLayout>
+          }
+        />
+        <Route
+          path="/gallery"
+          element={
+            <PublicLayout>
+              <Gallery />
+            </PublicLayout>
+          }
+        />
+        <Route
+          path="/mandatory-disclosure"
+          element={
+            <PublicLayout>
+              <MandatoryDisclosure />
+            </PublicLayout>
+          }
+        />
+        <Route
+          path="/contact"
+          element={
+            <PublicLayout>
+              <Contact />
+            </PublicLayout>
+          }
+        />
+
+        {/* Admin/Management System Routes */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+        <Route
+          path="/admin/dashboard"
           element={
             <ProtectedRoute>
               <AdminDashboard />
@@ -54,7 +142,7 @@ function AppContent() {
           }
         />
         <Route
-          path="/users"
+          path="/admin/users"
           element={
             <ProtectedRoute>
               <UserManagement />
@@ -62,7 +150,7 @@ function AppContent() {
           }
         />
         <Route
-          path="/teachers"
+          path="/admin/teachers"
           element={
             <ProtectedRoute>
               <TeacherManagement />
@@ -70,7 +158,7 @@ function AppContent() {
           }
         />
         <Route
-          path="/classes"
+          path="/admin/classes"
           element={
             <ProtectedRoute>
               <ClassManagement />
@@ -78,7 +166,7 @@ function AppContent() {
           }
         />
         <Route
-          path="/classes/:classId"
+          path="/admin/classes/:classId"
           element={
             <ProtectedRoute>
               <ClassDetails />
@@ -86,7 +174,7 @@ function AppContent() {
           }
         />
         <Route
-          path="/classes/:classId/add-student"
+          path="/admin/classes/:classId/add-student"
           element={
             <ProtectedRoute>
               <AddStudent />
@@ -94,7 +182,7 @@ function AppContent() {
           }
         />
         <Route
-          path="/fees"
+          path="/admin/fees"
           element={
             <ProtectedRoute>
               <FeeManagement />
@@ -102,7 +190,7 @@ function AppContent() {
           }
         />
         <Route
-          path="/announcements"
+          path="/admin/announcements"
           element={
             <ProtectedRoute>
               <Announcements />
@@ -110,7 +198,7 @@ function AppContent() {
           }
         />
         <Route
-          path="/timetable-outlines"
+          path="/admin/timetable-outlines"
           element={
             <ProtectedRoute>
               <TimetableOutlineManager />
@@ -118,7 +206,7 @@ function AppContent() {
           }
         />
         <Route
-          path="/annual-calendar"
+          path="/admin/annual-calendar"
           element={
             <ProtectedRoute>
               <AnnualCalendarAdmin />
@@ -126,22 +214,36 @@ function AppContent() {
           }
         />
         <Route
-          path="/calendar"
+          path="/admin/calendar"
           element={
             <ProtectedRoute>
               <AnnualCalendarView />
             </ProtectedRoute>
           }
         />
-
         <Route
-          path="/student-demo"
+          path="/admin/student-demo"
           element={
             <ProtectedRoute>
               <StudentDemo />
             </ProtectedRoute>
           }
         />
+
+        {/* Legacy routes - redirect to new admin paths */}
+        <Route path="/dashboard" element={<Navigate to="/admin/dashboard" replace />} />
+        <Route path="/users" element={<Navigate to="/admin/users" replace />} />
+        <Route path="/teachers" element={<Navigate to="/admin/teachers" replace />} />
+        <Route path="/classes" element={<Navigate to="/admin/classes" replace />} />
+        <Route path="/fees" element={<Navigate to="/admin/fees" replace />} />
+        <Route path="/announcements" element={<Navigate to="/admin/announcements" replace />} />
+        <Route path="/timetable-outlines" element={<Navigate to="/admin/timetable-outlines" replace />} />
+        <Route path="/annual-calendar" element={<Navigate to="/admin/annual-calendar" replace />} />
+        <Route path="/calendar" element={<Navigate to="/admin/calendar" replace />} />
+        <Route path="/student-demo" element={<Navigate to="/admin/student-demo" replace />} />
+
+        {/* Catch all route */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 
       {/* Show password change modal when required */}
