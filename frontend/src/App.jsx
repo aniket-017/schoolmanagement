@@ -15,6 +15,11 @@ import Gallery from "./pages/Gallery";
 import MandatoryDisclosure from "./pages/MandatoryDisclosure";
 import Contact from "./pages/Contact";
 
+// Student/Teacher Portal
+import StudentTeacherLogin from "./pages/StudentTeacherLogin";
+import StudentDashboard from "./pages/StudentDashboard";
+import TeacherDashboard from "./pages/TeacherDashboard";
+
 // Admin/Management Pages
 import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -129,6 +134,11 @@ function AppContent() {
             </PublicLayout>
           }
         />
+
+        {/* Student/Teacher Portal Routes */}
+        <Route path="/student-teacher-login" element={<StudentTeacherLogin />} />
+        <Route path="/student/dashboard" element={<StudentDashboard />} />
+        <Route path="/teacher/dashboard" element={<TeacherDashboard />} />
 
         {/* Admin/Management System Routes */}
         <Route path="/login" element={<Login />} />
