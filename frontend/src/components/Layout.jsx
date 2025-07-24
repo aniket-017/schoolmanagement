@@ -18,6 +18,7 @@ import {
   Bell,
   Search,
   UserCheck,
+  Calendar,
 } from "lucide-react";
 
 const Layout = ({ children }) => {
@@ -60,6 +61,13 @@ const Layout = ({ children }) => {
       icon: Megaphone,
       color: "rose",
       description: "School announcements",
+    },
+    {
+      name: "Annual Calendar",
+      href: "/annual-calendar",
+      icon: Calendar,
+      color: "amber",
+      description: "School events and holidays",
     },
     {
       name: "Student Demo",

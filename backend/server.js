@@ -49,6 +49,7 @@ app.use("/api/transports", require("./routes/transports"));
 app.use("/api/communications", require("./routes/communications"));
 app.use("/api/assignments-detailed", require("./routes/assignmentsroutes"));
 app.use("/api/fees-detailed", require("./routes/feesroutes"));
+app.use("/api/annual-calendar", require("./routes/annualCalendar"));
 
 // Serve static files from React app build
 if (process.env.NODE_ENV === "production") {

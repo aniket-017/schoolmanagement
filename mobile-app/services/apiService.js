@@ -363,6 +363,14 @@ export const apiService = {
     },
   },
 
+  // Annual Calendar Services
+  annualCalendar: {
+    getEvents: async () => {
+      const response = await api.get("/annual-calendar");
+      return response.data;
+    },
+  },
+
   // Common utility functions
   uploadFile: async (file, type = "assignment") => {
     const formData = new FormData();

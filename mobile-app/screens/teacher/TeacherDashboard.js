@@ -300,10 +300,10 @@ export default function TeacherDashboard({ navigation }) {
               </View>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate("TeacherGrades")}>
+            <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate("TeacherAnnualCalendar")}>
               <View style={styles.actionInner}>
-                <Ionicons name="school" size={32} color={theme.colors.primary} />
-                <Text style={styles.actionText}>Grades</Text>
+                <Ionicons name="calendar" size={32} color={theme.colors.primary} />
+                <Text style={styles.actionText}>Annual Calendar</Text>
               </View>
             </TouchableOpacity>
 

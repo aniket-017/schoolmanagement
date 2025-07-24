@@ -12,6 +12,8 @@ import AddStudent from "./pages/AddStudent";
 import FeeManagement from "./pages/FeeManagement";
 import Announcements from "./pages/Announcements";
 import TimetableOutlineManager from "./pages/TimetableOutlineManager";
+import AnnualCalendarAdmin from "./pages/AnnualCalendarAdmin";
+import AnnualCalendarView from "./pages/AnnualCalendarView";
 
 import StudentDemo from "./pages/StudentDemo";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -112,6 +114,22 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <TimetableOutlineManager />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/annual-calendar"
+          element={
+            <ProtectedRoute>
+              <AnnualCalendarAdmin />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/calendar"
+          element={
+            <ProtectedRoute>
+              <AnnualCalendarView />
             </ProtectedRoute>
           }
         />

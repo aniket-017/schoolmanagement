@@ -413,10 +413,17 @@ export default function StudentDashboard({ navigation }) {
               </View>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate("StudentGrades")}>
+            <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate("StudentClasses")}>
               <View style={styles.actionInner}>
-                <Ionicons name="school" size={32} color={theme.colors.primary} />
-                <Text style={styles.actionText}>Grades</Text>
+                <Ionicons name="people" size={32} color={theme.colors.primary} />
+                <Text style={styles.actionText}>Classes</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate("StudentAnnualCalendar")}>
+              <View style={styles.actionInner}>
+                <Ionicons name="calendar" size={32} color={theme.colors.primary} />
+                <Text style={styles.actionText}>Annual Calendar</Text>
               </View>
             </TouchableOpacity>
 
