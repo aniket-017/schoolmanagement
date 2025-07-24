@@ -44,14 +44,15 @@ exports.createAnnouncement = async (req, res) => {
       });
     }
 
-    // Determine initial status
-    let status = "draft";
+    // Determine initial status - respect the status field if provided
+    let status = req.body.status || "draft";
     let publishDate = new Date();
 
     if (isScheduled && scheduledFor) {
       status = "draft";
       publishDate = scheduledFor;
-    } else if (!isScheduled) {
+    } else if (!isScheduled && !req.body.status) {
+      // Only auto-publish if no explicit status was provided
       status = "published";
     }
 
@@ -80,6 +81,18 @@ exports.createAnnouncement = async (req, res) => {
       { path: "targetClasses", select: "name section" },
       { path: "targetIndividuals", select: "name email role" },
     ]);
+
+    // Send notifications if enabled
+    if (sendNotification !== false && status === "published") {
+      try {
+        await sendAnnouncementNotifications(announcement);
+        // Mark notification as sent
+        announcement.notificationSent = true;
+        await announcement.save();
+      } catch (error) {
+        console.error("Error sending notifications:", error);
+      }
+    }
 
     if (targetAudience === "class") {
       // Find all students in the target classes
@@ -451,11 +464,12 @@ exports.updateAnnouncement = async (req, res) => {
       });
     }
 
-    // Handle scheduling logic
+    // Handle scheduling logic - respect explicit status if provided
     if (updateData.isScheduled && updateData.scheduledFor) {
       updateData.status = "draft";
       updateData.publishDate = updateData.scheduledFor;
-    } else if (updateData.isScheduled === false) {
+    } else if (updateData.isScheduled === false && !req.body.status) {
+      // Only auto-publish if no explicit status was provided
       updateData.status = "published";
       updateData.publishDate = new Date();
     }
@@ -477,6 +491,18 @@ exports.updateAnnouncement = async (req, res) => {
         success: false,
         message: "Announcement not found",
       });
+    }
+
+    // Send notifications if status changed to published and notifications are enabled
+    if (updateData.status === "published" && announcement.sendNotification && !announcement.notificationSent) {
+      try {
+        await sendAnnouncementNotifications(announcement);
+        // Mark notification as sent
+        announcement.notificationSent = true;
+        await announcement.save();
+      } catch (error) {
+        console.error("Error sending notifications:", error);
+      }
     }
 
     res.json({
@@ -881,5 +907,82 @@ exports.getAnnouncementsForStudent = async (req, res) => {
       message: "Error fetching student announcements",
       error: error.message,
     });
+  }
+};
+
+// Helper function to send announcement notifications
+const sendAnnouncementNotifications = async (announcement) => {
+  try {
+    const teacherName = announcement.createdBy?.name || "Teacher";
+    const notificationTitle = `New Announcement from ${teacherName}`;
+    const notificationBody = `${announcement.title}\n\n${announcement.content.substring(0, 100)}${announcement.content.length > 100 ? '...' : ''}`;
+    
+    let targetUsers = [];
+
+    // Determine target users based on audience
+    switch (announcement.targetAudience) {
+      case "all":
+        targetUsers = await User.find({ role: { $in: ["student", "teacher", "admin"] } }).select('_id name email role');
+        break;
+      case "students":
+        targetUsers = await User.find({ role: "student" }).select('_id name email role');
+        break;
+      case "teachers":
+        targetUsers = await User.find({ role: "teacher" }).select('_id name email role');
+        break;
+      case "class":
+        if (announcement.targetClasses && announcement.targetClasses.length > 0) {
+          targetUsers = await User.find({ 
+            role: "student", 
+            class: { $in: announcement.targetClasses.map(c => c._id || c) } 
+          }).select('_id name email role');
+        }
+        break;
+      case "individual":
+        if (announcement.targetIndividuals && announcement.targetIndividuals.length > 0) {
+          targetUsers = await User.find({ 
+            _id: { $in: announcement.targetIndividuals.map(u => u._id || u) } 
+          }).select('_id name email role');
+        }
+        break;
+    }
+
+    // Log notification details
+    console.log(`📢 Sending notification: "${notificationTitle}"`);
+    console.log(`📝 Content: ${notificationBody}`);
+    console.log(`👥 Target users: ${targetUsers.length} users`);
+    console.log(`👨‍🏫 Teacher: ${teacherName}`);
+
+    // Here you would integrate with your notification service
+    // For now, we'll just log the notification details
+    for (const user of targetUsers) {
+      console.log(`📱 Sending to ${user.name} (${user.email}) - ${user.role}`);
+      
+      // TODO: Integrate with actual notification services like:
+      // - Firebase Cloud Messaging (FCM) for push notifications
+      // - Email service (SendGrid, Nodemailer) for email notifications
+      // - SMS service for text messages
+      
+      // Example FCM integration (commented out):
+      /*
+      await admin.messaging().send({
+        token: user.fcmToken,
+        notification: {
+          title: notificationTitle,
+          body: notificationBody,
+        },
+        data: {
+          announcementId: announcement._id.toString(),
+          teacherName: teacherName,
+          priority: announcement.priority,
+        },
+      });
+      */
+    }
+
+    console.log(`✅ Notification sent successfully to ${targetUsers.length} users`);
+  } catch (error) {
+    console.error("❌ Error sending notifications:", error);
+    throw error;
   }
 };

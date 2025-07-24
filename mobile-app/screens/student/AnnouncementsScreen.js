@@ -62,13 +62,22 @@ export default function AnnouncementsScreen() {
               }}
               activeOpacity={0.8}
             >
-              <Card style={styles.card}>
-                <Card.Content>
-                  <Title style={styles.title}>{announcement.title}</Title>
-                  <Text style={styles.content} numberOfLines={3}>{announcement.content}</Text>
-                  <Text style={styles.date}>{announcement.createdAt ? format(new Date(announcement.createdAt), "MMM dd, yyyy") : ""}</Text>
-                </Card.Content>
-              </Card>
+              <View style={styles.announcementCard}>
+                <Text style={styles.announcementTitle}>{announcement.title}</Text>
+                <Text style={styles.announcementSnippet} numberOfLines={2}>{announcement.content}</Text>
+                <View style={styles.announcementMetaRow}>
+                  <Text style={styles.announcementMeta}>{announcement.createdBy?.name ? `By ${announcement.createdBy.name}` : 'By Class Teacher'}</Text>
+                  <Text style={styles.announcementMeta}>{announcement.createdAt ? format(new Date(announcement.createdAt), "MMM dd, yyyy") : ""}</Text>
+                </View>
+                <View style={styles.announcementSourceRow}>
+                  <Text style={styles.announcementSource}>
+                    {announcement.targetAudience === 'all' ? 'For All Students' :
+                     announcement.targetAudience === 'class' ? `For Class ${announcement.targetClasses?.[0]?.name || announcement.targetClasses?.[0]?.grade + announcement.targetClasses?.[0]?.division || 'Unknown'}` :
+                     announcement.targetAudience === 'individual' ? 'For Specific Students' :
+                     `For ${announcement.targetAudience || 'Students'}`}
+                  </Text>
+                </View>
+              </View>
             </TouchableOpacity>
           ))
         )}
@@ -101,27 +110,52 @@ export default function AnnouncementsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: "#f5f5f5",
   },
   scrollContent: {
     padding: 16,
+    paddingBottom: 100,
   },
-  card: {
+  // New announcement card styles matching teacher design
+  announcementCard: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 8,
+    padding: 16,
     marginBottom: 16,
     elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
-  title: {
+  announcementTitle: {
+    fontWeight: 'bold',
     fontSize: 16,
-    marginBottom: 8,
+    marginBottom: 4,
+    color: '#212121',
   },
-  content: {
+  announcementSnippet: {
     fontSize: 14,
-    color: theme.colors.textSecondary,
+    color: '#555',
     marginBottom: 8,
+    lineHeight: 20,
   },
-  date: {
+  announcementMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  announcementMeta: {
     fontSize: 12,
-    color: theme.colors.textSecondary,
+    color: '#888',
+  },
+  announcementSourceRow: {
+    marginTop: 4,
+  },
+  announcementSource: {
+    fontSize: 11,
+    color: '#666',
+    fontStyle: 'italic',
   },
   loadingContainer: {
     flex: 1,
@@ -137,9 +171,9 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: "600",
     marginTop: 16,
     marginBottom: 8,
-    color: theme.colors.text,
+    color: "#212121",
   },
 }); 

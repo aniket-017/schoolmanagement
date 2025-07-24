@@ -39,6 +39,13 @@ export default function AnnouncementManagement({ navigation }) {
   const [classes, setClasses] = useState([]);
   const [users, setUsers] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalAnnouncements, setTotalAnnouncements] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [createForm, setCreateForm] = useState({
     title: "",
     content: "",
@@ -55,22 +62,43 @@ export default function AnnouncementManagement({ navigation }) {
   });
 
   useEffect(() => {
-    fetchAnnouncements();
+    fetchAnnouncements(1, true);
     fetchClasses();
     fetchUsers();
   }, []);
 
-  const fetchAnnouncements = async () => {
+  const fetchAnnouncements = async (page = 1, reset = false) => {
     try {
-      const response = await axios.get("/api/announcements");
-      setAnnouncements(response.data.data);
-      filterAnnouncements(response.data.data, searchQuery, filter);
+      setLoading(true);
+      const limit = 20; // Number of announcements per page
+      const response = await axios.get(`/api/announcements?page=${page}&limit=${limit}`);
+      
+      console.log('API Response:', response.data);
+      
+      // Handle different response formats
+      const data = response.data.data || response.data;
+      const pagination = response.data.pagination || {};
+      
+      if (reset || page === 1) {
+        setAnnouncements(data);
+        setCurrentPage(1);
+      } else {
+        setAnnouncements(prev => [...prev, ...data]);
+      }
+      
+      setTotalPages(pagination?.totalPages || 1);
+      setTotalAnnouncements(pagination?.total || data.length);
+      setHasMore(page < (pagination?.totalPages || 1) && data.length > 0);
+      
+      filterAnnouncements(data, searchQuery, filter);
     } catch (error) {
       showMessage({
         message: "Error fetching announcements",
         description: error.response?.data?.message || "Please try again later",
         type: "danger",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -110,20 +138,31 @@ export default function AnnouncementManagement({ navigation }) {
     setFilteredAnnouncements(filtered);
   };
 
-  const onRefresh = React.useCallback(async () => {
-    setRefreshing(true);
-    await fetchAnnouncements();
-    setRefreshing(false);
-  }, []);
-
+  // Reset pagination when search or filter changes
   const handleSearch = (query) => {
     setSearchQuery(query);
-    filterAnnouncements(announcements, query, filter);
+    setCurrentPage(1);
+    fetchAnnouncements(1, true);
   };
 
   const handleFilterChange = (value) => {
     setFilter(value);
-    filterAnnouncements(announcements, searchQuery, value);
+    setCurrentPage(1);
+    fetchAnnouncements(1, true);
+  };
+
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await fetchAnnouncements(1, true);
+    setRefreshing(false);
+  }, []);
+
+  const loadMoreAnnouncements = async () => {
+    if (loading || !hasMore) return;
+    
+    const nextPage = currentPage + 1;
+    await fetchAnnouncements(nextPage, false);
+    setCurrentPage(nextPage);
   };
 
   const handleStatusChange = async (announcementId, newStatus) => {
@@ -137,7 +176,7 @@ export default function AnnouncementManagement({ navigation }) {
         type: "success",
       });
 
-      fetchAnnouncements();
+      fetchAnnouncements(1, true);
     } catch (error) {
       showMessage({
         message: "Error updating announcement status",
@@ -156,7 +195,7 @@ export default function AnnouncementManagement({ navigation }) {
         type: "success",
       });
 
-      fetchAnnouncements();
+      fetchAnnouncements(1, true);
     } catch (error) {
       showMessage({
         message: "Error updating announcement pin status",
@@ -184,7 +223,7 @@ export default function AnnouncementManagement({ navigation }) {
                 type: "success",
               });
 
-              fetchAnnouncements();
+              fetchAnnouncements(1, true);
             } catch (error) {
               showMessage({
                 message: "Error deleting announcement",
@@ -247,7 +286,7 @@ export default function AnnouncementManagement({ navigation }) {
         isScheduled: false,
         status: "draft",
       });
-      fetchAnnouncements();
+      fetchAnnouncements(1, true);
     } catch (error) {
       showMessage({
         message: "Error creating announcement",
@@ -381,10 +420,60 @@ export default function AnnouncementManagement({ navigation }) {
       <ScrollView
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         contentContainerStyle={styles.scrollContent}
+        onScroll={({ nativeEvent }) => {
+          const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+          const paddingToBottom = 50;
+          if (layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom) {
+            loadMoreAnnouncements();
+          }
+        }}
+        scrollEventThrottle={200}
       >
         {filteredAnnouncements.map((announcement) => (
           <AnnouncementCard key={announcement._id} announcement={announcement} />
         ))}
+        
+        {/* Loading indicator */}
+        {loading && (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading more announcements...</Text>
+          </View>
+        )}
+        
+        {/* Load More Button */}
+        {hasMore && !loading && (
+          <View style={styles.loadMoreContainer}>
+            <Button 
+              mode="outlined" 
+              onPress={loadMoreAnnouncements}
+              style={styles.loadMoreButton}
+            >
+              Load More Announcements
+            </Button>
+          </View>
+        )}
+        
+        {/* End of list indicator */}
+        {!hasMore && filteredAnnouncements.length > 0 && (
+          <View style={styles.endOfListContainer}>
+            <Text style={styles.endOfListText}>No more announcements to load</Text>
+          </View>
+        )}
+        
+        {/* Pagination info */}
+        {totalAnnouncements > 0 && (
+          <View style={styles.paginationInfo}>
+            <Text style={styles.paginationText}>
+              Showing {filteredAnnouncements.length} of {totalAnnouncements} announcements
+            </Text>
+            <Text style={styles.paginationText}>
+              Page {currentPage} of {totalPages}
+            </Text>
+            <Text style={styles.paginationText}>
+              Has more: {hasMore ? 'Yes' : 'No'} | Loading: {loading ? 'Yes' : 'No'}
+            </Text>
+          </View>
+        )}
       </ScrollView>
 
       {/* Announcement Details Dialog */}
@@ -703,5 +792,41 @@ const styles = StyleSheet.create({
   modalButton: {
     flex: 1,
     marginHorizontal: 8,
+  },
+  loadingContainer: {
+    padding: 20,
+    alignItems: "center",
+  },
+  loadingText: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+  },
+  endOfListContainer: {
+    padding: 20,
+    alignItems: "center",
+  },
+  endOfListText: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    fontStyle: "italic",
+  },
+  paginationInfo: {
+    padding: 16,
+    backgroundColor: theme.colors.surface,
+    marginTop: 16,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  paginationText: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    marginBottom: 4,
+  },
+  loadMoreContainer: {
+    padding: 20,
+    alignItems: "center",
+  },
+  loadMoreButton: {
+    minWidth: 200,
   },
 });

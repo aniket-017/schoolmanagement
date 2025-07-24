@@ -165,6 +165,16 @@ export default function TeacherAnnouncementsPage() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ padding: 16 }}>
+      {/* Create Announcement Button - Always visible at top */}
+      <View style={styles.createButtonTop}>
+        <TouchableOpacity 
+          style={styles.createButton}
+          onPress={() => setShowCreateModal(true)}
+        >
+          <Text style={styles.createButtonText}>+ Create Announcement</Text>
+        </TouchableOpacity>
+      </View>
+
       {loading ? (
         <View style={styles.center}><ActivityIndicator size="large" /><Text>Loading announcements...</Text></View>
       ) : error ? (
@@ -306,4 +316,22 @@ const styles = StyleSheet.create({
   classOption: { padding: 8, borderRadius: 6, borderWidth: 1, borderColor: '#ccc', marginRight: 8, marginBottom: 8, backgroundColor: '#eee' },
   classOptionSelected: { backgroundColor: '#1976d2', borderColor: '#1976d2' },
   createButtonContainer: { marginTop: 24, marginBottom: 24, alignItems: 'center' },
+  createButtonTop: { marginBottom: 16, alignItems: 'center' },
+  createButton: { 
+    backgroundColor: '#1976d2', 
+    paddingHorizontal: 20, 
+    paddingVertical: 12, 
+    borderRadius: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  createButtonText: { 
+    color: '#fff', 
+    fontSize: 16, 
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
 }); 

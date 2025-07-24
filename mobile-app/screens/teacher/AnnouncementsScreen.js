@@ -340,7 +340,7 @@ export default function AnnouncementsScreen({ navigation }) {
           <Text style={{ color: showMineOnly ? '#fff' : '#1976d2', fontWeight: 'bold' }}>My Announcements</Text>
         </TouchableOpacity>
       </View>
-
+      
       <ScrollView
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         contentContainerStyle={styles.scrollContent}
@@ -367,6 +367,21 @@ export default function AnnouncementsScreen({ navigation }) {
           </View>
         )}
       </ScrollView>
+
+      {/* Create Announcement Button - Fixed at bottom */}
+      <View style={styles.createButtonBottom}>
+        <Button 
+          mode="contained" 
+          onPress={() => {
+            // For now, just show an alert. You can replace this with navigation to create screen
+            Alert.alert('Create Announcement', 'This will open the create announcement form');
+          }}
+          style={styles.createButton}
+          icon="plus"
+        >
+          Create Announcement
+        </Button>
+      </View>
 
       {/* Announcement Details Modal */}
       {selectedAnnouncement && (
@@ -634,5 +649,24 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.outline,
+  },
+  createButtonContainer: {
+    marginBottom: 16,
+    paddingHorizontal: 16,
+  },
+  createButtonBottom: {
+    position: 'absolute',
+    bottom: 20,
+    left: 16,
+    right: 16,
+    zIndex: 1000,
+  },
+  createButton: {
+    borderRadius: 8,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
 }); 

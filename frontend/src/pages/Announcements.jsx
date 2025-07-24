@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
-  Megaphone,
+  Bell,
   Plus,
   Search,
   Filter,
@@ -13,7 +13,6 @@ import {
   Pin,
   Calendar,
   Send,
-  Bell,
   AlertCircle,
   Info,
   CheckCircle,
@@ -41,19 +40,50 @@ const Announcements = () => {
   });
   const [classes, setClasses] = useState([]);
   const [users, setUsers] = useState([]);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalAnnouncements, setTotalAnnouncements] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  
   const { user } = useAuth();
 
   useEffect(() => {
-    fetchAnnouncements();
+    fetchAnnouncements(1, true);
     fetchStats();
     fetchClasses();
     fetchUsers();
   }, []);
 
-  const fetchAnnouncements = async () => {
+
+
+  const fetchAnnouncements = async (page = 1, reset = false) => {
     try {
-      setLoading(true);
-      const response = await fetch(`${appConfig.API_BASE_URL}/announcements`, {
+      if (reset || page === 1) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
+      
+      const limit = 10; // Number of announcements per page
+      let url = `${appConfig.API_BASE_URL}/announcements?page=${page}&limit=${limit}`;
+      
+      // Add status filter if not on "all" tab
+      if (activeTab !== "all") {
+        if (activeTab === "published") {
+          url += `&status=published`;
+        } else if (activeTab === "draft") {
+          url += `&status=draft`;
+        } else if (activeTab === "pinned") {
+          url += `&isPinned=true`;
+        } else if (activeTab === "mine" && isTeacher) {
+          // For "mine" tab, we'll filter on the client side since we need to check createdBy
+        }
+      }
+      
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -64,13 +94,36 @@ const Announcements = () => {
       }
       
       const data = await response.json();
+      
       if (data.success) {
-        setAnnouncements(data.data);
+        // The API returns: { success: true, data: [...], pagination: {...} }
+        const announcementsData = data.data || [];
+        const pagination = data.pagination || {};
+        
+
+        
+        if (reset || page === 1) {
+          setAnnouncements(announcementsData);
+          setCurrentPage(page);
+        } else {
+          setAnnouncements(prev => [...prev, ...announcementsData]);
+        }
+        
+        // Use the pagination data from API
+        const total = pagination.count || announcementsData.length;
+        const totalPages = pagination.total || 1;
+        
+        setTotalPages(totalPages);
+        setTotalAnnouncements(total);
+        setHasMore(page < totalPages && announcementsData.length === 10);
+        
+
       }
     } catch (error) {
       console.error('Error fetching announcements:', error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
@@ -168,7 +221,7 @@ const Announcements = () => {
       if (data.success) {
         setShowCreateModal(false);
         setEditingAnnouncement(null);
-        fetchAnnouncements();
+        fetchAnnouncements(1, true);
         fetchStats();
         alert(editingAnnouncement ? 'Announcement updated successfully!' : 'Announcement created successfully!');
       } else {
@@ -205,7 +258,7 @@ const Announcements = () => {
       const data = await response.json();
       
       if (data.success) {
-        fetchAnnouncements();
+        fetchAnnouncements(1, true);
         fetchStats();
         alert('Announcement deleted successfully!');
       } else {
@@ -233,7 +286,7 @@ const Announcements = () => {
       const data = await response.json();
       
       if (data.success) {
-        fetchAnnouncements();
+        fetchAnnouncements(1, true);
         fetchStats();
       }
     } catch (error) {
@@ -259,7 +312,7 @@ const Announcements = () => {
       const data = await response.json();
       
       if (data.success) {
-        fetchAnnouncements();
+        fetchAnnouncements(1, true);
         fetchStats();
       }
     } catch (error) {
@@ -273,7 +326,7 @@ const Announcements = () => {
       value: stats.totalAnnouncements.toString(),
       change: "+5",
       changeType: "increase",
-      icon: Megaphone,
+      icon: Bell,
       color: "primary",
     },
     {
@@ -304,7 +357,7 @@ const Announcements = () => {
 
   const isTeacher = user && user.role === 'teacher';
   const tabConfig = [
-    { id: "all", name: "All Announcements", count: announcements.length },
+    { id: "all", name: "All Announcements", count: totalAnnouncements },
     ...(isTeacher ? [{ id: "mine", name: "My Announcements", count: announcements.filter(a => a.createdBy?._id === user._id).length }] : []),
     { id: "published", name: "Published", count: announcements.filter((a) => a.status === "published").length },
     { id: "draft", name: "Drafts", count: announcements.filter((a) => a.status === "draft").length },
@@ -315,19 +368,27 @@ const Announcements = () => {
     const matchesSearch =
       announcement.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       announcement.content.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    let matchesTab = true;
     if (activeTab === "mine" && isTeacher) {
-      return matchesSearch && announcement.createdBy?._id === user._id;
+      matchesTab = announcement.createdBy?._id === user._id;
+    } else {
+      switch (activeTab) {
+        case "published":
+          matchesTab = announcement.status === "published";
+          break;
+        case "draft":
+          matchesTab = announcement.status === "draft";
+          break;
+        case "pinned":
+          matchesTab = announcement.isPinned;
+          break;
+        default:
+          matchesTab = true;
+      }
     }
-    switch (activeTab) {
-      case "published":
-        return matchesSearch && announcement.status === "published";
-      case "draft":
-        return matchesSearch && announcement.status === "draft";
-      case "pinned":
-        return matchesSearch && announcement.isPinned;
-      default:
-        return matchesSearch;
-    }
+    
+    return matchesSearch && matchesTab;
   });
 
   const getPriorityIcon = (priority) => {
@@ -383,6 +444,18 @@ const Announcements = () => {
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  const getTeacherName = (teacher) => {
+    if (!teacher) return null;
+    
+    // Try different name formats
+    if (teacher.name) return teacher.name;
+    if (teacher.firstName || teacher.lastName) {
+      return [teacher.firstName, teacher.middleName, teacher.lastName].filter(Boolean).join(" ");
+    }
+    if (teacher.email) return teacher.email.split('@')[0]; // Use email prefix as fallback
+    return null;
   };
 
   const containerVariants = {
@@ -452,6 +525,7 @@ const Announcements = () => {
                 <Send className="w-5 h-5 mr-2" />
                 Send Notification
               </motion.button>
+
             </div>
           </motion.div>
 
@@ -511,7 +585,11 @@ const Announcements = () => {
                 {tabConfig.map((tab) => (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      setCurrentPage(1);
+                      fetchAnnouncements(1, true);
+                    }}
                     className={cn(
                       "flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200",
                       activeTab === tab.id
@@ -542,7 +620,10 @@ const Announcements = () => {
                     type="text"
                     placeholder="Search announcements..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setSearchTerm(value);
+                    }}
                     className="pl-10 pr-4 py-2 w-full sm:w-64 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-sm"
                   />
                 </div>
@@ -559,7 +640,6 @@ const Announcements = () => {
             <div className="p-6">
               <div className="space-y-4">
                 {filteredAnnouncements.map((announcement) => {
-                  const PriorityIcon = getPriorityIcon(announcement.priority);
                   const priorityColor = getPriorityColor(announcement.priority);
 
                   return (
@@ -579,7 +659,7 @@ const Announcements = () => {
                               priorityColor === "secondary" && "bg-purple-100"
                             )}
                           >
-                            <PriorityIcon
+                            <Bell
                               className={cn(
                                 "w-5 h-5",
                                 priorityColor === "error" && "text-red-600",
@@ -611,7 +691,7 @@ const Announcements = () => {
                                 <Eye className="w-4 h-4" />
                                 <span>{announcement.views || 0} views</span>
                               </div>
-                              <span>by {announcement.createdBy?.name || 'Unknown'}</span>
+                              <span>by {getTeacherName(announcement.createdBy) || 'Class Teacher'}</span>
                             </div>
                           </div>
                         </div>
@@ -662,7 +742,7 @@ const Announcements = () => {
 
               {filteredAnnouncements.length === 0 && (
                 <div className="text-center py-12">
-                  <Megaphone className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <Bell className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 mb-2">No announcements found</h3>
                   <p className="text-gray-600 mb-6">
                     {activeTab === "all"
@@ -682,6 +762,106 @@ const Announcements = () => {
                   )}
                 </div>
               )}
+
+              {/* Pagination Controls */}
+              {announcements.length > 0 && (
+                <div className="mt-8 flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0">
+                  {/* Pagination Info */}
+                  <div className="text-sm text-gray-600">
+                    Showing {announcements.length} of {totalAnnouncements} announcements (Page {currentPage} of {totalPages})
+                  </div>
+
+                  {/* Pagination Buttons */}
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => {
+                        if (currentPage > 1) {
+                          const newPage = currentPage - 1;
+                          setCurrentPage(newPage);
+                          fetchAnnouncements(newPage, true);
+                        }
+                      }}
+                      disabled={currentPage === 1}
+                      className={cn(
+                        "px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                        currentPage === 1
+                          ? "text-gray-400 cursor-not-allowed"
+                          : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                      )}
+                    >
+                      Previous
+                    </button>
+
+                    {/* Page Numbers */}
+                    <div className="flex items-center space-x-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        const pageNum = i + 1;
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => {
+                              setCurrentPage(pageNum);
+                              fetchAnnouncements(pageNum, true);
+                            }}
+                            className={cn(
+                              "px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                              currentPage === pageNum
+                                ? "bg-blue-600 text-white"
+                                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                            )}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        if (currentPage < totalPages) {
+                          const newPage = currentPage + 1;
+                          setCurrentPage(newPage);
+                          fetchAnnouncements(newPage, true);
+                        }
+                      }}
+                      disabled={currentPage === totalPages}
+                      className={cn(
+                        "px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                        currentPage === totalPages
+                          ? "text-gray-400 cursor-not-allowed"
+                          : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                      )}
+                    >
+                      Next
+                    </button>
+                  </div>
+
+                  {/* Load More Button */}
+                  {hasMore && (
+                    <button
+                      onClick={() => {
+                        const nextPage = currentPage + 1;
+                        setCurrentPage(nextPage);
+                        fetchAnnouncements(nextPage, false);
+                      }}
+                      disabled={loadingMore}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                    >
+                      {loadingMore ? 'Loading...' : 'Load More'}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Loading More Indicator */}
+              {loadingMore && (
+                <div className="text-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="mt-2 text-sm text-gray-600">Loading more announcements...</p>
+                </div>
+              )}
+
+
             </div>
           </motion.div>
         </motion.div>
