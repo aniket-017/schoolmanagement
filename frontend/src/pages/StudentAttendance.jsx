@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ArrowLeftIcon, CalendarIcon, HomeIcon, ChartBarIcon, ClockIcon } from "@heroicons/react/24/outline";
-import { useTeacherAuth } from "../context/TeacherAuthContext";
+import { useAuth } from "../context/AuthContext";
 import apiService from "../services/apiService";
 
 const StudentAttendance = () => {
@@ -18,7 +18,7 @@ const StudentAttendance = () => {
   const [loading, setLoading] = useState(true);
   const [mobileView, setMobileView] = useState(window.innerWidth < 768);
 
-  const { user } = useTeacherAuth();
+  const { user } = useAuth();
 
   useEffect(() => {
     const handleResize = () => {
@@ -32,17 +32,17 @@ const StudentAttendance = () => {
     if (user) {
       loadAttendanceData();
     }
+    // eslint-disable-next-line
   }, [user, selectedDate]);
 
   const loadAttendanceData = async () => {
     try {
       setLoading(true);
-
-      // Load today's attendance
-      if (user?._id) {
+      if (user?.id) {
+        // Fetch today's attendance
         try {
           const dateStr = selectedDate.toISOString().split("T")[0];
-          const attendanceResponse = await apiService.attendance.getStudentAttendance(user._id, {
+          const attendanceResponse = await apiService.attendance.getStudentAttendance(user.id, {
             startDate: dateStr,
             endDate: dateStr,
           });
@@ -52,21 +52,52 @@ const StudentAttendance = () => {
             setAttendanceData(null);
           }
         } catch (error) {
-          console.log("Attendance data not available:", error.message);
           setAttendanceData(null);
         }
-      }
 
-      // TODO: Load monthly stats when API is available
+        // Fetch this month's stats
+        try {
+          const today = new Date();
+          const monthlyResponse = await apiService.attendance.getStudentAttendance(user.id, {
+            month: today.getMonth() + 1,
+            year: today.getFullYear(),
+          });
+          if (monthlyResponse.success && monthlyResponse.data?.statistics) {
+            setMonthlyStats({
+              attendanceRate: (monthlyResponse.data.statistics.attendancePercentage || 0) + "%",
+              presentDays: monthlyResponse.data.statistics.presentDays || 0,
+              absentDays: monthlyResponse.data.statistics.absentDays || 0,
+              lateDays: monthlyResponse.data.statistics.lateDays || 0,
+              totalDays: monthlyResponse.data.statistics.totalDays || 0,
+            });
+          } else {
+            setMonthlyStats({
+              attendanceRate: "0%",
+              presentDays: 0,
+              absentDays: 0,
+              lateDays: 0,
+              totalDays: 0,
+            });
+          }
+        } catch (error) {
+          setMonthlyStats({
+            attendanceRate: "0%",
+            presentDays: 0,
+            absentDays: 0,
+            lateDays: 0,
+            totalDays: 0,
+          });
+        }
+      }
+    } catch (error) {
+      setAttendanceData(null);
       setMonthlyStats({
-        attendanceRate: "NaN%",
+        attendanceRate: "0%",
         presentDays: 0,
         absentDays: 0,
         lateDays: 0,
         totalDays: 0,
       });
-    } catch (error) {
-      console.error("Error loading attendance data:", error);
     } finally {
       setLoading(false);
     }
@@ -86,6 +117,16 @@ const StudentAttendance = () => {
       month: "long",
       day: "numeric",
     });
+  };
+
+  // Add a ref for the recent section
+  const recentSectionRef = React.useRef(null);
+
+  // Helper to scroll to recent section
+  const handleViewDetails = () => {
+    if (recentSectionRef.current) {
+      recentSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   if (mobileView) {
@@ -114,12 +155,10 @@ const StudentAttendance = () => {
               <h3 className="text-lg font-semibold text-gray-900">Today's Attendance</h3>
               <button
                 className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm flex items-center space-x-1"
-                onClick={() => {
-                  // TODO: Implement date picker
-                }}
+                onClick={handleViewDetails}
               >
                 <CalendarIcon className="w-4 h-4" />
-                <span>Change Date</span>
+                <span>View Details</span>
               </button>
             </div>
 
@@ -198,6 +237,56 @@ const StudentAttendance = () => {
               </div>
             </div>
           </motion.div>
+
+          {/* Recent Attendance Section */}
+          <motion.div
+            ref={recentSectionRef}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+          >
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">Recent Attendance</h3>
+            {monthlyStats && Array.isArray(monthlyStats.attendance) && monthlyStats.attendance.length > 0 ? (
+              <div className="space-y-4">
+                {monthlyStats.attendance.slice(0, 7).map((record, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex flex-col items-center w-16">
+                      <span className="text-xl font-bold text-blue-600">
+                        {new Date(record.date).getDate()}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {new Date(record.date).toLocaleDateString("en-US", { month: "short" })}
+                      </span>
+                    </div>
+                    <div className="flex-1 ml-4">
+                      <div className="font-semibold text-gray-900">
+                        {new Date(record.date).toLocaleDateString("en-US", { weekday: "long" })}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {record.timeIn ? `Time In: ${record.timeIn}` : "No time recorded"}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className={`font-bold capitalize ${
+                        record.status === "present"
+                          ? "text-green-600"
+                          : record.status === "absent"
+                          ? "text-red-600"
+                          : record.status === "late"
+                          ? "text-yellow-600"
+                          : "text-gray-600"
+                      }`}>
+                        {record.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">No recent attendance records found.</div>
+            )}
+          </motion.div>
         </div>
 
         {/* Bottom Navigation */}
@@ -237,8 +326,16 @@ const StudentAttendance = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Today's Attendance */}
           <div className="bg-white rounded-xl shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-6">Today's Attendance</h3>
-
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-gray-900">Today's Attendance</h3>
+              <button
+                className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm flex items-center space-x-1"
+                onClick={handleViewDetails}
+              >
+                <CalendarIcon className="w-4 h-4" />
+                <span>View Details</span>
+              </button>
+            </div>
             {attendanceData ? (
               <div className="flex items-center space-x-4">
                 <div
@@ -305,6 +402,49 @@ const StudentAttendance = () => {
               </div>
             </div>
           </div>
+        </div>
+        {/* Recent Attendance Section */}
+        <div ref={recentSectionRef} className="mt-8 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-6">Recent Attendance</h3>
+          {monthlyStats && Array.isArray(monthlyStats.attendance) && monthlyStats.attendance.length > 0 ? (
+            <div className="space-y-4">
+              {monthlyStats.attendance.slice(0, 7).map((record, idx) => (
+                <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex flex-col items-center w-16">
+                    <span className="text-xl font-bold text-blue-600">
+                      {new Date(record.date).getDate()}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {new Date(record.date).toLocaleDateString("en-US", { month: "short" })}
+                    </span>
+                  </div>
+                  <div className="flex-1 ml-4">
+                    <div className="font-semibold text-gray-900">
+                      {new Date(record.date).toLocaleDateString("en-US", { weekday: "long" })}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {record.timeIn ? `Time In: ${record.timeIn}` : "No time recorded"}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <span className={`font-bold capitalize ${
+                      record.status === "present"
+                        ? "text-green-600"
+                        : record.status === "absent"
+                        ? "text-red-600"
+                        : record.status === "late"
+                        ? "text-yellow-600"
+                        : "text-gray-600"
+                    }`}>
+                      {record.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">No recent attendance records found.</div>
+          )}
         </div>
       </div>
     </div>

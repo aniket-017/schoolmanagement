@@ -19,7 +19,7 @@ import {
   HomeIcon,
   ChartBarIcon,
 } from "@heroicons/react/24/outline";
-import { useTeacherAuth } from "../context/TeacherAuthContext";
+import { useAuth } from "../context/AuthContext";
 import apiService from "../services/apiService";
 import logo from "../assets/logo.jpeg";
 
@@ -40,8 +40,9 @@ const StudentDashboard = () => {
     lateDays: 0,
     totalDays: 0,
   });
+  const [recentAttendance, setRecentAttendance] = useState([]);
 
-  const { user, logout } = useTeacherAuth();
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     const handleResize = () => {
@@ -54,6 +55,7 @@ const StudentDashboard = () => {
   useEffect(() => {
     if (user) {
       loadDashboardData();
+      loadRecentAttendance();
     }
   }, [user]);
 
@@ -75,17 +77,21 @@ const StudentDashboard = () => {
       }
 
       // Load today's attendance
-      if (user?._id) {
+      if (user?._id || user?.id) {
         try {
           const today = new Date();
-          const attendanceResponse = await apiService.attendance.getStudentAttendance(user._id, {
+          const studentId = user._id || user.id;
+          const attendanceResponse = await apiService.attendance.getStudentAttendance(studentId, {
             startDate: today.toISOString().split("T")[0],
             endDate: today.toISOString().split("T")[0],
           });
           if (attendanceResponse.success && attendanceResponse.data?.attendance?.length > 0) {
             setTodayAttendance(attendanceResponse.data.attendance[0]);
+          } else {
+            setTodayAttendance(null);
           }
         } catch (error) {
+          setTodayAttendance(null);
           console.log("Today's attendance not available:", error.message);
         }
       }
@@ -118,19 +124,63 @@ const StudentDashboard = () => {
         }
       }
 
-      // TODO: Load monthly attendance stats when API is available
-      setStudentStats({
-        attendanceRate: "NaN%",
-        presentDays: 0,
-        absentDays: 0,
-        lateDays: 0,
-        totalDays: 0,
-      });
+      // Fetch monthly attendance stats
+      try {
+        const today = new Date();
+        const monthlyResponse = await apiService.attendance.getStudentAttendance(user._id || user.id, {
+          month: today.getMonth() + 1,
+          year: today.getFullYear(),
+        });
+        if (monthlyResponse.success && monthlyResponse.data?.statistics) {
+          setStudentStats({
+            attendanceRate: (monthlyResponse.data.statistics.attendancePercentage || 0) + "%",
+            presentDays: monthlyResponse.data.statistics.presentDays || 0,
+            absentDays: monthlyResponse.data.statistics.absentDays || 0,
+            lateDays: monthlyResponse.data.statistics.lateDays || 0,
+            totalDays: monthlyResponse.data.statistics.totalDays || 0,
+          });
+        } else {
+          setStudentStats({
+            attendanceRate: "0%",
+            presentDays: 0,
+            absentDays: 0,
+            lateDays: 0,
+            totalDays: 0,
+          });
+        }
+      } catch (error) {
+        setStudentStats({
+          attendanceRate: "0%",
+          presentDays: 0,
+          absentDays: 0,
+          lateDays: 0,
+          totalDays: 0,
+        });
+      }
     } catch (error) {
       console.error("Error loading dashboard data:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  const loadRecentAttendance = async () => {
+    try {
+      if (user?.id) {
+        const today = new Date();
+        const response = await apiService.attendance.getStudentAttendance(user.id, {
+          month: today.getMonth() + 1,
+          year: today.getFullYear(),
+        });
+        if (response.success && response.data?.attendance) {
+          setRecentAttendance(response.data.attendance.slice(0, 7));
+        } else {
+          setRecentAttendance([]);
+        }
+      }
+    } catch (error) {
+      setRecentAttendance([]);
     }
   };
 
@@ -317,43 +367,8 @@ const StudentDashboard = () => {
             )}
           </motion.div>
 
-          {/* Today's Attendance - New section matching screenshots */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Today's Attendance</h3>
-              <button className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm">View Details</button>
-            </div>
-
-            {todayAttendance ? (
-              <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-                {React.createElement(getAttendanceIcon(todayAttendance.status), {
-                  className: `w-8 h-8 ${getAttendanceColor(todayAttendance.status).split(" ")[0]}`,
-                })}
-                <div>
-                  <p className={`font-semibold capitalize ${getAttendanceColor(todayAttendance.status)}`}>
-                    {todayAttendance.status}
-                  </p>
-                  <p className="text-gray-600 text-sm">Time In: {todayAttendance.timeIn || "N/A"}</p>
-                  {todayAttendance.remarks && (
-                    <p className="text-gray-500 text-xs">Remarks: {todayAttendance.remarks}</p>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <CalendarIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                <p className="text-gray-500 font-medium">No attendance marked for today</p>
-                <p className="text-gray-400 text-sm">Your attendance will appear here once marked by your teacher</p>
-              </div>
-            )}
-          </motion.div>
-
           {/* Recent Announcements - Exact match */}
+          {/* Removed Announcements section and replaced with Today's Attendance */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -361,37 +376,54 @@ const StudentDashboard = () => {
             className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Recent Announcements</h3>
-              <button className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm">View All</button>
+              <h3 className="text-lg font-semibold text-gray-900">Today's Attendance</h3>
+              <button className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm flex items-center space-x-1" onClick={() => window.location.href = '/student/attendance'}>
+                <CalendarIcon className="w-4 h-4" />
+                <span>View Details</span>
+              </button>
             </div>
 
-            <div className="space-y-4">
-              {announcements.length === 0 ? (
-                <div className="text-center py-6">
-                  <MegaphoneIcon className="w-10 h-10 text-gray-400 mx-auto mb-2" />
-                  <p className="text-gray-500">No recent announcements</p>
+            {todayAttendance ? (
+              <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+                <div
+                  className={`w-3 h-3 rounded-full ${
+                    todayAttendance.status === "present"
+                      ? "bg-green-500"
+                      : todayAttendance.status === "absent"
+                      ? "bg-red-500"
+                      : todayAttendance.status === "late"
+                      ? "bg-yellow-500"
+                      : "bg-gray-500"
+                  }`}
+                ></div>
+                <div>
+                  <p
+                    className={`font-semibold capitalize ${
+                      todayAttendance.status === "present"
+                        ? "text-green-600"
+                        : todayAttendance.status === "absent"
+                        ? "text-red-600"
+                        : todayAttendance.status === "late"
+                        ? "text-yellow-600"
+                        : "text-gray-600"
+                    }`}
+                  >
+                    {todayAttendance.status}
+                  </p>
+                  <p className="text-gray-600 text-sm">Time In: {todayAttendance.timeIn || "N/A"}</p>
+                  {todayAttendance.remarks && <p className="text-gray-500 text-xs">Remarks: {todayAttendance.remarks}</p>}
                 </div>
-              ) : (
-                announcements.slice(0, 3).map((announcement, index) => (
-                  <div key={announcement._id || index} className="bg-white border border-gray-200 rounded-lg p-4">
-                    <h4 className="font-semibold text-gray-900 mb-1">{announcement.title}</h4>
-                    <p className="text-gray-600 text-sm mb-3">{announcement.content || announcement.message}</p>
-                    <div className="flex items-center justify-between text-xs text-gray-500">
-                      <span>By {announcement.createdBy?.name || "School Administrator"}</span>
-                      <span>
-                        {announcement.createdAt
-                          ? new Date(announcement.createdAt).toLocaleDateString()
-                          : new Date().toLocaleDateString()}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-400 mt-1 italic">For All Students</p>
-                  </div>
-                ))
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <CalendarIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-500 font-medium">No attendance record found</p>
+                <p className="text-gray-400 text-sm">Attendance may not have been marked for this date</p>
+              </div>
+            )}
           </motion.div>
 
-          {/* Quick Actions Grid - Matching screenshots with 5 items */}
+          {/* Quick Actions Grid - Matching attendance page mobile view */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -432,6 +464,8 @@ const StudentDashboard = () => {
               </Link>
             </div>
           </motion.div>
+
+          {/* Recent Attendance Section - REMOVED */}
         </div>
 
         {/* Bottom Navigation - Exact match */}
@@ -627,6 +661,8 @@ const StudentDashboard = () => {
                 </div>
               </div>
             </div>
+
+            {/* Recent Attendance Section - REMOVED */}
           </div>
         </div>
 

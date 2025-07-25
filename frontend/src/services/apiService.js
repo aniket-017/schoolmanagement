@@ -195,7 +195,7 @@ class ApiService {
   attendance = {
     getStudentAttendance: async (studentId, params = {}) => {
       const queryString = new URLSearchParams(params).toString();
-      const response = await fetch(`${this.baseURL}/attendances/student/${studentId}?${queryString}`, {
+      const response = await fetch(`${this.baseURL}/attendance/student/${studentId}?${queryString}`, {
         headers: this.getAuthHeaders(),
       });
       return this.handleResponse(response);
