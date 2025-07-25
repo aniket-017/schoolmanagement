@@ -31,7 +31,12 @@ export const AuthProvider = ({ children }) => {
 
   const fetchUserProfile = async (token) => {
     try {
-      const response = await fetch(`${appConfig.API_BASE_URL}/auth/profile`, {
+      const userRole = localStorage.getItem("userRole");
+      const endpoint = userRole === "student"
+        ? `${appConfig.API_BASE_URL}/student-auth/profile`
+        : `${appConfig.API_BASE_URL}/auth/profile`;
+
+      const response = await fetch(endpoint, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -40,12 +45,15 @@ export const AuthProvider = ({ children }) => {
       const data = await response.json();
       if (data.success) {
         setUser(data.user);
+        // Store userRole for future reference
+        localStorage.setItem("userRole", data.user.role);
         // Check if user needs to change password
         setRequirePasswordChange(data.user.isFirstLogin || false);
       } else {
         // Only remove token if response indicates it's invalid
         if (response.status === 401) {
           localStorage.removeItem("token");
+          localStorage.removeItem("userRole");
           setUser(null);
         }
       }
@@ -54,6 +62,7 @@ export const AuthProvider = ({ children }) => {
       // Only remove token on network errors if response is 401
       if (error.status === 401) {
         localStorage.removeItem("token");
+        localStorage.removeItem("userRole");
         setUser(null);
       }
     } finally {
@@ -76,6 +85,8 @@ export const AuthProvider = ({ children }) => {
       if (data.success) {
         localStorage.setItem("token", data.token);
         setUser(data.user);
+        // Store userRole for future reference
+        localStorage.setItem("userRole", data.user.role);
         setRequirePasswordChange(data.requirePasswordChange || false);
         return { success: true };
       } else {

@@ -13,12 +13,13 @@ import {
   FolderIcon,
   HeartIcon,
 } from "@heroicons/react/24/outline";
-import { useTeacherAuth } from "../context/TeacherAuthContext";
+// Use AuthContext for student profile (if you have a StudentAuthContext, use that instead)
+import { useAuth } from "../context/AuthContext";
 
 const StudentProfile = () => {
   const [mobileView, setMobileView] = useState(window.innerWidth < 768);
 
-  const { user } = useTeacherAuth();
+  const { user, loading } = useAuth();
 
   useEffect(() => {
     const handleResize = () => {
@@ -27,6 +28,45 @@ const StudentProfile = () => {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  // Format address for display
+  const formatAddress = (address) => {
+    if (!address) return "Not provided";
+    if (typeof address === "string") return address;
+    if (typeof address === "object") {
+      // Try common address fields
+      return [address.street, address.city, address.state, address.zipCode, address.country]
+        .filter(Boolean)
+        .join(", ") || JSON.stringify(address);
+    }
+    return String(address);
+  };
+
+  // Format class for display
+  const formatClass = (classObj) => {
+    if (!classObj) return "Not provided";
+    if (typeof classObj === "string") return classObj;
+    if (typeof classObj === "object") {
+      return [classObj.name, classObj.grade, classObj.section].filter(Boolean).join(" - ") || JSON.stringify(classObj);
+    }
+    return String(classObj);
+  };
+
+  // Format section for display
+  const formatSection = (section) => {
+    if (!section) return "Not provided";
+    if (typeof section === "string" || typeof section === "number") return section;
+    if (typeof section === "object") return JSON.stringify(section);
+    return String(section);
+  };
+
+  // Defensive: show loading or error if user is not available
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+  if (!user || user.role !== "student") {
+    return <div className="text-red-500 p-4">Unable to load student profile. Please log in as a student.</div>;
+  }
 
   const bottomNavItems = [
     { title: "Dashboard", icon: HomeIcon, href: "/student/dashboard" },
@@ -39,15 +79,19 @@ const StudentProfile = () => {
   const studentData = {
     name: user?.name || "Prerna Thite",
     email: user?.email || "prerna@gmail.com",
-    phone: user?.phone || "8745695875",
-    dateOfBirth: user?.dateOfBirth || "4/1/2001",
+    phone: user?.phone || user?.mobileNumber || "8745695875",
+    dateOfBirth: typeof user?.dateOfBirth === "object"
+      ? JSON.stringify(user.dateOfBirth)
+      : user?.dateOfBirth || "4/1/2001",
     gender: user?.gender || "Female",
-    address: user?.address || "Not provided",
-    emergencyContact: user?.emergencyContact || "Not provided",
+    address: formatAddress(user?.address || user?.currentAddress),
+    emergencyContact: typeof user?.emergencyContact === "object"
+      ? JSON.stringify(user.emergencyContact)
+      : user?.emergencyContact || "Not provided",
     studentId: user?.studentId || "STU1753270452987",
     admissionNumber: user?.admissionNumber || "ADM1753270452987",
-    class: user?.class?.name || "1st Class - undefined",
-    section: user?.section || "1st",
+    class: formatClass(user?.class),
+    section: formatSection(user?.section || (user?.class?.section ? user.class.section : "1st")),
   };
 
   if (mobileView) {
