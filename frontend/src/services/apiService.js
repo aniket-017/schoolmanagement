@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://schoolmangement.aiiventure.com:1704/api";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://schoolmangement.aiiventure.com:1704/api";
 
 class ApiService {
   constructor() {
