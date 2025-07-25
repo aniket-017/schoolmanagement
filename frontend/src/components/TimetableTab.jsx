@@ -489,7 +489,7 @@ const TimetableTab = ({ classId, classData }) => {
       )}
 
       {/* Timetable Grid */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden timetable-table-container">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
@@ -539,7 +539,7 @@ const TimetableTab = ({ classId, classData }) => {
                           <motion.div
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3 relative group"
+                            className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3 relative group timetable-period-card"
                           >
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
@@ -613,6 +613,48 @@ const TimetableTab = ({ classId, classData }) => {
           />
         )}
       </AnimatePresence>
+      <style>{`
+  @media (max-width: 600px) {
+    .timetable-table-container {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .timetable-table-container table {
+      min-width: 500px;
+    }
+    .timetable-table-container th, .timetable-table-container td {
+      padding: 4px 6px !important;
+      font-size: 0.75rem !important;
+    }
+    .timetable-period-card {
+      padding: 6px !important;
+      font-size: 0.8rem !important;
+      min-height: 48px !important;
+    }
+    .timetable-period-card .text-blue-900 {
+      font-size: 0.95rem !important;
+    }
+    .timetable-period-card .text-sm {
+      font-size: 0.75rem !important;
+    }
+    .timetable-period-card .text-xs {
+      font-size: 0.65rem !important;
+    }
+    .timetable-period-card .p-3 {
+      padding: 0.25rem !important;
+    }
+    .timetable-period-card .rounded-lg {
+      border-radius: 0.35rem !important;
+    }
+    .timetable-table-container h3, .timetable-table-container p, .timetable-table-container span {
+      font-size: 0.8rem !important;
+    }
+    .timetable-table-container .w-4, .timetable-table-container .h-4 {
+      width: 14px !important;
+      height: 14px !important;
+    }
+  }
+`}</style>
     </div>
   );
 };

@@ -50,6 +50,7 @@ import StudentDemo from "./pages/StudentDemo";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ChangePassword from "./components/ChangePassword";
 import TeacherAnnouncements from "./pages/TeacherAnnouncements";
+import StudentTimetable from "./pages/StudentTimetable";
 
 function AppContent() {
   const { requirePasswordChange } = useAuth();
@@ -182,6 +183,14 @@ function AppContent() {
           element={
             <TeacherProtectedRoute allowedRoles={["student"]}>
               <StudentGrades />
+            </TeacherProtectedRoute>
+          }
+        />
+        <Route
+          path="/student/timetable"
+          element={
+            <TeacherProtectedRoute allowedRoles={["student"]}>
+              <StudentTimetable />
             </TeacherProtectedRoute>
           }
         />

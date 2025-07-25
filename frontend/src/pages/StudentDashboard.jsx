@@ -266,7 +266,12 @@ const StudentDashboard = () => {
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Today's Schedule</h3>
-              <button className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm">View Full</button>
+              <button
+                className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm"
+                onClick={() => window.location.href = '/student/timetable'}
+              >
+                View Full
+              </button>
             </div>
 
             {getTodaySchedule().length === 0 ? (
