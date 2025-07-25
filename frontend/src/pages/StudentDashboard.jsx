@@ -14,79 +14,139 @@ import {
   ArrowRightIcon,
   Bars3Icon,
   ArrowLeftOnRectangleIcon,
+  XMarkIcon,
+  BellIcon,
+  HomeIcon,
+  ChartBarIcon,
 } from "@heroicons/react/24/outline";
+import { useTeacherAuth } from "../context/TeacherAuthContext";
+import apiService from "../services/apiService";
 import logo from "../assets/logo.jpeg";
 
 const StudentDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mobileView, setMobileView] = useState(window.innerWidth < 768);
 
-  // Mock data - replace with actual API calls
-  const [student] = useState({
-    name: "Arjun Mehta",
-    class: "X-A",
-    rollNumber: "15",
-    admissionNumber: "DN2024001",
+  // Data states
+  const [timetableData, setTimetableData] = useState(null);
+  const [todayAttendance, setTodayAttendance] = useState(null);
+  const [announcements, setAnnouncements] = useState([]);
+  const [studentStats, setStudentStats] = useState({
+    attendanceRate: "NaN%",
+    presentDays: 0,
+    absentDays: 0,
+    lateDays: 0,
+    totalDays: 0,
   });
 
-  const [todaySchedule] = useState([
-    {
-      id: 1,
-      subject: "Mathematics",
-      teacher: "Mrs. Sharma",
-      time: "09:00 - 09:45",
-      period: 1,
-      room: "Room 101",
-      type: "theory",
-    },
-    {
-      id: 2,
-      subject: "English",
-      teacher: "Mr. Patel",
-      time: "09:45 - 10:30",
-      period: 2,
-      room: "Room 102",
-      type: "theory",
-    },
-    {
-      id: 3,
-      subject: "Physics Lab",
-      teacher: "Dr. Kumar",
-      time: "11:00 - 11:45",
-      period: 3,
-      room: "Physics Lab",
-      type: "practical",
-    },
-  ]);
-
-  const [todayAttendance] = useState({
-    status: "present",
-    timeIn: "08:30 AM",
-    remarks: "On time",
-  });
-
-  const [announcements] = useState([
-    {
-      id: 1,
-      title: "Sports Day Practice",
-      content: "All students are required to attend sports day practice sessions starting from tomorrow.",
-      date: "2024-12-10",
-      author: "Sports Department",
-    },
-    {
-      id: 2,
-      title: "Parent-Teacher Meeting",
-      content: "PTM scheduled for this Saturday. Parents are requested to meet class teachers.",
-      date: "2024-12-09",
-      author: "Academic Office",
-    },
-  ]);
+  const { user, logout } = useTeacherAuth();
 
   useEffect(() => {
-    // Simulate data loading
-    setTimeout(() => setLoading(false), 1000);
+    const handleResize = () => {
+      setMobileView(window.innerWidth < 768);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      loadDashboardData();
+    }
+  }, [user]);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+
+      // Load student timetable (class timetable)
+      if (user?.class?._id || user?.class) {
+        try {
+          const classId = user.class._id || user.class;
+          const timetableResponse = await apiService.timetable.getClassTimetable(classId);
+          if (timetableResponse.success) {
+            setTimetableData(timetableResponse.data);
+          }
+        } catch (error) {
+          console.log("Timetable not available:", error.message);
+        }
+      }
+
+      // Load today's attendance
+      if (user?._id) {
+        try {
+          const today = new Date();
+          const attendanceResponse = await apiService.attendance.getStudentAttendance(user._id, {
+            startDate: today.toISOString().split("T")[0],
+            endDate: today.toISOString().split("T")[0],
+          });
+          if (attendanceResponse.success && attendanceResponse.data?.attendance?.length > 0) {
+            setTodayAttendance(attendanceResponse.data.attendance[0]);
+          }
+        } catch (error) {
+          console.log("Today's attendance not available:", error.message);
+        }
+      }
+
+      // Load announcements for student
+      try {
+        const userId = user?._id || user?.id;
+        if (userId) {
+          const announcementsResponse = await apiService.announcements.getAnnouncementsForStudent(userId, {
+            activeOnly: true,
+            limit: 5,
+          });
+          if (announcementsResponse.success) {
+            setAnnouncements(announcementsResponse.data || []);
+          }
+        }
+      } catch (error) {
+        console.log("Announcements not available:", error.message);
+        // Fallback to regular announcements
+        try {
+          const generalAnnouncements = await apiService.announcements.getTeacherAnnouncements({
+            activeOnly: true,
+            limit: 5,
+          });
+          if (generalAnnouncements.success) {
+            setAnnouncements(generalAnnouncements.data || []);
+          }
+        } catch (fallbackError) {
+          console.log("General announcements not available:", fallbackError.message);
+        }
+      }
+
+      // TODO: Load monthly attendance stats when API is available
+      setStudentStats({
+        attendanceRate: "NaN%",
+        presentDays: 0,
+        absentDays: 0,
+        lateDays: 0,
+        totalDays: 0,
+      });
+    } catch (error) {
+      console.error("Error loading dashboard data:", error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadDashboardData();
+  };
+
+  const getTodaySchedule = () => {
+    if (!timetableData?.weeklyTimetable) {
+      return [];
+    }
+
+    const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
+    return timetableData.weeklyTimetable[today] || [];
+  };
 
   const getAttendanceColor = (status) => {
     switch (status) {
@@ -131,12 +191,22 @@ const StudentDashboard = () => {
 
   const quickActions = [
     { title: "Attendance", icon: CalendarIcon, href: "/student/attendance", color: "bg-blue-500" },
-    { title: "Timetable", icon: ClockIcon, href: "/student/timetable", color: "bg-green-500" },
-    { title: "Assignments", icon: AcademicCapIcon, href: "/student/assignments", color: "bg-purple-500" },
-    { title: "Results", icon: CheckCircleIcon, href: "/student/results", color: "bg-orange-500" },
-    { title: "Fees", icon: UserIcon, href: "/student/fees", color: "bg-red-500" },
-    { title: "Library", icon: UserGroupIcon, href: "/student/library", color: "bg-indigo-500" },
+    { title: "Classes", icon: UserGroupIcon, href: "/student/classes", color: "bg-green-500" },
+    { title: "Annual Calendar", icon: CalendarIcon, href: "/student/annual-calendar", color: "bg-purple-500" },
+    { title: "Timetable", icon: ClockIcon, href: "/student/timetable", color: "bg-orange-500" },
+    { title: "Profile", icon: UserIcon, href: "/student/profile", color: "bg-blue-600" },
   ];
+
+  const bottomNavItems = [
+    { title: "Dashboard", icon: HomeIcon, href: "/student/dashboard", active: true },
+    { title: "Attendance", icon: CalendarIcon, href: "/student/attendance" },
+    { title: "Grades", icon: ChartBarIcon, href: "/student/grades" },
+    { title: "Timetable", icon: ClockIcon, href: "/student/timetable" },
+  ];
+
+  const handleLogout = () => {
+    logout();
+  };
 
   if (loading) {
     return (
@@ -149,163 +219,462 @@ const StudentDashboard = () => {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Mobile Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
-        <div className="flex items-center justify-between p-4">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+  if (mobileView) {
+    // Mobile View - Exact match to React Native app
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {/* Mobile Header - Matching the screenshots */}
+        <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+          <div className="flex items-center justify-between p-4">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+            >
+              <Bars3Icon className="w-6 h-6" />
+            </button>
+
+            <div className="flex items-center space-x-3">
+              <img src={logo} alt="Logo" className="h-8 w-auto" />
+            </div>
+
+            <button onClick={handleLogout} className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors">
+              <ArrowLeftOnRectangleIcon className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* Welcome Section - Exactly like the screenshots */}
+          <div className="px-4 pb-6">
+            <div className="flex items-center space-x-4">
+              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+                <UserIcon className="w-8 h-8" />
+              </div>
+              <div className="flex-1">
+                <p className="text-white/80 text-sm">Welcome back,</p>
+                <h2 className="text-lg font-bold text-white">{user?.name?.toUpperCase() || "STUDENT"}</h2>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="px-4 py-6 space-y-6 pb-24">
+          {/* Today's Schedule - Exact match */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
           >
-            <Bars3Icon className="w-6 h-6" />
-          </button>
-
-          <div className="flex items-center space-x-3">
-            <img src={logo} alt="Logo" className="h-8 w-auto" />
-            <div className="hidden sm:block">
-              <h1 className="text-lg font-semibold">Student Portal</h1>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Today's Schedule</h3>
+              <button className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm">View Full</button>
             </div>
-          </div>
 
-          <Link to="/student-teacher-login" className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors">
-            <ArrowLeftOnRectangleIcon className="w-6 h-6" />
-          </Link>
-        </div>
+            {getTodaySchedule().length === 0 ? (
+              <div className="text-center py-8">
+                <CalendarIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-500 font-medium">No classes scheduled for today</p>
+                <p className="text-gray-400 text-sm">
+                  Your timetable is loaded but no classes are scheduled for today.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {getTodaySchedule()
+                  .slice(0, 3)
+                  .map((period, index) => (
+                    <div key={period.id || index} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+                      <div className="text-center min-w-[80px]">
+                        <p className="text-blue-600 font-semibold text-sm">
+                          {period.time || `${9 + index}:00 - ${10 + index}:00`}
+                        </p>
+                        <p className="text-gray-500 text-xs">Period {period.period || index + 1}</p>
+                      </div>
 
-        {/* Welcome Section */}
-        <div className="px-4 pb-6">
-          <div className="flex items-center space-x-4">
-            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
-              <UserIcon className="w-8 h-8" />
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-gray-900">
+                          {period.subject?.name || `Subject ${index + 1}`}
+                        </h4>
+                        <p className="text-gray-600 text-sm">{period.teacher?.name || "Teacher"}</p>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <span className="text-gray-500 text-xs">{period.room || `Room ${101 + index}`}</span>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${getPeriodTypeColor(
+                              period.type || "theory"
+                            )}`}
+                          >
+                            {period.type || "theory"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </motion.div>
+
+          {/* Today's Attendance - New section matching screenshots */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Today's Attendance</h3>
+              <button className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm">View Details</button>
             </div>
-            <div>
-              <p className="text-white/80 text-sm">Welcome back,</p>
-              <h2 className="text-xl font-bold">{student.name}</h2>
-              <p className="text-white/90 text-sm">
-                Class {student.class} • Roll No. {student.rollNumber}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="max-w-6xl mx-auto p-4 space-y-6">
-        {/* Today's Attendance */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Today's Attendance</h3>
-            <Link to="/student/attendance" className="text-blue-600 text-sm font-medium hover:text-blue-700">
-              View Details
-            </Link>
-          </div>
-
-          <div className="flex items-center space-x-4">
-            {React.createElement(getAttendanceIcon(todayAttendance.status), {
-              className: `w-8 h-8 ${getAttendanceColor(todayAttendance.status).split(" ")[0]}`,
-            })}
-            <div>
-              <p className={`font-semibold capitalize ${getAttendanceColor(todayAttendance.status)}`}>
-                {todayAttendance.status}
-              </p>
-              <p className="text-gray-600 text-sm">Time In: {todayAttendance.timeIn}</p>
-              {todayAttendance.remarks && <p className="text-gray-500 text-xs">Remarks: {todayAttendance.remarks}</p>}
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Today's Schedule */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Today's Schedule</h3>
-            <Link to="/student/timetable" className="text-blue-600 text-sm font-medium hover:text-blue-700">
-              View Full
-            </Link>
-          </div>
-
-          <div className="space-y-4">
-            {todaySchedule.map((period, index) => (
-              <div key={period.id} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-                <div className="text-center min-w-[80px]">
-                  <p className="text-blue-600 font-semibold text-sm">{period.time}</p>
-                  <p className="text-gray-500 text-xs">Period {period.period}</p>
-                </div>
-
-                <div className="flex-1">
-                  <h4 className="font-semibold text-gray-900">{period.subject}</h4>
-                  <p className="text-gray-600 text-sm">{period.teacher}</p>
-                  <div className="flex items-center space-x-2 mt-1">
-                    <span className="text-gray-500 text-xs">{period.room}</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPeriodTypeColor(period.type)}`}>
-                      {period.type}
-                    </span>
-                  </div>
+            {todayAttendance ? (
+              <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+                {React.createElement(getAttendanceIcon(todayAttendance.status), {
+                  className: `w-8 h-8 ${getAttendanceColor(todayAttendance.status).split(" ")[0]}`,
+                })}
+                <div>
+                  <p className={`font-semibold capitalize ${getAttendanceColor(todayAttendance.status)}`}>
+                    {todayAttendance.status}
+                  </p>
+                  <p className="text-gray-600 text-sm">Time In: {todayAttendance.timeIn || "N/A"}</p>
+                  {todayAttendance.remarks && (
+                    <p className="text-gray-500 text-xs">Remarks: {todayAttendance.remarks}</p>
+                  )}
                 </div>
               </div>
+            ) : (
+              <div className="text-center py-8">
+                <CalendarIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-500 font-medium">No attendance marked for today</p>
+                <p className="text-gray-400 text-sm">Your attendance will appear here once marked by your teacher</p>
+              </div>
+            )}
+          </motion.div>
+
+          {/* Recent Announcements - Exact match */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Recent Announcements</h3>
+              <button className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm">View All</button>
+            </div>
+
+            <div className="space-y-4">
+              {announcements.length === 0 ? (
+                <div className="text-center py-6">
+                  <MegaphoneIcon className="w-10 h-10 text-gray-400 mx-auto mb-2" />
+                  <p className="text-gray-500">No recent announcements</p>
+                </div>
+              ) : (
+                announcements.slice(0, 3).map((announcement, index) => (
+                  <div key={announcement._id || index} className="bg-white border border-gray-200 rounded-lg p-4">
+                    <h4 className="font-semibold text-gray-900 mb-1">{announcement.title}</h4>
+                    <p className="text-gray-600 text-sm mb-3">{announcement.content || announcement.message}</p>
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span>By {announcement.createdBy?.name || "School Administrator"}</span>
+                      <span>
+                        {announcement.createdAt
+                          ? new Date(announcement.createdAt).toLocaleDateString()
+                          : new Date().toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1 italic">For All Students</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </motion.div>
+
+          {/* Quick Actions Grid - Matching screenshots with 5 items */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+          >
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+
+            <div className="grid grid-cols-2 gap-4">
+              {quickActions.slice(0, 4).map((action, index) => (
+                <Link
+                  key={action.title}
+                  to={action.href}
+                  className="flex flex-col items-center p-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors group"
+                >
+                  <div
+                    className={`w-12 h-12 rounded-full ${action.color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}
+                  >
+                    <action.icon className="w-6 h-6 text-white" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-700 text-center">{action.title}</span>
+                </Link>
+              ))}
+            </div>
+
+            {/* Profile action - single centered item like in screenshots */}
+            <div className="grid grid-cols-1 gap-4 mt-4">
+              <Link
+                to={quickActions[4].href}
+                className="flex flex-col items-center p-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors group w-1/2 mx-auto"
+              >
+                <div
+                  className={`w-12 h-12 rounded-full ${quickActions[4].color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}
+                >
+                  {React.createElement(quickActions[4].icon, { className: "w-6 h-6 text-white" })}
+                </div>
+                <span className="text-sm font-medium text-gray-700 text-center">{quickActions[4].title}</span>
+              </Link>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Bottom Navigation - Exact match */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2">
+          <div className="flex justify-around">
+            {bottomNavItems.map((item) => (
+              <Link
+                key={item.title}
+                to={item.href}
+                className={`flex flex-col items-center py-2 px-3 rounded-lg ${
+                  item.active ? "text-blue-600 bg-blue-50" : "text-gray-600 hover:text-blue-600 hover:bg-gray-50"
+                }`}
+              >
+                <item.icon className="w-6 h-6 mb-1" />
+                <span className="text-xs font-medium">{item.title}</span>
+              </Link>
             ))}
           </div>
-        </motion.div>
+        </div>
+
+        {/* Mobile Sidebar */}
+        {sidebarOpen && (
+          <div className="fixed inset-0 z-50">
+            <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setSidebarOpen(false)}></div>
+            <div className="fixed left-0 top-0 bottom-0 w-64 bg-white shadow-xl">
+              <div className="p-4 border-b bg-blue-600 text-white">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold">Student Portal</span>
+                  <button onClick={() => setSidebarOpen(false)}>
+                    <XMarkIcon className="w-6 h-6" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-4">
+                <div className="space-y-2">
+                  <Link
+                    to="/student/dashboard"
+                    className="block px-3 py-2 rounded-lg bg-blue-50 text-blue-700 font-medium"
+                  >
+                    Dashboard
+                  </Link>
+                  <Link to="/student/attendance" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
+                    Attendance
+                  </Link>
+                  <Link to="/student/timetable" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
+                    Timetable
+                  </Link>
+                  <Link to="/student/grades" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
+                    Grades
+                  </Link>
+                  <Link to="/student/profile" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
+                    Profile
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Desktop View
+  return (
+    <div className="min-h-screen bg-gray-100">
+      {/* Desktop Header */}
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center space-x-4">
+              <img src={logo} alt="Logo" className="h-10 w-auto" />
+              <div>
+                <h1 className="text-xl font-semibold text-gray-900">Student Dashboard</h1>
+                <p className="text-sm text-gray-600">Welcome back, {user?.name}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <button className="p-2 text-gray-600 hover:text-gray-900">
+                <BellIcon className="w-6 h-6" />
+              </button>
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                  <UserIcon className="w-5 h-5 text-white" />
+                </div>
+                <button onClick={handleLogout} className="text-sm text-gray-700 hover:text-gray-900">
+                  Logout
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Desktop Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Today's Schedule */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-gray-900">Today's Schedule</h3>
+              <Link to="/student/timetable" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                View Full Schedule
+              </Link>
+            </div>
+
+            {getTodaySchedule().length === 0 ? (
+              <div className="text-center py-8">
+                <CalendarIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">No classes scheduled for today</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {getTodaySchedule().map((period, index) => (
+                  <div key={period.id || index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-4">
+                      <div className="text-center">
+                        <p className="text-sm font-semibold text-blue-600">
+                          {period.time || `${9 + index}:00-${10 + index}:00`}
+                        </p>
+                        <p className="text-xs text-gray-500">Period {period.period || index + 1}</p>
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-gray-900">{period.subject?.name || `Subject ${index + 1}`}</h4>
+                        <p className="text-sm text-gray-600">
+                          {period.teacher?.name || "Teacher"} • {period.room || `Room ${101 + index}`}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Today's Attendance + Monthly Stats */}
+          <div className="space-y-6">
+            {/* Today's Attendance */}
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Today's Attendance</h3>
+                <Link to="/student/attendance" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                  View Details
+                </Link>
+              </div>
+
+              {todayAttendance ? (
+                <div className="flex items-center space-x-4">
+                  {React.createElement(getAttendanceIcon(todayAttendance.status), {
+                    className: `w-8 h-8 ${getAttendanceColor(todayAttendance.status).split(" ")[0]}`,
+                  })}
+                  <div>
+                    <p className={`font-semibold capitalize ${getAttendanceColor(todayAttendance.status)}`}>
+                      {todayAttendance.status}
+                    </p>
+                    <p className="text-gray-600 text-sm">Time In: {todayAttendance.timeIn || "N/A"}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <CalendarIcon className="w-10 h-10 text-gray-400 mx-auto mb-2" />
+                  <p className="text-gray-500">No attendance marked for today</p>
+                </div>
+              )}
+            </div>
+
+            {/* Monthly Attendance Stats */}
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-6">This Month's Attendance</h3>
+
+              <div className="text-center mb-6">
+                <div className="text-4xl font-bold text-blue-600">{studentStats.attendanceRate}</div>
+                <p className="text-gray-600">Attendance Rate</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center p-4 bg-gray-50 rounded-lg">
+                  <p className="text-lg font-semibold text-gray-900">{studentStats.presentDays}</p>
+                  <p className="text-gray-600 text-sm">PRESENT</p>
+                </div>
+                <div className="text-center p-4 bg-gray-50 rounded-lg">
+                  <p className="text-lg font-semibold text-gray-900">{studentStats.absentDays}</p>
+                  <p className="text-gray-600 text-sm">ABSENT</p>
+                </div>
+                <div className="text-center p-4 bg-gray-50 rounded-lg">
+                  <p className="text-lg font-semibold text-gray-900">{studentStats.lateDays}</p>
+                  <p className="text-gray-600 text-sm">LATE</p>
+                </div>
+                <div className="text-center p-4 bg-gray-50 rounded-lg">
+                  <p className="text-lg font-semibold text-gray-900">{studentStats.totalDays}</p>
+                  <p className="text-gray-600 text-sm">TOTAL DAYS</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Recent Announcements */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
-        >
-          <div className="flex items-center justify-between mb-4">
+        <div className="mt-8 bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-900">Recent Announcements</h3>
-            <Link to="/student/announcements" className="text-blue-600 text-sm font-medium hover:text-blue-700">
+            <Link to="/student/announcements" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
               View All
             </Link>
           </div>
 
-          <div className="space-y-4">
-            {announcements.slice(0, 2).map((announcement) => (
-              <div key={announcement.id} className="flex space-x-3 p-4 bg-gray-50 rounded-lg">
-                <MegaphoneIcon className="w-6 h-6 text-blue-600 flex-shrink-0 mt-1" />
-                <div className="flex-1">
-                  <h4 className="font-semibold text-gray-900 mb-1">{announcement.title}</h4>
-                  <p className="text-gray-600 text-sm mb-2">{announcement.content}</p>
-                  <div className="flex items-center space-x-2 text-xs text-gray-500">
-                    <span>{announcement.author}</span>
-                    <span>•</span>
-                    <span>{new Date(announcement.date).toLocaleDateString()}</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {announcements.length === 0 ? (
+              <div className="col-span-full text-center py-8">
+                <MegaphoneIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">No recent announcements</p>
+              </div>
+            ) : (
+              announcements.map((announcement, index) => (
+                <div
+                  key={announcement._id || index}
+                  className="p-4 border border-gray-200 rounded-lg hover:shadow-sm transition-shadow"
+                >
+                  <h4 className="font-medium text-gray-900 mb-2">{announcement.title}</h4>
+                  <p className="text-sm text-gray-600 mb-3">{announcement.content || announcement.message}</p>
+                  <div className="flex items-center text-xs text-gray-500">
+                    <span>By {announcement.createdBy?.name || "School Administrator"}</span>
+                    <span className="mx-2">•</span>
+                    <span>
+                      {announcement.createdAt
+                        ? new Date(announcement.createdAt).toLocaleDateString()
+                        : new Date().toLocaleDateString()}
+                    </span>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
-        </motion.div>
+        </div>
 
-        {/* Quick Actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
-        >
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {/* Quick Actions for Desktop */}
+        <div className="mt-8 bg-white rounded-xl shadow-sm p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-6">Quick Actions</h3>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             {quickActions.map((action, index) => (
               <Link
                 key={action.title}
                 to={action.href}
-                className="flex flex-col items-center p-4 rounded-lg hover:bg-gray-50 transition-colors group"
+                className="flex flex-col items-center p-6 rounded-lg border border-gray-200 hover:shadow-md transition-all group"
               >
                 <div
-                  className={`w-12 h-12 rounded-full ${action.color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}
+                  className={`w-12 h-12 rounded-lg ${action.color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}
                 >
                   <action.icon className="w-6 h-6 text-white" />
                 </div>
@@ -313,49 +682,8 @@ const StudentDashboard = () => {
               </Link>
             ))}
           </div>
-        </motion.div>
-      </div>
-
-      {/* Mobile Sidebar */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setSidebarOpen(false)}></div>
-          <div className="fixed left-0 top-0 bottom-0 w-64 bg-white shadow-xl">
-            <div className="p-4 border-b">
-              <div className="flex items-center space-x-3">
-                <img src={logo} alt="Logo" className="h-8 w-auto" />
-                <span className="font-semibold">Student Portal</span>
-              </div>
-            </div>
-
-            <div className="p-4">
-              <div className="space-y-2">
-                <Link
-                  to="/student/dashboard"
-                  className="block px-3 py-2 rounded-lg bg-blue-50 text-blue-700 font-medium"
-                >
-                  Dashboard
-                </Link>
-                <Link to="/student/attendance" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
-                  Attendance
-                </Link>
-                <Link to="/student/timetable" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
-                  Timetable
-                </Link>
-                <Link to="/student/assignments" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
-                  Assignments
-                </Link>
-                <Link to="/student/results" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
-                  Results
-                </Link>
-                <Link to="/student/profile" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
-                  Profile
-                </Link>
-              </div>
-            </div>
-          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };

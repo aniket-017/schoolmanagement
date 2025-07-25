@@ -19,6 +19,9 @@ import Contact from "./pages/Contact";
 // Student/Teacher Portal
 import StudentTeacherLogin from "./pages/StudentTeacherLogin";
 import StudentDashboard from "./pages/StudentDashboard";
+import StudentAttendance from "./pages/StudentAttendance";
+import StudentProfile from "./pages/StudentProfile";
+import StudentGrades from "./pages/StudentGrades";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import TeacherProtectedRoute from "./components/TeacherProtectedRoute";
 
@@ -139,6 +142,8 @@ function AppContent() {
 
         {/* Student/Teacher Portal Routes */}
         <Route path="/student-teacher-login" element={<StudentTeacherLogin />} />
+
+        {/* Student Portal Routes */}
         <Route
           path="/student/dashboard"
           element={
@@ -147,6 +152,32 @@ function AppContent() {
             </TeacherProtectedRoute>
           }
         />
+        <Route
+          path="/student/attendance"
+          element={
+            <TeacherProtectedRoute allowedRoles={["student"]}>
+              <StudentAttendance />
+            </TeacherProtectedRoute>
+          }
+        />
+        <Route
+          path="/student/profile"
+          element={
+            <TeacherProtectedRoute allowedRoles={["student"]}>
+              <StudentProfile />
+            </TeacherProtectedRoute>
+          }
+        />
+        <Route
+          path="/student/grades"
+          element={
+            <TeacherProtectedRoute allowedRoles={["student"]}>
+              <StudentGrades />
+            </TeacherProtectedRoute>
+          }
+        />
+
+        {/* Teacher Portal Routes */}
         <Route
           path="/teacher/dashboard"
           element={
