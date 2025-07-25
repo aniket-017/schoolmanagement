@@ -164,9 +164,18 @@ const getProfile = async (req, res) => {
       .populate("subjectsTaught", "name")
       .populate("subjectsSpecializedIn", "name");
 
+    // Format the name properly for teachers
+    let formattedUser = user.toObject();
+    if (user.role === "teacher" || user.role === "admin" || user.role === "principal") {
+      // Create a full name from firstName, middleName, and lastName
+      const nameParts = [user.firstName, user.middleName, user.lastName].filter(Boolean);
+      formattedUser.name = nameParts.length > 0 ? nameParts.join(" ") : user.name || user.email;
+      formattedUser.fullName = formattedUser.name;
+    }
+
     res.json({
       success: true,
-      user,
+      user: formattedUser,
     });
   } catch (error) {
     console.error("Profile fetch error:", error);

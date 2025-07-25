@@ -91,11 +91,15 @@ const TeacherManagement = () => {
   };
 
   const filteredTeachers = teachers.filter(
-    (teacher) =>
-      teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      teacher.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (teacher.subjects &&
-        teacher.subjects.some((subject) => subject.name.toLowerCase().includes(searchTerm.toLowerCase())))
+    (teacher) => {
+      const teacherName = teacher.name || teacher.fullName || [teacher.firstName, teacher.middleName, teacher.lastName].filter(Boolean).join(" ") || teacher.email;
+      return (
+        teacherName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        teacher.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (teacher.subjects &&
+          teacher.subjects.some((subject) => subject.name.toLowerCase().includes(searchTerm.toLowerCase())))
+      );
+    }
   );
 
   const getWorkloadColor = (utilization) => {
@@ -190,7 +194,9 @@ const TeacherManagement = () => {
                           <User className="w-6 h-6 text-white" />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-gray-900">{teacher.name}</h3>
+                          <h3 className="font-semibold text-gray-900">
+                      {teacher.name || teacher.fullName || [teacher.firstName, teacher.middleName, teacher.lastName].filter(Boolean).join(" ") || teacher.email}
+                    </h3>
                           <p className="text-sm text-gray-500">{teacher.email}</p>
                         </div>
                       </div>
@@ -353,7 +359,9 @@ const TeacherDetailsModal = ({ teacher, onClose }) => {
                 <User className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">{teacher.teacher.name}</h2>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {teacher.teacher.name || teacher.teacher.fullName || [teacher.teacher.firstName, teacher.teacher.middleName, teacher.teacher.lastName].filter(Boolean).join(" ") || teacher.teacher.email}
+                </h2>
                 <p className="text-gray-600">{teacher.teacher.email}</p>
               </div>
             </div>

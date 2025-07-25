@@ -231,7 +231,9 @@ const ClassDetails = () => {
               {getOrdinalSuffix(classData?.grade)} Class - {classData?.division}
             </h1>
             <p className="text-gray-500">
-              {classData?.classTeacher ? `Teacher: ${classData.classTeacher.name}` : "No teacher assigned"}
+                              {classData?.classTeacher ? 
+                  `Teacher: ${classData.classTeacher.name || classData.classTeacher.fullName || [classData.classTeacher.firstName, classData.classTeacher.middleName, classData.classTeacher.lastName].filter(Boolean).join(" ") || classData.classTeacher.email}` 
+                  : "No teacher assigned"}
             </p>
           </div>
           <div className="flex items-center space-x-10 mt-6 md:mt-0">
@@ -281,7 +283,7 @@ const ClassDetails = () => {
               {activeTab === "students" && (
                 <>
                   <button
-                    onClick={() => navigate(`/classes/${classId}/add-student`)}
+                    onClick={() => navigate(`/admin/classes/${classId}/add-student`)}
                     className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium shadow"
                   >
                     <UserPlus className="w-4 h-4 mr-2" />

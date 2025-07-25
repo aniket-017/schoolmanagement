@@ -64,11 +64,11 @@ export default function ProfileScreen({ navigation }) {
   };
 
   // Helper to get full name
-  const getTeacherFullName = (user) =>
-    user?.fullName ||
-    user?.name ||
-    [user?.firstName, user?.middleName, user?.lastName].filter(Boolean).join(" ") ||
-    user?.email;
+  const getTeacherFullName = (user) => {
+    if (!user) return "Teacher";
+    const nameParts = [user.firstName, user.middleName, user.lastName].filter(Boolean);
+    return nameParts.length > 0 ? nameParts.join(" ") : user.fullName || user.name || user.email || "Teacher";
+  };
 
   const getSubjectsTaught = (user) => {
     // Helper function to get subject name from various formats

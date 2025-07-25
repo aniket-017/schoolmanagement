@@ -478,7 +478,9 @@ const ClassManagement = () => {
                         {getOrdinalSuffix(classItem.grade)} Class - {classItem.division}
                       </h3>
                       <p className="text-sm text-gray-600">
-                        {classItem.classTeacher ? classItem.classTeacher.name : "No teacher assigned"}
+                        {classItem.classTeacher ? 
+                  (classItem.classTeacher.name || classItem.classTeacher.fullName || [classItem.classTeacher.firstName, classItem.classTeacher.middleName, classItem.classTeacher.lastName].filter(Boolean).join(" ") || classItem.classTeacher.email) 
+                  : "No teacher assigned"}
                       </p>
                     </div>
                   </div>
@@ -527,7 +529,7 @@ const ClassManagement = () => {
 
                 <div className="flex flex-wrap items-center justify-end gap-2 mt-6 pt-4 border-t border-gray-100">
                   <button
-                    onClick={() => navigate(`/classes/${classItem._id}`)}
+                    onClick={() => navigate(`/admin/classes/${classItem._id}`)}
                     className="flex items-center px-2 py-1 text-sm text-blue-600 rounded hover:bg-blue-50 transition-colors focus:outline-none focus:ring-1 focus:ring-blue-300"
                   >
                     <Eye className="w-4 h-4 mr-1" />
@@ -742,7 +744,7 @@ const ClassManagement = () => {
                     ) : (
                       availableTeachers.map((teacher) => (
                         <option key={teacher._id} value={teacher._id}>
-                          {teacher.name}
+                          {teacher.name || teacher.fullName || [teacher.firstName, teacher.middleName, teacher.lastName].filter(Boolean).join(" ") || teacher.email}
                           {teacher.isClassTeacher
                             ? ` - Class Teacher of ${teacher.currentClassAssignment.className} (${
                                 teacher.totalAssignments
@@ -772,7 +774,9 @@ const ClassManagement = () => {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                               <p className="text-sm font-medium text-gray-700">Name</p>
-                              <p className="text-sm text-gray-900">{selectedTeacher.name}</p>
+                              <p className="text-sm text-gray-900">
+                          {selectedTeacher.name || selectedTeacher.fullName || [selectedTeacher.firstName, selectedTeacher.middleName, selectedTeacher.lastName].filter(Boolean).join(" ") || selectedTeacher.email}
+                        </p>
                             </div>
                             <div>
                               <p className="text-sm font-medium text-gray-700">Email</p>

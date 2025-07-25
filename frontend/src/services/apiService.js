@@ -126,8 +126,65 @@ class ApiService {
       return this.handleResponse(response);
     },
 
+    getTeacherProfile: async () => {
+      const response = await fetch(`${this.baseURL}/auth/profile`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    updateTeacherProfile: async (profileData) => {
+      const response = await fetch(`${this.baseURL}/auth/profile`, {
+        method: "PUT",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(profileData),
+      });
+      return this.handleResponse(response);
+    },
+
+    changePassword: async (passwordData) => {
+      const response = await fetch(`${this.baseURL}/auth/change-password`, {
+        method: "PUT",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(passwordData),
+      });
+      return this.handleResponse(response);
+    },
+
     getWorkload: async (teacherId) => {
       const response = await fetch(`${this.baseURL}/teachers/${teacherId}/workload`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+  };
+
+  // Classes APIs
+  classes = {
+    getAllClasses: async (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await fetch(`${this.baseURL}/classes?${queryString}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getClassById: async (id) => {
+      const response = await fetch(`${this.baseURL}/classes/${id}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getTeacherAssignedClasses: async () => {
+      const response = await fetch(`${this.baseURL}/classes/teacher/assigned`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getClassStudents: async (classId) => {
+      const response = await fetch(`${this.baseURL}/classes/${classId}/students`, {
         headers: this.getAuthHeaders(),
       });
       return this.handleResponse(response);

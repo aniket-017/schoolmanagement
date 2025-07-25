@@ -197,7 +197,9 @@ const TeacherDashboard = () => {
               </div>
               <div className="flex-1">
                 <p className="text-white/80 text-sm">Welcome back,</p>
-                <h2 className="text-lg font-bold text-white">{user?.name?.toUpperCase()}</h2>
+                <h2 className="text-lg font-bold text-white">
+                  {(user?.name || user?.fullName || [user?.firstName, user?.middleName, user?.lastName].filter(Boolean).join(" ") || user?.email)?.toUpperCase()}
+                </h2>
                 <p className="text-white/90 text-sm">Teacher</p>
               </div>
             </div>
@@ -205,38 +207,38 @@ const TeacherDashboard = () => {
         </div>
 
         {/* Main Content */}
-        <div className="px-4 py-6 space-y-6 pb-24">
+        <div className="px-4 py-6 space-y-4 pb-24">
           {/* Today's Schedule */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+            className="bg-white rounded-xl shadow-sm border border-gray-200 p-4"
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Today's Schedule</h3>
-              <button className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm">
+              <Link to="/teacher/timetable" className="text-blue-600 text-sm font-medium">
                 View Full
-              </button>
+              </Link>
             </div>
 
             {getTodaySchedule().length === 0 ? (
-              <div className="text-center py-8">
-                <CalendarIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+              <div className="text-center py-6">
+                <CalendarIcon className="w-10 h-10 text-gray-400 mx-auto mb-2" />
                 <p className="text-gray-500 font-medium">No classes scheduled for today</p>
                 <p className="text-gray-400 text-sm">Your timetable is loaded but no classes are scheduled for today.</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {getTodaySchedule().slice(0, 3).map((period, index) => (
-                  <div key={period.id || index} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-                    <div className="text-center min-w-[80px]">
+              <div className="space-y-3">
+                {getTodaySchedule().slice(0, 4).map((period, index) => (
+                  <div key={period.id || index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="text-center min-w-[70px]">
                       <p className="text-blue-600 font-semibold text-sm">{period.time || `${9 + index}:00 - ${10 + index}:00`}</p>
                       <p className="text-gray-500 text-xs">Period {period.period || index + 1}</p>
                     </div>
                     
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900">{period.subject?.name || `Subject ${index + 1}`}</h4>
-                      <p className="text-gray-600 text-sm">Class {period.class?.name || `${10 + index}-A`}</p>
+                      <h4 className="font-semibold text-gray-900 text-sm">{period.subject?.name || `Subject ${index + 1}`}</h4>
+                      <p className="text-gray-600 text-xs">Class {period.class?.name || `${10 + index}-A`}</p>
                       <div className="flex items-center space-x-2 mt-1">
                         <span className="text-gray-500 text-xs">{period.room || `Room ${101 + index}`}</span>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPeriodTypeColor(period.type || 'theory')}`}>
@@ -246,6 +248,11 @@ const TeacherDashboard = () => {
                     </div>
                   </div>
                 ))}
+                {getTodaySchedule().length > 4 && (
+                  <div className="text-center py-2">
+                    <p className="text-gray-500 text-sm">+{getTodaySchedule().length - 4} more periods</p>
+                  </div>
+                )}
               </div>
             )}
           </motion.div>
@@ -255,16 +262,16 @@ const TeacherDashboard = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+            className="bg-white rounded-xl shadow-sm border border-gray-200 p-4"
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Recent Announcements</h3>
-              <button className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm">
+              <Link to="/teacher/announcements" className="text-blue-600 text-sm font-medium">
                 View All
-              </button>
+              </Link>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               {announcements.length === 0 ? (
                 <div className="text-center py-6">
                   <MegaphoneIcon className="w-10 h-10 text-gray-400 mx-auto mb-2" />
@@ -272,11 +279,11 @@ const TeacherDashboard = () => {
                 </div>
               ) : (
                 announcements.slice(0, 3).map((announcement, index) => (
-                  <div key={announcement._id || index} className="flex space-x-3 p-4 bg-gray-50 rounded-lg">
-                    <MegaphoneIcon className="w-6 h-6 text-blue-600 flex-shrink-0 mt-1" />
+                  <div key={announcement._id || index} className="flex space-x-3 p-3 bg-gray-50 rounded-lg">
+                    <MegaphoneIcon className="w-5 h-5 text-blue-600 flex-shrink-0 mt-1" />
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 mb-1">{announcement.title}</h4>
-                      <p className="text-gray-600 text-sm mb-2">{announcement.content || announcement.message}</p>
+                      <h4 className="font-semibold text-gray-900 text-sm mb-1">{announcement.title}</h4>
+                      <p className="text-gray-600 text-xs mb-2">{announcement.content || announcement.message}</p>
                       <div className="flex items-center space-x-2 text-xs text-gray-500">
                         <span>By {announcement.createdBy?.name || 'School Administrator'}</span>
                         <span>•</span>
@@ -294,21 +301,21 @@ const TeacherDashboard = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+            className="bg-white rounded-xl shadow-sm border border-gray-200 p-4"
           >
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               {quickActions.map((action, index) => (
                 <Link
                   key={action.title}
                   to={action.href}
-                  className="flex flex-col items-center p-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors group"
+                  className="flex flex-col items-center p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors group"
                 >
-                  <div className={`w-12 h-12 rounded-full ${action.color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
-                    <action.icon className="w-6 h-6 text-white" />
+                  <div className={`w-10 h-10 rounded-lg ${action.color} flex items-center justify-center mb-2 group-hover:scale-110 transition-transform`}>
+                    <action.icon className="w-5 h-5 text-white" />
                   </div>
-                  <span className="text-sm font-medium text-gray-700 text-center">{action.title}</span>
+                  <span className="text-xs font-medium text-gray-700 text-center">{action.title}</span>
                 </Link>
               ))}
             </div>
@@ -413,7 +420,7 @@ const TeacherDashboard = () => {
       {/* Desktop Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <div className="bg-white p-6 rounded-xl shadow-sm">
             <div className="flex items-center">
               <div className="p-3 bg-blue-100 rounded-lg">
@@ -434,30 +441,6 @@ const TeacherDashboard = () => {
               <div className="ml-4">
                 <p className="text-sm text-gray-600">Total Students</p>
                 <p className="text-2xl font-bold text-gray-900">{teacherStats.totalStudents}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-xl shadow-sm">
-            <div className="flex items-center">
-              <div className="p-3 bg-orange-100 rounded-lg">
-                <BookOpenIcon className="w-6 h-6 text-orange-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm text-gray-600">Pending Tasks</p>
-                <p className="text-2xl font-bold text-gray-900">{teacherStats.pendingTasks}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-xl shadow-sm">
-            <div className="flex items-center">
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <ChartBarIcon className="w-6 h-6 text-purple-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm text-gray-600">Attendance Rate</p>
-                <p className="text-2xl font-bold text-gray-900">{teacherStats.attendanceRate}</p>
               </div>
             </div>
           </div>

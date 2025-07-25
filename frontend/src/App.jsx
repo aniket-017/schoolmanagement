@@ -25,6 +25,14 @@ import StudentGrades from "./pages/StudentGrades";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import TeacherProtectedRoute from "./components/TeacherProtectedRoute";
 
+// Teacher-specific pages (to be created)
+import TeacherClasses from "./pages/TeacherClasses";
+import TeacherClassDetails from "./pages/TeacherClassDetails";
+import TeacherAttendance from "./pages/TeacherAttendance";
+import TeacherTimetable from "./pages/TeacherTimetable";
+import TeacherAnnualCalendar from "./pages/TeacherAnnualCalendar";
+import TeacherProfile from "./pages/TeacherProfile";
+
 // Admin/Management Pages
 import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -183,6 +191,62 @@ function AppContent() {
           element={
             <TeacherProtectedRoute allowedRoles={["teacher"]}>
               <TeacherDashboard />
+            </TeacherProtectedRoute>
+          }
+        />
+        <Route
+          path="/teacher/announcements"
+          element={
+            <TeacherProtectedRoute allowedRoles={["teacher"]}>
+              <Announcements />
+            </TeacherProtectedRoute>
+          }
+        />
+        <Route
+          path="/teacher/classes"
+          element={
+            <TeacherProtectedRoute allowedRoles={["teacher"]}>
+              <TeacherClasses />
+            </TeacherProtectedRoute>
+          }
+        />
+        <Route
+          path="/teacher/classes/:classId"
+          element={
+            <TeacherProtectedRoute allowedRoles={["teacher"]}>
+              <TeacherClassDetails />
+            </TeacherProtectedRoute>
+          }
+        />
+        <Route
+          path="/teacher/attendance"
+          element={
+            <TeacherProtectedRoute allowedRoles={["teacher"]}>
+              <TeacherAttendance />
+            </TeacherProtectedRoute>
+          }
+        />
+        <Route
+          path="/teacher/timetable"
+          element={
+            <TeacherProtectedRoute allowedRoles={["teacher"]}>
+              <TeacherTimetable />
+            </TeacherProtectedRoute>
+          }
+        />
+        <Route
+          path="/teacher/annual-calendar"
+          element={
+            <TeacherProtectedRoute allowedRoles={["teacher"]}>
+              <TeacherAnnualCalendar />
+            </TeacherProtectedRoute>
+          }
+        />
+        <Route
+          path="/teacher/profile"
+          element={
+            <TeacherProtectedRoute allowedRoles={["teacher"]}>
+              <TeacherProfile />
             </TeacherProtectedRoute>
           }
         />

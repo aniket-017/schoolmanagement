@@ -28,7 +28,7 @@ const AddStudent = () => {
       const data = await response.json();
       if (data.success) {
         toast.success("Student added successfully");
-        navigate(`/classes/${classId}`);
+        navigate(`/admin/classes/${classId}`);
       } else {
         toast.error(data.message || "Error adding student");
       }
@@ -41,7 +41,7 @@ const AddStudent = () => {
   };
 
   const handleCancel = () => {
-    navigate(`/classes/${classId}`);
+    navigate(`/admin/classes/${classId}`);
   };
 
   return (

@@ -6,6 +6,10 @@ const Timetable = require("../models/Timetable");
 // Get all teachers with their lecture information
 exports.getAllTeachers = async (req, res) => {
   try {
+    console.log("getAllTeachers called");
+    console.log("Current user:", req.user);
+    console.log("User role:", req.user?.role);
+    
     const { status, isActive, page = 1, limit = 10 } = req.query;
     const query = { role: "teacher" };
 
@@ -26,11 +30,22 @@ exports.getAllTeachers = async (req, res) => {
       .skip(skip)
       .limit(parseInt(limit));
 
+    // Format teacher names properly
+    const formattedTeachers = teachers.map(teacher => {
+      const teacherObj = teacher.toObject();
+      const nameParts = [teacher.firstName, teacher.middleName, teacher.lastName].filter(Boolean);
+      teacherObj.name = nameParts.length > 0 ? nameParts.join(" ") : teacher.name || teacher.email;
+      teacherObj.fullName = teacherObj.name;
+      return teacherObj;
+    });
+
     const total = await User.countDocuments(query);
+
+    console.log(`Found ${formattedTeachers.length} teachers`);
 
     res.json({
       success: true,
-      data: teachers,
+      data: formattedTeachers,
       pagination: {
         current: parseInt(page),
         total: Math.ceil(total / limit),
@@ -68,6 +83,12 @@ exports.getTeacherById = async (req, res) => {
       });
     }
 
+    // Format teacher name properly
+    const teacherObj = teacher.toObject();
+    const nameParts = [teacher.firstName, teacher.middleName, teacher.lastName].filter(Boolean);
+    teacherObj.name = nameParts.length > 0 ? nameParts.join(" ") : teacher.name || teacher.email;
+    teacherObj.fullName = teacherObj.name;
+
     // Get current timetable assignments
     const currentTimetable = await Timetable.find({
       "periods.teacher": id,
@@ -83,7 +104,7 @@ exports.getTeacherById = async (req, res) => {
     res.json({
       success: true,
       data: {
-        teacher,
+        teacher: teacherObj,
         currentTimetable,
         workloadStats,
       },

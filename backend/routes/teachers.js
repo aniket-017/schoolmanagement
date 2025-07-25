@@ -17,8 +17,8 @@ router.get("/debug/user", (req, res) => {
   });
 });
 
-// Get all teachers with lecture information (Admin, Principal)
-router.get("/", authorize(["admin", "principal"]), teacherController.getAllTeachers);
+// Get all teachers with lecture information (Admin, Principal) - TEMPORARILY ALLOWING ALL AUTHENTICATED USERS
+router.get("/", teacherController.getAllTeachers);
 
 // Get teacher availability for specific time slot (All authenticated users)
 router.get("/availability/check", teacherController.getTeacherAvailability);

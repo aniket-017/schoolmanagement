@@ -409,6 +409,17 @@ exports.getTeacherTimetable = async (req, res) => {
       ])
       .sort({ day: 1, "periods.periodNumber": 1 });
 
+    // Format teacher names in timetable data
+    timetables.forEach(timetable => {
+      timetable.periods.forEach(period => {
+        if (period.teacher) {
+          const nameParts = [period.teacher.firstName, period.teacher.middleName, period.teacher.lastName].filter(Boolean);
+          period.teacher.name = nameParts.length > 0 ? nameParts.join(" ") : period.teacher.name || period.teacher.email;
+          period.teacher.fullName = period.teacher.name;
+        }
+      });
+    });
+
     console.log("Found timetables for teacher:", timetables.length);
     console.log("Timetables data:", JSON.stringify(timetables, null, 2));
 

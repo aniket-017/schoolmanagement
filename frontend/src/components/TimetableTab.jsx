@@ -86,6 +86,11 @@ const TimetableTab = ({ classId, classData }) => {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
+      
+      // Debug: Log the token and user info
+      console.log("Token exists:", !!token);
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      console.log("Current user:", user);
 
       const [timetableRes, subjectsRes, teachersRes] = await Promise.all([
         fetch(`${appConfig.API_BASE_URL}/timetables/class/${classId}?academicYear=${academicYear}`, {
@@ -99,9 +104,16 @@ const TimetableTab = ({ classId, classData }) => {
         }),
       ]);
 
+      // Debug: Log response statuses
+      console.log("Teachers response status:", teachersRes.status);
+      console.log("Teachers response headers:", teachersRes.headers);
+
       const timetableData = await timetableRes.json();
       const subjectsData = await subjectsRes.json();
       const teachersData = await teachersRes.json();
+
+      // Debug: Log teachers response
+      console.log("Teachers response data:", teachersData);
 
       if (timetableData.success) {
         setTimetable(timetableData.data.weeklyTimetable);

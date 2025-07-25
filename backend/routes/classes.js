@@ -83,12 +83,12 @@ router.delete("/:id", auth, adminOnly, deleteClass);
 // @access  Private (Admin only)
 router.put("/:id/assign-teacher", auth, adminOnly, assignClassTeacher);
 
+// ==================== STUDENT MANAGEMENT ROUTES ====================
+
 // @route   GET /api/classes/teacher/assigned
 // @desc    Get classes assigned to current teacher
 // @access  Private (Teacher only)
 router.get("/teacher/assigned", auth, teacherOnly, getTeacherAssignedClasses);
-
-// ==================== STUDENT MANAGEMENT ROUTES ====================
 
 // @route   GET /api/classes/:id/students
 // @desc    Get all students in a class
