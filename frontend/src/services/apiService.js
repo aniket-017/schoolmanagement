@@ -1,4 +1,6 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://schoolmangement.aiiventure.com:1704/api";
+import { appConfig } from "../config/environment";
+
+const API_BASE_URL = appConfig.API_BASE_URL;
 
 class ApiService {
   constructor() {
@@ -7,9 +9,9 @@ class ApiService {
 
   // Helper method to get auth headers
   getAuthHeaders() {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem('token');
     return {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
       ...(token && { Authorization: `Bearer ${token}` }),
     };
   }
@@ -18,7 +20,7 @@ class ApiService {
   async handleResponse(response) {
     const data = await response.json();
     if (!response.ok) {
-      throw new Error(data.message || "Something went wrong");
+      throw new Error(data.message || 'Something went wrong');
     }
     return data;
   }
@@ -27,7 +29,7 @@ class ApiService {
   auth = {
     login: async (email, password) => {
       const response = await fetch(`${this.baseURL}/auth/login`, {
-        method: "POST",
+        method: 'POST',
         headers: this.getAuthHeaders(),
         body: JSON.stringify({ email, password }),
       });
@@ -43,7 +45,7 @@ class ApiService {
 
     changePassword: async (currentPassword, newPassword) => {
       const response = await fetch(`${this.baseURL}/auth/change-password`, {
-        method: "PUT",
+        method: 'PUT',
         headers: this.getAuthHeaders(),
         body: JSON.stringify({ currentPassword, newPassword }),
       });
@@ -55,7 +57,7 @@ class ApiService {
   studentAuth = {
     login: async (identifier, password) => {
       const response = await fetch(`${this.baseURL}/student-auth/login`, {
-        method: "POST",
+        method: 'POST',
         headers: this.getAuthHeaders(),
         body: JSON.stringify({ identifier, password }),
       });
@@ -90,7 +92,7 @@ class ApiService {
 
     create: async (announcementData) => {
       const response = await fetch(`${this.baseURL}/announcements`, {
-        method: "POST",
+        method: 'POST',
         headers: this.getAuthHeaders(),
         body: JSON.stringify(announcementData),
       });
@@ -144,7 +146,7 @@ class ApiService {
 
     markAttendance: async (attendanceData) => {
       const response = await fetch(`${this.baseURL}/attendances`, {
-        method: "POST",
+        method: 'POST',
         headers: this.getAuthHeaders(),
         body: JSON.stringify(attendanceData),
       });
@@ -153,4 +155,4 @@ class ApiService {
   };
 }
 
-export default new ApiService();
+export default new ApiService(); 
