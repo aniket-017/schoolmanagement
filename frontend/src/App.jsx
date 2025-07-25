@@ -49,6 +49,7 @@ import AnnualCalendarView from "./pages/AnnualCalendarView";
 import StudentDemo from "./pages/StudentDemo";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ChangePassword from "./components/ChangePassword";
+import TeacherAnnouncements from "./pages/TeacherAnnouncements";
 
 function AppContent() {
   const { requirePasswordChange } = useAuth();
@@ -198,7 +199,7 @@ function AppContent() {
           path="/teacher/announcements"
           element={
             <TeacherProtectedRoute allowedRoles={["teacher"]}>
-              <Announcements />
+              <TeacherAnnouncements />
             </TeacherProtectedRoute>
           }
         />

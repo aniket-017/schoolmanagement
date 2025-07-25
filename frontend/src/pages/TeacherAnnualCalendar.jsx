@@ -10,6 +10,7 @@ import {
   ExclamationTriangleIcon,
   InformationCircleIcon,
   AcademicCapIcon,
+  ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
 import { useTeacherAuth } from '../context/TeacherAuthContext';
 import apiService from '../services/apiService';
@@ -174,212 +175,150 @@ const TeacherAnnualCalendar = () => {
   const selectedDateEvents = getEventsForDate(selectedDate);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center py-0">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center"
-          >
-            <h1 className="text-3xl font-bold mb-2">Annual Calendar</h1>
-            <p className="text-blue-100">Academic events, holidays, and important dates</p>
-          </motion.div>
-        </div>
+      <div className="w-full bg-blue-600 rounded-b-3xl pb-6 pt-8 text-white shadow relative">
+        <button
+          className="absolute left-4 top-8 p-2 rounded-full hover:bg-blue-700 focus:outline-none"
+          onClick={() => navigate('/teacher/dashboard')}
+          aria-label="Back"
+        >
+          <ArrowLeftIcon className="w-6 h-6 text-white" />
+        </button>
+        <h1 className="text-3xl font-bold mb-1 text-center">Annual Calendar</h1>
+        <p className="text-blue-100 text-base text-center">Academic events, holidays, and important dates</p>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="space-y-6"
-        >
-          {/* Calendar Navigation */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
-              <button
-                onClick={handleBack}
-                className="sm:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <ChevronLeftIcon className="w-6 h-6 text-gray-600" />
-              </button>
-              
-              <h2 className="text-xl font-semibold text-gray-900">
-                {currentMonth.toLocaleDateString('en-US', { 
-                  month: 'long', 
-                  year: 'numeric' 
-                })}
-              </h2>
-              
-              <button
-                onClick={() => navigateMonth(1)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <ChevronRightIcon className="w-6 h-6 text-gray-600" />
-              </button>
-            </div>
+      <div className="w-full max-w-md px-2 py-4">
+        {/* Calendar Navigation */}
+        <div className="bg-white rounded-2xl shadow p-4 mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <button
+              onClick={() => navigateMonth(-1)}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <ChevronLeftIcon className="w-6 h-6 text-gray-600" />
+            </button>
+            <h2 className="text-lg font-semibold text-gray-900">
+              {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            </h2>
+            <button
+              onClick={() => navigateMonth(1)}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <ChevronRightIcon className="w-6 h-6 text-gray-600" />
+            </button>
+          </div>
 
-            {/* Calendar Grid */}
-            <div className="grid grid-cols-7 gap-1">
-              {/* Day Headers */}
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                <div key={day} className="p-2 text-center text-sm font-medium text-gray-500">
-                  {day}
+          {/* Calendar Grid */}
+          <div className="grid grid-cols-7 gap-1">
+            {/* Day Headers */}
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+              <div key={day} className="p-1 text-center text-xs font-medium text-gray-400">
+                {day}
+              </div>
+            ))}
+            {/* Calendar Days */}
+            {days.map((day, index) => {
+              if (!day) {
+                return <div key={index} className="p-2"></div>;
+              }
+              const dayEvents = getEventsForDate(day);
+              const isCurrentDay = isToday(day);
+              const isSelectedDay = isSelected(day);
+              return (
+                <div
+                  key={index}
+                  onClick={() => handleDateClick(day)}
+                  className={`p-2 min-h-[56px] flex flex-col items-center justify-start border border-gray-200 cursor-pointer transition-colors rounded-lg select-none
+                    ${isCurrentDay ? 'bg-blue-50 border-blue-300' : isSelectedDay ? 'bg-blue-100 border-blue-400' : 'hover:bg-gray-50'}`}
+                >
+                  <div className={`text-sm font-semibold mb-1 ${isCurrentDay ? 'text-blue-600' : 'text-gray-900'}`}>{day.getDate()}</div>
+                  {/* Event Dots */}
+                  <div className="flex flex-wrap gap-0.5 justify-center">
+                    {dayEvents.slice(0, 3).map((event, i) => (
+                      <span
+                        key={i}
+                        className={`w-2 h-2 rounded-full mt-0.5 ${
+                          event.eventType === 'holiday' ? 'bg-blue-500' :
+                          event.eventType === 'exam' ? 'bg-red-500' :
+                          event.eventType === 'event' ? 'bg-green-500' :
+                          event.eventType === 'meeting' ? 'bg-purple-500' :
+                          event.eventType === 'deadline' ? 'bg-orange-500' :
+                          'bg-gray-400'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  {dayEvents.length > 3 && (
+                    <span className="text-[10px] text-gray-400">+{dayEvents.length - 3}</span>
+                  )}
                 </div>
-              ))}
-              
-              {/* Calendar Days */}
-              {days.map((day, index) => {
-                if (!day) {
-                  return <div key={index} className="p-2"></div>;
-                }
-                
-                const dayEvents = getEventsForDate(day);
-                const isCurrentDay = isToday(day);
-                const isSelectedDay = isSelected(day);
-                
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Selected Date Events */}
+        <div className="bg-white rounded-2xl shadow p-4 mb-4">
+          <h3 className="text-base font-semibold text-gray-900 mb-2 text-center">{formatDate(selectedDate)}</h3>
+          {selectedDateEvents.length === 0 ? (
+            <div className="text-center text-gray-400 py-6">No events for this day.</div>
+          ) : (
+            <div className="space-y-2">
+              {selectedDateEvents.map((event, index) => {
+                const EventIcon = getEventTypeIcon(event.eventType);
                 return (
                   <div
-                    key={index}
-                    onClick={() => handleDateClick(day)}
-                    className={`p-2 min-h-[80px] border border-gray-200 cursor-pointer transition-colors ${
-                      isCurrentDay 
-                        ? 'bg-blue-50 border-blue-300' 
-                        : isSelectedDay 
-                        ? 'bg-blue-100 border-blue-400' 
-                        : 'hover:bg-gray-50'
-                    }`}
+                    key={event._id}
+                    onClick={() => handleEventClick(event)}
+                    className="flex items-center gap-3 p-3 border border-gray-100 rounded-xl bg-gray-50 hover:bg-blue-50 cursor-pointer transition-colors"
                   >
-                    <div className="text-sm font-medium text-gray-900 mb-1">
-                      {day.getDate()}
+                    <span className="p-2 rounded-lg bg-white border border-gray-200">
+                      <EventIcon className="w-5 h-5" />
+                    </span>
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-900 text-sm">{event.title}</div>
+                      <div className="text-xs text-gray-500">{event.eventType}</div>
                     </div>
-                    
-                    {/* Event Indicators */}
-                    <div className="space-y-1">
-                      {dayEvents.slice(0, 2).map((event, eventIndex) => (
-                        <div
-                          key={eventIndex}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEventClick(event);
-                          }}
-                          className={`text-xs px-1 py-0.5 rounded border ${getEventTypeColor(event.eventType)} cursor-pointer hover:opacity-80`}
-                        >
-                          {event.title}
-                        </div>
-                      ))}
-                      {dayEvents.length > 2 && (
-                        <div className="text-xs text-gray-500">
-                          +{dayEvents.length - 2} more
-                        </div>
-                      )}
-                    </div>
+                    <span className="text-xs text-gray-400">{event.time ? formatTime(event.time) : ''}</span>
                   </div>
                 );
               })}
             </div>
-          </div>
-
-          {/* Selected Date Events */}
-          {selectedDateEvents.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Events for {formatDate(selectedDate)}
-              </h3>
-              <div className="space-y-4">
-                {selectedDateEvents.map((event, index) => {
-                  const EventIcon = getEventTypeIcon(event.eventType);
-                  return (
-                    <motion.div
-                      key={event._id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      onClick={() => handleEventClick(event)}
-                      className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                    >
-                      <div className="flex items-start space-x-3">
-                        <div className={`p-2 rounded-lg ${getEventTypeColor(event.eventType)}`}>
-                          <EventIcon className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-medium text-gray-900">{event.title}</h4>
-                          <p className="text-sm text-gray-600 mt-1">{event.description}</p>
-                          <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
-                            {event.time && (
-                              <div className="flex items-center space-x-1">
-                                <ClockIcon className="w-3 h-3" />
-                                <span>{formatTime(event.time)}</span>
-                              </div>
-                            )}
-                            {event.location && (
-                              <div className="flex items-center space-x-1">
-                                <MapPinIcon className="w-3 h-3" />
-                                <span>{event.location}</span>
-                              </div>
-                            )}
-                            <span className={`px-2 py-1 rounded-full text-xs ${getEventTypeColor(event.eventType)}`}>
-                              {event.eventType}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </div>
           )}
+        </div>
 
-          {/* Upcoming Events */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Upcoming Events</h3>
-            <div className="space-y-3">
-              {events
-                .filter(event => new Date(event.date) > new Date())
-                .sort((a, b) => new Date(a.date) - new Date(b.date))
-                .slice(0, 5)
-                .map((event, index) => {
-                  const EventIcon = getEventTypeIcon(event.eventType);
-                  return (
-                    <motion.div
-                      key={event._id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      onClick={() => handleEventClick(event)}
-                      className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                    >
-                      <div className={`p-2 rounded-lg ${getEventTypeColor(event.eventType)}`}>
-                        <EventIcon className="w-4 h-4" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-medium text-gray-900">{event.title}</h4>
-                        <p className="text-sm text-gray-600">{formatDate(new Date(event.date))}</p>
-                      </div>
-                      <span className={`px-2 py-1 rounded-full text-xs ${getEventTypeColor(event.eventType)}`}>
-                        {event.eventType}
-                      </span>
-                    </motion.div>
-                  );
-                })}
-            </div>
+        {/* Upcoming Events */}
+        <div className="bg-white rounded-2xl shadow p-4">
+          <h3 className="text-base font-semibold text-gray-900 mb-2">Upcoming Events</h3>
+          <div className="space-y-2">
+            {events
+              .filter(event => new Date(event.date) > new Date())
+              .sort((a, b) => new Date(a.date) - new Date(b.date))
+              .slice(0, 5)
+              .map((event, index) => {
+                const EventIcon = getEventTypeIcon(event.eventType);
+                return (
+                  <div
+                    key={event._id}
+                    onClick={() => handleEventClick(event)}
+                    className="flex items-center gap-3 p-3 border border-gray-100 rounded-xl bg-gray-50 hover:bg-blue-50 cursor-pointer transition-colors"
+                  >
+                    <span className="p-2 rounded-lg bg-white border border-gray-200">
+                      <EventIcon className="w-5 h-5" />
+                    </span>
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-900 text-sm">{event.title}</div>
+                      <div className="text-xs text-gray-500">{event.eventType}</div>
+                    </div>
+                    <span className="text-xs text-gray-400">{formatDate(new Date(event.date))}</span>
+                  </div>
+                );
+              })}
           </div>
-
-          {/* Empty State */}
-          {events.length === 0 && (
-            <div className="bg-white rounded-xl shadow-sm p-6 text-center">
-              <CalendarIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Events Available</h3>
-              <p className="text-gray-600">
-                No annual calendar events have been added yet. Check back later for updates.
-              </p>
-            </div>
-          )}
-        </motion.div>
+        </div>
       </div>
 
       {/* Event Modal */}
@@ -388,7 +327,7 @@ const TeacherAnnualCalendar = () => {
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="bg-white rounded-xl p-6 w-full max-w-md mx-4"
+            className="bg-white rounded-2xl p-7 w-full max-w-md mx-4 shadow-2xl border border-gray-200"
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Event Details</h3>
@@ -401,33 +340,28 @@ const TeacherAnnualCalendar = () => {
                 </svg>
               </button>
             </div>
-            
             <div className="space-y-4">
               <div>
                 <h4 className="font-medium text-gray-900">{selectedEvent.title}</h4>
                 <p className="text-sm text-gray-600 mt-1">{selectedEvent.description}</p>
               </div>
-              
               <div className="space-y-2">
                 <div className="flex items-center space-x-2 text-sm text-gray-600">
                   <CalendarIcon className="w-4 h-4" />
                   <span>{formatDate(new Date(selectedEvent.date))}</span>
                 </div>
-                
                 {selectedEvent.time && (
                   <div className="flex items-center space-x-2 text-sm text-gray-600">
                     <ClockIcon className="w-4 h-4" />
                     <span>{formatTime(selectedEvent.time)}</span>
                   </div>
                 )}
-                
                 {selectedEvent.location && (
                   <div className="flex items-center space-x-2 text-sm text-gray-600">
                     <MapPinIcon className="w-4 h-4" />
                     <span>{selectedEvent.location}</span>
                   </div>
                 )}
-                
                 <div className="flex items-center space-x-2">
                   <span className={`px-2 py-1 rounded-full text-xs ${getEventTypeColor(selectedEvent.eventType)}`}>
                     {selectedEvent.eventType}
@@ -435,7 +369,6 @@ const TeacherAnnualCalendar = () => {
                 </div>
               </div>
             </div>
-            
             <div className="flex justify-end mt-6 pt-4 border-t border-gray-200">
               <button
                 onClick={() => setShowEventModal(false)}

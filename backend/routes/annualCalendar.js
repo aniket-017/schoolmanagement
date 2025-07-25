@@ -10,6 +10,7 @@ router.delete("/:id", auth, authorize("admin"), annualCalendarController.deleteE
 
 // Public (students/teachers) - read only
 router.get("/", auth, authorize("admin", "teacher", "student"), annualCalendarController.getAllEvents);
+router.get("/teacher", auth, authorize("teacher"), annualCalendarController.getTeacherCalendar);
 router.get("/:id", auth, authorize("admin", "teacher", "student"), annualCalendarController.getEventById);
 
 module.exports = router; 

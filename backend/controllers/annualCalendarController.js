@@ -59,4 +59,14 @@ exports.deleteEvent = async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+};
+
+// Get all events for teachers (can be customized for teacher-specific logic)
+exports.getTeacherCalendar = async (req, res) => {
+  try {
+    const events = await AnnualCalendarEvent.find({ isActive: true }).sort({ date: 1 });
+    res.json({ success: true, data: events });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 }; 

@@ -268,6 +268,16 @@ class ApiService {
       return this.handleResponse(response);
     },
   };
+
+  // Annual Calendar APIs
+  annualCalendar = {
+    getTeacherCalendar: async () => {
+      const response = await fetch(`${this.baseURL}/annual-calendar/teacher`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+  };
 }
 
 export default new ApiService();
