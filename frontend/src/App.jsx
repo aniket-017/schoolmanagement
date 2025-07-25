@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { TeacherAuthProvider } from "./context/TeacherAuthContext";
 
 // Public Pages
 import PublicLayout from "./components/PublicLayout";
@@ -19,6 +20,7 @@ import Contact from "./pages/Contact";
 import StudentTeacherLogin from "./pages/StudentTeacherLogin";
 import StudentDashboard from "./pages/StudentDashboard";
 import TeacherDashboard from "./pages/TeacherDashboard";
+import TeacherProtectedRoute from "./components/TeacherProtectedRoute";
 
 // Admin/Management Pages
 import Login from "./pages/Login";
@@ -137,8 +139,22 @@ function AppContent() {
 
         {/* Student/Teacher Portal Routes */}
         <Route path="/student-teacher-login" element={<StudentTeacherLogin />} />
-        <Route path="/student/dashboard" element={<StudentDashboard />} />
-        <Route path="/teacher/dashboard" element={<TeacherDashboard />} />
+        <Route
+          path="/student/dashboard"
+          element={
+            <TeacherProtectedRoute allowedRoles={["student"]}>
+              <StudentDashboard />
+            </TeacherProtectedRoute>
+          }
+        />
+        <Route
+          path="/teacher/dashboard"
+          element={
+            <TeacherProtectedRoute allowedRoles={["teacher"]}>
+              <TeacherDashboard />
+            </TeacherProtectedRoute>
+          }
+        />
 
         {/* Admin/Management System Routes */}
         <Route path="/login" element={<Login />} />
@@ -265,9 +281,11 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <AppContent />
-      </Router>
+      <TeacherAuthProvider>
+        <Router>
+          <AppContent />
+        </Router>
+      </TeacherAuthProvider>
     </AuthProvider>
   );
 }

@@ -1,14 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
-import {
-  UserIcon,
-  AcademicCapIcon,
-  EyeIcon,
-  EyeSlashIcon,
-  ArrowLeftIcon,
-  CheckCircleIcon,
-} from "@heroicons/react/24/outline";
+import { UserIcon, AcademicCapIcon, EyeIcon, EyeSlashIcon, ArrowLeftIcon } from "@heroicons/react/24/outline";
+import { useTeacherAuth } from "../context/TeacherAuthContext";
 import logo from "../assets/logo.jpeg";
 
 const StudentTeacherLogin = () => {
@@ -21,6 +15,18 @@ const StudentTeacherLogin = () => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const navigate = useNavigate();
+  const { login, isAuthenticated, user } = useTeacherAuth();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.role === "student") {
+        navigate("/student/dashboard");
+      } else if (user.role === "teacher") {
+        navigate("/teacher/dashboard");
+      }
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const roles = [
     {
@@ -28,14 +34,14 @@ const StudentTeacherLogin = () => {
       title: "Student",
       icon: AcademicCapIcon,
       description: "Access your student portal",
-      placeholder: "Student ID or Admission Number",
+      placeholder: "Student ID or Email",
     },
     {
       id: "teacher",
       title: "Teacher",
       icon: UserIcon,
       description: "Access your teacher portal",
-      placeholder: "Employee ID or Email",
+      placeholder: "Email Address",
     },
   ];
 
@@ -57,13 +63,11 @@ const StudentTeacherLogin = () => {
     const newErrors = {};
 
     if (!loginData.identifier.trim()) {
-      newErrors.identifier = `${selectedRole === "student" ? "Student ID" : "Employee ID"} is required`;
+      newErrors.identifier = `${selectedRole === "student" ? "Student ID or Email" : "Email"} is required`;
     }
 
     if (!loginData.password.trim()) {
       newErrors.password = "Password is required";
-    } else if (loginData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
     }
 
     setErrors(newErrors);
@@ -76,22 +80,23 @@ const StudentTeacherLogin = () => {
     if (!validateForm()) return;
 
     setLoading(true);
+    setErrors({});
 
     try {
-      // TODO: Replace with actual API call
-      console.log("Login attempt:", { role: selectedRole, ...loginData });
+      const result = await login(selectedRole, loginData.identifier, loginData.password);
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      // Navigate to appropriate dashboard
-      if (selectedRole === "student") {
-        navigate("/student/dashboard");
+      if (result.success) {
+        // Navigate to appropriate dashboard
+        if (selectedRole === "student") {
+          navigate("/student/dashboard");
+        } else {
+          navigate("/teacher/dashboard");
+        }
       } else {
-        navigate("/teacher/dashboard");
+        setErrors({ general: result.message || "Login failed. Please check your credentials." });
       }
     } catch (error) {
-      setErrors({ general: "Login failed. Please check your credentials." });
+      setErrors({ general: "Network error. Please try again." });
     } finally {
       setLoading(false);
     }
