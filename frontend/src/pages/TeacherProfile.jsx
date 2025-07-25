@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { ChevronLeftIcon } from '@heroicons/react/24/outline';
 import {
   UserIcon,
   EnvelopeIcon,
@@ -28,6 +30,7 @@ const TeacherProfile = () => {
     confirmPassword: '',
   });
   const { user, logout } = useTeacherAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadTeacherProfile();
@@ -128,6 +131,10 @@ const TeacherProfile = () => {
     if (window.confirm('Are you sure you want to logout?')) {
       logout();
     }
+  };
+
+  const handleBack = () => {
+    navigate('/teacher/dashboard');
   };
 
   // Helper function to format address

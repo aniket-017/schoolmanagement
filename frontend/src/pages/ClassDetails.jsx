@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Users, Clock, Calendar, Plus, Upload, UserPlus, Download, Eye, Trash2 } from "lucide-react";
+import { Users, Clock, Calendar, Plus, Upload, UserPlus, Download, Eye, Trash2, ChevronLeftIcon } from "lucide-react";
 import Layout from "../components/Layout";
 import { cn } from "../utils/cn";
 import appConfig from "../config/environment";
@@ -217,6 +217,11 @@ const ClassDetails = () => {
 
   const handleStudentSave = (updatedStudent) => {
     setStudents((prev) => prev.map((s) => (s._id === updatedStudent._id ? updatedStudent : s)));
+  };
+
+  // Back navigation handler
+  const handleBack = () => {
+    navigate('/teacher/dashboard');
   };
 
   // UI

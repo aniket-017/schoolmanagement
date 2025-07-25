@@ -12,6 +12,7 @@ import {
   UserIcon,
   PhoneIcon,
   EnvelopeIcon,
+  ChevronLeftIcon,
 } from '@heroicons/react/24/outline';
 import { useTeacherAuth } from '../context/TeacherAuthContext';
 import apiService from '../services/apiService';
@@ -100,6 +101,10 @@ const TeacherClassDetails = () => {
     return student.name || student.email || 'Unknown Student';
   };
 
+  const handleBack = () => {
+    navigate('/teacher/dashboard');
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -137,8 +142,14 @@ const TeacherClassDetails = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <button
+                onClick={handleBack}
+                className="text-blue-100 hover:text-white transition-colors sm:hidden"
+              >
+                <ChevronLeftIcon className="w-5 h-5" />
+              </button>
+              <button
                 onClick={() => navigate('/teacher/classes')}
-                className="text-blue-100 hover:text-white transition-colors"
+                className="text-blue-100 hover:text-white transition-colors hidden sm:block"
               >
                 <ArrowLeftIcon className="w-5 h-5" />
               </button>

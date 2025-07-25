@@ -202,10 +202,68 @@ class ApiService {
     },
 
     markAttendance: async (attendanceData) => {
-      const response = await fetch(`${this.baseURL}/attendances`, {
+      const response = await fetch(`${this.baseURL}/attendances/mark`, {
         method: "POST",
         headers: this.getAuthHeaders(),
         body: JSON.stringify(attendanceData),
+      });
+      return this.handleResponse(response);
+    },
+
+    bulkMarkAttendance: async (attendanceData) => {
+      const response = await fetch(`${this.baseURL}/attendances/bulk-mark`, {
+        method: "POST",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(attendanceData),
+      });
+      return this.handleResponse(response);
+    },
+
+    getTeacherClasses: async () => {
+      const response = await fetch(`${this.baseURL}/attendances/teacher-classes`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getClassStudents: async (classId) => {
+      const response = await fetch(`${this.baseURL}/attendances/class-students/${classId}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getClassAttendanceByDate: async (classId, date) => {
+      const response = await fetch(`${this.baseURL}/attendances/class-attendance/${classId}/${date}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    bulkMarkClassAttendance: async (classId, date, attendanceData) => {
+      const response = await fetch(`${this.baseURL}/attendances/bulk-mark`, {
+        method: "POST",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({
+          classId,
+          date,
+          attendanceData,
+        }),
+      });
+      return this.handleResponse(response);
+    },
+
+    getClassAttendance: async (classId, date) => {
+      const response = await fetch(`${this.baseURL}/attendances/class/${classId}/${date}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getAttendanceStats: async (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await fetch(`${this.baseURL}/attendances/stats?${queryString}`, {
+        headers: this.getAuthHeaders(),
       });
       return this.handleResponse(response);
     },

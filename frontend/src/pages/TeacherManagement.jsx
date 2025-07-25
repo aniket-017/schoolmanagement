@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import appConfig from "../config/environment";
+import { useNavigate } from 'react-router-dom';
+import { ChevronLeftIcon } from '@heroicons/react/24/outline';
 
 const TeacherManagement = () => {
   const [teachers, setTeachers] = useState([]);
@@ -32,6 +34,7 @@ const TeacherManagement = () => {
   const [showTeacherModal, setShowTeacherModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchTeachers();
@@ -90,6 +93,10 @@ const TeacherManagement = () => {
     }
   };
 
+  const handleBack = () => {
+    navigate('/teacher/dashboard');
+  };
+
   const filteredTeachers = teachers.filter(
     (teacher) => {
       const teacherName = teacher.name || teacher.fullName || [teacher.firstName, teacher.middleName, teacher.lastName].filter(Boolean).join(" ") || teacher.email;
@@ -124,11 +131,16 @@ const TeacherManagement = () => {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
+            <div className="sm:hidden">
+              <button onClick={handleBack} className="text-gray-600 hover:text-gray-900">
+                <ChevronLeftIcon className="w-6 h-6" />
+              </button>
+            </div>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Teacher Management</h1>
               <p className="text-gray-600 mt-2">Manage teacher lecture schedules and availability</p>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="hidden sm:flex items-center space-x-4">
               <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <Users className="w-4 h-4" />
                 <span>{teachers.length} Teachers</span>

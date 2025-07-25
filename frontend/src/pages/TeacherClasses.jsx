@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   UserGroupIcon,
   AcademicCapIcon,
@@ -10,6 +10,7 @@ import {
   UsersIcon,
   CalendarIcon,
   ClockIcon,
+  ChevronLeftIcon,
 } from '@heroicons/react/24/outline';
 import { useTeacherAuth } from '../context/TeacherAuthContext';
 import apiService from '../services/apiService';
@@ -20,6 +21,7 @@ const TeacherClasses = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { user } = useTeacherAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadAssignedClasses();
@@ -75,6 +77,11 @@ const TeacherClasses = () => {
     return "th";
   };
 
+  // Back navigation handler
+  const handleBack = () => {
+    navigate('/teacher/dashboard');
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -90,17 +97,24 @@ const TeacherClasses = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center"
-          >
-            <h1 className="text-2xl font-bold mb-1">My Assigned Classes</h1>
-            <p className="text-blue-100 text-sm">
-              You are assigned as Class Teacher for {classes.length} class(es)
-            </p>
-          </motion.div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="relative flex items-center justify-center py-4 sm:py-8">
+            {/* Back icon for mobile only */}
+            <button
+              onClick={handleBack}
+              className="sm:hidden absolute left-0 top-1/2 -translate-y-1/2 p-2 rounded-full hover:bg-blue-700 focus:outline-none"
+              aria-label="Go back"
+              type="button"
+            >
+              <ChevronLeftIcon className="w-6 h-6 text-white" />
+            </button>
+            <div className="w-full pl-10 pr-4">
+              <h1 className="text-xl sm:text-3xl font-bold mb-1 sm:mb-2">My Assigned Classes</h1>
+              <p className="text-blue-100 text-sm">
+                You are assigned as Class Teacher for {classes.length} class(es)
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 

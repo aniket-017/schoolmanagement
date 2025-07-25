@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import {
   CalendarIcon,
   ChevronLeftIcon,
@@ -21,6 +22,7 @@ const TeacherAnnualCalendar = () => {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showEventModal, setShowEventModal] = useState(false);
   const { user } = useTeacherAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadAnnualCalendar();
@@ -153,6 +155,10 @@ const TeacherAnnualCalendar = () => {
     setShowEventModal(true);
   };
 
+  const handleBack = () => {
+    navigate('/teacher/dashboard');
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -195,8 +201,8 @@ const TeacherAnnualCalendar = () => {
           <div className="bg-white rounded-xl shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
               <button
-                onClick={() => navigateMonth(-1)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                onClick={handleBack}
+                className="sm:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <ChevronLeftIcon className="w-6 h-6 text-gray-600" />
               </button>
