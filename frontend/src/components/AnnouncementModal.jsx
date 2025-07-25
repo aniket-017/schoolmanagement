@@ -20,6 +20,22 @@ import {
 } from "lucide-react";
 import { cn } from "../utils/cn";
 
+// Helper function to get ordinal suffix
+const getOrdinalSuffix = (num) => {
+  const j = num % 10;
+  const k = num % 100;
+  if (j === 1 && k !== 11) {
+    return "st";
+  }
+  if (j === 2 && k !== 12) {
+    return "nd";
+  }
+  if (j === 3 && k !== 13) {
+    return "rd";
+  }
+  return "th";
+};
+
 const AnnouncementModal = ({
   isOpen,
   onClose,
@@ -383,8 +399,8 @@ const AnnouncementModal = ({
                           )}
                         >
                           <div>
-                            <div className="font-medium">{cls.name}</div>
-                            <div className="text-sm text-gray-500">{cls.section}</div>
+                            <div className="font-medium">{cls.grade}{getOrdinalSuffix(cls.grade)} Class - {cls.division}</div>
+                            <div className="text-sm text-gray-500">Section {cls.division}</div>
                           </div>
                         </button>
                       ))}

@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   register,
   login,
+  logout,
   getProfile,
   updateProfile,
   changePassword,
@@ -21,6 +22,11 @@ router.post("/register", register);
 // @desc    Login user
 // @access  Public
 router.post("/login", login);
+
+// @route   POST /api/auth/logout
+// @desc    Logout user
+// @access  Private
+router.post("/logout", auth, logout);
 
 // @route   GET /api/auth/profile
 // @desc    Get current user profile

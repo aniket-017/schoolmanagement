@@ -51,6 +51,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import ChangePassword from "./components/ChangePassword";
 import TeacherAnnouncements from "./pages/TeacherAnnouncements";
 import StudentTimetable from "./pages/StudentTimetable";
+import StudentAnnouncements from "./pages/StudentAnnouncements";
 
 function AppContent() {
   const { requirePasswordChange } = useAuth();
@@ -191,6 +192,14 @@ function AppContent() {
           element={
             <TeacherProtectedRoute allowedRoles={["student"]}>
               <StudentTimetable />
+            </TeacherProtectedRoute>
+          }
+        />
+        <Route
+          path="/student/announcements"
+          element={
+            <TeacherProtectedRoute allowedRoles={["student"]}>
+              <StudentAnnouncements />
             </TeacherProtectedRoute>
           }
         />

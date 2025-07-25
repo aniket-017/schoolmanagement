@@ -7,6 +7,7 @@ const {
   updateStudentProfile,
   generateStudentPassword,
   changeStudentPassword,
+  studentLogout,
 } = require("../controllers/studentAuthController");
 
 // @route   POST /api/student-auth/login
@@ -28,6 +29,11 @@ router.put("/profile", auth, updateStudentProfile);
 // @desc    Change student password
 // @access  Private (Student)
 router.put("/change-password", auth, changeStudentPassword);
+
+// @route   POST /api/student-auth/logout
+// @desc    Student logout
+// @access  Private (Student)
+router.post("/logout", auth, studentLogout);
 
 // @route   POST /api/student-auth/generate-password/:studentId
 // @desc    Generate student login password (Admin only)

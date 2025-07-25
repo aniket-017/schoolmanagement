@@ -2,6 +2,22 @@ import React, { useState, useEffect } from "react";
 import { useTeacherAuth } from "../context/TeacherAuthContext";
 import appConfig from "../config/environment";
 
+// Helper function to get ordinal suffix
+const getOrdinalSuffix = (num) => {
+  const j = num % 10;
+  const k = num % 100;
+  if (j === 1 && k !== 11) {
+    return "st";
+  }
+  if (j === 2 && k !== 12) {
+    return "nd";
+  }
+  if (j === 3 && k !== 13) {
+    return "rd";
+  }
+  return "th";
+};
+
 const TeacherAnnouncements = () => {
   const { user } = useTeacherAuth();
   const [tab, setTab] = useState("all");
@@ -21,7 +37,7 @@ const TeacherAnnouncements = () => {
   const fetchAnnouncements = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${appConfig.API_BASE_URL}/announcements`, {
+      const res = await fetch(`${appConfig.API_BASE_URL}/announcements/teachers`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -174,7 +190,9 @@ const TeacherAnnouncements = () => {
                   >
                     <option value="" disabled>Select Class</option>
                     {classes.map(cls => (
-                      <option key={cls._id} value={cls._id}>{cls.name}</option>
+                      <option key={cls._id} value={cls._id}>
+                        {cls.grade}{getOrdinalSuffix(cls.grade)} Class - {cls.division}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -215,7 +233,10 @@ const TeacherAnnouncements = () => {
               <div className="mb-2 text-sm text-gray-500">
                 <span className="font-medium">Class: </span>
                 {selectedAnnouncement.targetClasses && selectedAnnouncement.targetClasses.length > 0
-                  ? classes.find(cls => cls._id === selectedAnnouncement.targetClasses[0])?.name || 'N/A'
+                  ? (() => {
+                      const cls = classes.find(cls => cls._id === selectedAnnouncement.targetClasses[0]);
+                      return cls ? `${cls.grade}${getOrdinalSuffix(cls.grade)} Class - ${cls.division}` : 'N/A';
+                    })()
                   : 'All'}
               </div>
               <div className="flex justify-between text-xs text-gray-400 mt-4">

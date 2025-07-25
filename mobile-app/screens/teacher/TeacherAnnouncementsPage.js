@@ -3,6 +3,22 @@ import { View, Text, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity, 
 import apiService from '../../services/apiService';
 import { useAuth } from '../../context/AuthContext';
 
+// Helper function to get ordinal suffix
+const getOrdinalSuffix = (num) => {
+  const j = num % 10;
+  const k = num % 100;
+  if (j === 1 && k !== 11) {
+    return "st";
+  }
+  if (j === 2 && k !== 12) {
+    return "nd";
+  }
+  if (j === 3 && k !== 13) {
+    return "rd";
+  }
+  return "th";
+};
+
 export default function TeacherAnnouncementsPage() {
   const { user } = useAuth();
   const [announcements, setAnnouncements] = useState([]);
@@ -276,7 +292,9 @@ export default function TeacherAnnouncementsPage() {
                         style={[styles.classOption, createForm.classId === (cls._id || cls.id) && styles.classOptionSelected]}
                         onPress={() => setCreateForm({ ...createForm, classId: cls._id || cls.id })}
                       >
-                        <Text style={{ color: createForm.classId === (cls._id || cls.id) ? '#fff' : '#333' }}>{cls.name || `${cls.grade}${cls.division}`}</Text>
+                        <Text style={{ color: createForm.classId === (cls._id || cls.id) ? '#fff' : '#333' }}>
+                          {cls.grade}{getOrdinalSuffix(cls.grade)} Class - {cls.division}
+                        </Text>
                       </TouchableOpacity>
                     ))}
                   </>

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowLeftIcon, CalendarIcon, HomeIcon, ChartBarIcon, ClockIcon } from "@heroicons/react/24/outline";
-import { useAuth } from "../context/AuthContext";
+import { ArrowLeftIcon, CalendarIcon, HomeIcon, ChartBarIcon, ClockIcon, ArrowLeftOnRectangleIcon } from "@heroicons/react/24/outline";
+import { useTeacherAuth } from "../context/TeacherAuthContext";
 import apiService from "../services/apiService";
 
 const StudentAttendance = () => {
@@ -17,8 +17,9 @@ const StudentAttendance = () => {
   });
   const [loading, setLoading] = useState(true);
   const [mobileView, setMobileView] = useState(window.innerWidth < 768);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  const { user } = useAuth();
+  const { user, logout } = useTeacherAuth();
 
   useEffect(() => {
     const handleResize = () => {
@@ -101,6 +102,19 @@ const StudentAttendance = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLogout = () => {
+    setShowLogoutModal(true);
+  };
+
+  const confirmLogout = () => {
+    setShowLogoutModal(false);
+    logout();
+  };
+
+  const cancelLogout = () => {
+    setShowLogoutModal(false);
   };
 
   const bottomNavItems = [
@@ -447,6 +461,35 @@ const StudentAttendance = () => {
           )}
         </div>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center justify-center w-12 h-12 bg-red-100 rounded-full mx-auto mb-4">
+                <ArrowLeftOnRectangleIcon className="w-6 h-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">Confirm Logout</h3>
+              <p className="text-gray-600 text-center mb-6">Are you sure you want to logout from your account?</p>
+              <div className="flex space-x-3">
+                <button
+                  onClick={cancelLogout}
+                  className="flex-1 px-4 py-3 rounded-lg text-gray-700 border border-gray-300 hover:bg-gray-50 font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmLogout}
+                  className="flex-1 px-4 py-3 rounded-lg bg-red-600 text-white hover:bg-red-700 font-medium"
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -316,10 +316,39 @@ const changeStudentPassword = async (req, res) => {
   }
 };
 
+// @desc    Student logout
+// @route   POST /api/student-auth/logout
+// @access  Private (Student)
+const studentLogout = async (req, res) => {
+  try {
+    // Update last logout time if needed
+    const student = await Student.findById(req.user.id);
+    if (student) {
+      student.loginCredentials = {
+        ...student.loginCredentials,
+        lastLogout: new Date(),
+      };
+      await student.save();
+    }
+
+    res.json({
+      success: true,
+      message: "Logged out successfully",
+    });
+  } catch (error) {
+    console.error("Student logout error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error during logout",
+    });
+  }
+};
+
 module.exports = {
   studentLogin,
   getStudentProfile,
   updateStudentProfile,
   generateStudentPassword,
   changeStudentPassword,
+  studentLogout,
 }; 

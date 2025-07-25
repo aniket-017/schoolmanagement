@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import apiService from "../services/apiService";
+import { appConfig } from "../config/environment";
 
 const TeacherAuthContext = createContext();
 
@@ -89,12 +90,40 @@ export const TeacherAuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("userRole");
-    localStorage.removeItem("user");
-    setUser(null);
-    setIsAuthenticated(false);
+  const logout = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const userRole = localStorage.getItem("userRole");
+      
+      // Call backend logout API if token exists
+      if (token) {
+        const endpoint = userRole === "student" 
+          ? `${appConfig.API_BASE_URL}/student-auth/logout`
+          : `${appConfig.API_BASE_URL}/auth/logout`;
+        
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+        
+        if (!response.ok) {
+          console.log("Logout API error:", response.status, response.statusText);
+        }
+      }
+    } catch (error) {
+      console.error("Logout API error:", error);
+      // Continue with local logout even if API call fails
+    } finally {
+      // Clear local storage
+      localStorage.removeItem("token");
+      localStorage.removeItem("userRole");
+      localStorage.removeItem("user");
+      setUser(null);
+      setIsAuthenticated(false);
+    }
   };
 
   const updateUser = (userData) => {

@@ -144,14 +144,23 @@ exports.getAnnouncements = async (req, res) => {
       query.$or = [
         { createdBy: req.user._id },
         { targetAudience: 'teachers' },
+        { targetAudience: 'all' },
+        { targetAudience: 'class' }, // Teachers should see class announcements they created
       ];
     } else if (req.user.role === 'student') {
       query.$or = [
         { targetAudience: 'all' },
         { targetAudience: 'students' },
-        { targetAudience: 'class', targetClasses: req.user.class },
         { targetIndividuals: req.user._id },
       ];
+      
+      // Add class-specific announcements if student has a class
+      if (req.user.class) {
+        query.$or.push({
+          targetAudience: 'class',
+          targetClasses: req.user.class._id || req.user.class,
+        });
+      }
     } else if (req.user.role === 'admin') {
       // Admins see all announcements
       query = {};
@@ -337,6 +346,7 @@ exports.getTeacherAnnouncements = async (req, res) => {
       $or: [
         { targetAudience: "all" },
         { targetAudience: "teachers" },
+        { targetAudience: "class" }, // Teachers should see class announcements they created
         { createdBy: req.user._id }, // Always include announcements created by this teacher
       ],
     };
@@ -862,7 +872,7 @@ exports.getAnnouncementsForStudent = async (req, res) => {
     if (student.class) {
       query.$or.push({
         targetAudience: "class",
-        targetClasses: student.class._id,
+        targetClasses: student.class._id || student.class,
       });
     }
 
@@ -918,31 +928,46 @@ const sendAnnouncementNotifications = async (announcement) => {
     const notificationBody = `${announcement.title}\n\n${announcement.content.substring(0, 100)}${announcement.content.length > 100 ? '...' : ''}`;
     
     let targetUsers = [];
+    let targetStudents = [];
+
+    // Import Student model once at the top
+    const Student = require("../models/Student");
 
     // Determine target users based on audience
     switch (announcement.targetAudience) {
       case "all":
-        targetUsers = await User.find({ role: { $in: ["student", "teacher", "admin"] } }).select('_id name email role');
+        // Get teachers and admins from User collection
+        targetUsers = await User.find({ role: { $in: ["teacher", "admin"] } }).select('_id name email role');
+        // Get students from Student collection
+        targetStudents = await Student.find({ isActive: true }).select('_id name email');
         break;
       case "students":
-        targetUsers = await User.find({ role: "student" }).select('_id name email role');
+        // Get students from Student collection
+        targetStudents = await Student.find({ isActive: true }).select('_id name email');
         break;
       case "teachers":
         targetUsers = await User.find({ role: "teacher" }).select('_id name email role');
         break;
       case "class":
         if (announcement.targetClasses && announcement.targetClasses.length > 0) {
-          targetUsers = await User.find({ 
-            role: "student", 
-            class: { $in: announcement.targetClasses.map(c => c._id || c) } 
-          }).select('_id name email role');
+          // Get students from Student collection for specific classes
+          targetStudents = await Student.find({ 
+            class: { $in: announcement.targetClasses.map(c => c._id || c) },
+            isActive: true
+          }).select('_id name email');
         }
         break;
       case "individual":
         if (announcement.targetIndividuals && announcement.targetIndividuals.length > 0) {
+          // Check both User and Student collections for individual targeting
           targetUsers = await User.find({ 
             _id: { $in: announcement.targetIndividuals.map(u => u._id || u) } 
           }).select('_id name email role');
+          
+          targetStudents = await Student.find({ 
+            _id: { $in: announcement.targetIndividuals.map(u => u._id || u) },
+            isActive: true
+          }).select('_id name email');
         }
         break;
     }
@@ -951,10 +976,13 @@ const sendAnnouncementNotifications = async (announcement) => {
     console.log(`📢 Sending notification: "${notificationTitle}"`);
     console.log(`📝 Content: ${notificationBody}`);
     console.log(`👥 Target users: ${targetUsers.length} users`);
+    console.log(`👥 Target students: ${targetStudents.length} students`);
     console.log(`👨‍🏫 Teacher: ${teacherName}`);
 
     // Here you would integrate with your notification service
     // For now, we'll just log the notification details
+    
+    // Send to teachers/admins
     for (const user of targetUsers) {
       console.log(`📱 Sending to ${user.name} (${user.email}) - ${user.role}`);
       
@@ -979,8 +1007,34 @@ const sendAnnouncementNotifications = async (announcement) => {
       });
       */
     }
+    
+    // Send to students
+    for (const student of targetStudents) {
+      console.log(`📱 Sending to student ${student.name} (${student.email})`);
+      
+      // TODO: Integrate with actual notification services for students
+      // - Firebase Cloud Messaging (FCM) for push notifications
+      // - Email service (SendGrid, Nodemailer) for email notifications
+      // - SMS service for text messages
+      
+      // Example FCM integration for students (commented out):
+      /*
+      await admin.messaging().send({
+        token: student.fcmToken,
+        notification: {
+          title: notificationTitle,
+          body: notificationBody,
+        },
+        data: {
+          announcementId: announcement._id.toString(),
+          teacherName: teacherName,
+          priority: announcement.priority,
+        },
+      });
+      */
+    }
 
-    console.log(`✅ Notification sent successfully to ${targetUsers.length} users`);
+    console.log(`✅ Notification sent successfully to ${targetUsers.length} users and ${targetStudents.length} students`);
   } catch (error) {
     console.error("❌ Error sending notifications:", error);
     throw error;

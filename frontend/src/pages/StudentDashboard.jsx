@@ -19,7 +19,7 @@ import {
   HomeIcon,
   ChartBarIcon,
 } from "@heroicons/react/24/outline";
-import { useAuth } from "../context/AuthContext";
+import { useTeacherAuth } from "../context/TeacherAuthContext";
 import apiService from "../services/apiService";
 import logo from "../assets/logo.jpeg";
 
@@ -28,6 +28,7 @@ const StudentDashboard = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileView, setMobileView] = useState(window.innerWidth < 768);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // Data states
   const [timetableData, setTimetableData] = useState(null);
@@ -42,7 +43,7 @@ const StudentDashboard = () => {
   });
   const [recentAttendance, setRecentAttendance] = useState([]);
 
-  const { user, logout } = useAuth();
+  const { user, logout } = useTeacherAuth();
 
   useEffect(() => {
     const handleResize = () => {
@@ -225,38 +226,47 @@ const StudentDashboard = () => {
   };
 
   const getPeriodTypeColor = (type) => {
-    switch (type) {
+    switch (type?.toLowerCase()) {
       case "theory":
         return "bg-blue-100 text-blue-800";
       case "practical":
         return "bg-green-100 text-green-800";
       case "lab":
         return "bg-purple-100 text-purple-800";
-      case "sports":
-        return "bg-orange-100 text-orange-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
   };
 
+  const handleLogout = () => {
+    setShowLogoutModal(true);
+  };
+
+  const confirmLogout = () => {
+    setShowLogoutModal(false);
+    logout();
+  };
+
+  const cancelLogout = () => {
+    setShowLogoutModal(false);
+  };
+
   const quickActions = [
     { title: "Attendance", icon: CalendarIcon, href: "/student/attendance", color: "bg-blue-500" },
-    { title: "Classes", icon: UserGroupIcon, href: "/student/classes", color: "bg-green-500" },
-    { title: "Annual Calendar", icon: CalendarIcon, href: "/student/annual-calendar", color: "bg-purple-500" },
+    { title: "Announcements", icon: MegaphoneIcon, href: "/student/announcements", color: "bg-green-500" },
     { title: "Timetable", icon: ClockIcon, href: "/student/timetable", color: "bg-orange-500" },
+    { title: "Grades", icon: ChartBarIcon, href: "/student/grades", color: "bg-purple-500" },
     { title: "Profile", icon: UserIcon, href: "/student/profile", color: "bg-blue-600" },
   ];
 
   const bottomNavItems = [
     { title: "Dashboard", icon: HomeIcon, href: "/student/dashboard", active: true },
     { title: "Attendance", icon: CalendarIcon, href: "/student/attendance" },
+    { title: "Announcements", icon: MegaphoneIcon, href: "/student/announcements" },
     { title: "Grades", icon: ChartBarIcon, href: "/student/grades" },
     { title: "Timetable", icon: ClockIcon, href: "/student/timetable" },
+    { title: "Logout", icon: ArrowLeftOnRectangleIcon, action: handleLogout, isLogout: true },
   ];
-
-  const handleLogout = () => {
-    logout();
-  };
 
   if (loading) {
     return (
@@ -368,11 +378,56 @@ const StudentDashboard = () => {
           </motion.div>
 
           {/* Recent Announcements - Exact match */}
-          {/* Removed Announcements section and replaced with Today's Attendance */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
+            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Recent Announcements</h3>
+              <button className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm flex items-center space-x-1" onClick={() => window.location.href = '/student/announcements'}>
+                <MegaphoneIcon className="w-4 h-4" />
+                <span>View All</span>
+              </button>
+            </div>
+
+            {announcements.length === 0 ? (
+              <div className="text-center py-8">
+                <MegaphoneIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-500 font-medium">No recent announcements</p>
+                <p className="text-gray-400 text-sm">Check back later for updates</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {announcements.slice(0, 3).map((announcement, index) => (
+                  <div key={announcement._id || index} className="flex items-start space-x-3 p-4 bg-gray-50 rounded-lg">
+                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <BellIcon className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-gray-900 text-sm line-clamp-1">
+                        {announcement.title}
+                      </h4>
+                      <p className="text-gray-600 text-xs line-clamp-2 mt-1">
+                        {announcement.content}
+                      </p>
+                      <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                        <span>{announcement.createdBy?.name || "Class Teacher"}</span>
+                        <span>{announcement.createdAt ? new Date(announcement.createdAt).toLocaleDateString() : ""}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+
+          {/* Today's Attendance */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
             className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
           >
             <div className="flex items-center justify-between mb-4">
@@ -433,7 +488,7 @@ const StudentDashboard = () => {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
 
             <div className="grid grid-cols-2 gap-4">
-              {quickActions.slice(0, 4).map((action, index) => (
+              {quickActions.map((action, index) => (
                 <Link
                   key={action.title}
                   to={action.href}
@@ -448,21 +503,6 @@ const StudentDashboard = () => {
                 </Link>
               ))}
             </div>
-
-            {/* Profile action - single centered item like in screenshots */}
-            <div className="grid grid-cols-1 gap-4 mt-4">
-              <Link
-                to={quickActions[4].href}
-                className="flex flex-col items-center p-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors group w-1/2 mx-auto"
-              >
-                <div
-                  className={`w-12 h-12 rounded-full ${quickActions[4].color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}
-                >
-                  {React.createElement(quickActions[4].icon, { className: "w-6 h-6 text-white" })}
-                </div>
-                <span className="text-sm font-medium text-gray-700 text-center">{quickActions[4].title}</span>
-              </Link>
-            </div>
           </motion.div>
 
           {/* Recent Attendance Section - REMOVED */}
@@ -472,16 +512,27 @@ const StudentDashboard = () => {
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2">
           <div className="flex justify-around">
             {bottomNavItems.map((item) => (
-              <Link
-                key={item.title}
-                to={item.href}
-                className={`flex flex-col items-center py-2 px-3 rounded-lg ${
-                  item.active ? "text-blue-600 bg-blue-50" : "text-gray-600 hover:text-blue-600 hover:bg-gray-50"
-                }`}
-              >
-                <item.icon className="w-6 h-6 mb-1" />
-                <span className="text-xs font-medium">{item.title}</span>
-              </Link>
+              item.isLogout ? (
+                <button
+                  key={item.title}
+                  onClick={item.action}
+                  className="flex flex-col items-center py-2 px-3 rounded-lg text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  <item.icon className="w-6 h-6 mb-1" />
+                  <span className="text-xs font-medium">{item.title}</span>
+                </button>
+              ) : (
+                <Link
+                  key={item.title}
+                  to={item.href}
+                  className={`flex flex-col items-center py-2 px-3 rounded-lg ${
+                    item.active ? "text-blue-600 bg-blue-50" : "text-gray-600 hover:text-blue-600 hover:bg-gray-50"
+                  }`}
+                >
+                  <item.icon className="w-6 h-6 mb-1" />
+                  <span className="text-xs font-medium">{item.title}</span>
+                </Link>
+              )
             ))}
           </div>
         </div>
@@ -511,6 +562,9 @@ const StudentDashboard = () => {
                   <Link to="/student/attendance" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
                     Attendance
                   </Link>
+                  <Link to="/student/announcements" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
+                    Announcements
+                  </Link>
                   <Link to="/student/timetable" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
                     Timetable
                   </Link>
@@ -520,6 +574,46 @@ const StudentDashboard = () => {
                   <Link to="/student/profile" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
                     Profile
                   </Link>
+                  
+                  {/* Logout Button */}
+                  <div className="pt-4 border-t border-gray-200">
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center px-3 py-2 rounded-lg hover:bg-red-50 text-red-600 font-medium"
+                    >
+                      <ArrowLeftOnRectangleIcon className="w-5 h-5 mr-2" />
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Logout Confirmation Modal */}
+        {showLogoutModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-sm w-full mx-4">
+              <div className="p-6">
+                <div className="flex items-center justify-center w-12 h-12 bg-red-100 rounded-full mx-auto mb-4">
+                  <ArrowLeftOnRectangleIcon className="w-6 h-6 text-red-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">Confirm Logout</h3>
+                <p className="text-gray-600 text-center mb-6">Are you sure you want to logout from your account?</p>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={cancelLogout}
+                    className="flex-1 px-4 py-3 rounded-lg text-gray-700 border border-gray-300 hover:bg-gray-50 font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmLogout}
+                    className="flex-1 px-4 py-3 rounded-lg bg-red-600 text-white hover:bg-red-700 font-medium"
+                  >
+                    Logout
+                  </button>
                 </div>
               </div>
             </div>
@@ -725,6 +819,35 @@ const StudentDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Logout Confirmation Modal for Desktop */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center justify-center w-12 h-12 bg-red-100 rounded-full mx-auto mb-4">
+                <ArrowLeftOnRectangleIcon className="w-6 h-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">Confirm Logout</h3>
+              <p className="text-gray-600 text-center mb-6">Are you sure you want to logout from your account?</p>
+              <div className="flex space-x-3">
+                <button
+                  onClick={cancelLogout}
+                  className="flex-1 px-4 py-3 rounded-lg text-gray-700 border border-gray-300 hover:bg-gray-50 font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmLogout}
+                  className="flex-1 px-4 py-3 rounded-lg bg-red-600 text-white hover:bg-red-700 font-medium"
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
