@@ -11,6 +11,7 @@ import {
   CalendarIcon,
   ClockIcon,
   ChevronLeftIcon,
+  ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
 import { useTeacherAuth } from '../context/TeacherAuthContext';
 import apiService from '../services/apiService';
@@ -20,8 +21,17 @@ const TeacherClasses = () => {
   const [summary, setSummary] = useState({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [mobileView, setMobileView] = useState(window.innerWidth < 768);
   const { user } = useTeacherAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleResize = () => {
+      setMobileView(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     loadAssignedClasses();
@@ -97,24 +107,29 @@ const TeacherClasses = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative flex items-center justify-center py-4 sm:py-8">
-            {/* Back icon for mobile only */}
-            <button
-              onClick={handleBack}
-              className="sm:hidden absolute left-0 top-1/2 -translate-y-1/2 p-2 rounded-full hover:bg-blue-700 focus:outline-none"
-              aria-label="Go back"
-              type="button"
-            >
-              <ChevronLeftIcon className="w-6 h-6 text-white" />
-            </button>
-            <div className="w-full pl-10 pr-4">
-              <h1 className="text-xl sm:text-3xl font-bold mb-1 sm:mb-2">My Assigned Classes</h1>
-              <p className="text-blue-100 text-sm">
-                You are assigned as Class Teacher for {classes.length} class(es)
-              </p>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          {/* Mobile Back Button */}
+          {mobileView && (
+            <div className="flex items-center mb-2">
+              <button
+                onClick={handleBack}
+                className="flex items-center text-white hover:text-blue-100 transition-colors p-2"
+              >
+                <ArrowLeftIcon className="w-6 h-6" />
+              </button>
             </div>
-          </div>
+          )}
+          
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center"
+          >
+            <h1 className="text-2xl font-bold mb-1">My Assigned Classes</h1>
+            <p className="text-blue-100 text-sm">
+              You are assigned as Class Teacher for {classes.length} class(es)
+            </p>
+          </motion.div>
         </div>
       </div>
 

@@ -9,6 +9,7 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   ChevronLeftIcon,
+  ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
 import { useTeacherAuth } from '../context/TeacherAuthContext';
 import apiService from '../services/apiService';
@@ -23,6 +24,7 @@ const TeacherAttendance = () => {
   const [selectedClass, setSelectedClass] = useState(null);
   const [students, setStudents] = useState([]);
   const [attendanceData, setAttendanceData] = useState({});
+  const [mobileView, setMobileView] = useState(window.innerWidth < 768);
   const [summary, setSummary] = useState({
     total: 0,
     present: 0,
@@ -32,6 +34,14 @@ const TeacherAttendance = () => {
   });
   const { user } = useTeacherAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleResize = () => {
+      setMobileView(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     loadTeacherClasses();
@@ -274,22 +284,27 @@ const TeacherAttendance = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative py-4 sm:py-8">
-            {/* Back icon for mobile only */}
-            <button
-              onClick={handleBack}
-              className="sm:hidden absolute left-0 top-4 p-2 rounded-full hover:bg-blue-700 focus:outline-none"
-              aria-label="Go back"
-              type="button"
-            >
-              <ChevronLeftIcon className="w-6 h-6 text-white" />
-            </button>
-            <div className="w-full pl-12 text-center">
-              <h1 className="text-xl sm:text-3xl font-bold mb-1 sm:mb-2">Attendance Management</h1>
-              <p className="text-sm sm:text-base text-blue-100">Mark daily attendance for your classes</p>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          {/* Mobile Back Button */}
+          {mobileView && (
+            <div className="flex items-center mb-2">
+              <button
+                onClick={handleBack}
+                className="flex items-center text-white hover:text-blue-100 transition-colors p-2"
+              >
+                <ArrowLeftIcon className="w-6 h-6" />
+              </button>
             </div>
-          </div>
+          )}
+          
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center"
+          >
+            <h1 className="text-2xl font-bold mb-1">Attendance Management</h1>
+            <p className="text-blue-100 text-sm">Mark daily attendance for your classes</p>
+          </motion.div>
         </div>
       </div>
 

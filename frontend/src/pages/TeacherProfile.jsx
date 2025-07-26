@@ -13,17 +13,18 @@ import {
   CheckIcon,
   XMarkIcon,
   KeyIcon,
+  ExclamationTriangleIcon,
+  ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
 import { useTeacherAuth } from '../context/TeacherAuthContext';
 import apiService from '../services/apiService';
 
 const TeacherProfile = () => {
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [editing, setEditing] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [mobileView, setMobileView] = useState(window.innerWidth < 768);
   const [profile, setProfile] = useState(null);
-  const [formData, setFormData] = useState({});
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -31,6 +32,14 @@ const TeacherProfile = () => {
   });
   const { user, logout } = useTeacherAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleResize = () => {
+      setMobileView(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     loadTeacherProfile();
@@ -43,7 +52,6 @@ const TeacherProfile = () => {
       
       if (response.success) {
         setProfile(response.user);
-        setFormData(response.user);
       } else {
         console.error('Failed to load profile:', response.message);
         // Set a default profile to prevent errors
@@ -58,38 +66,6 @@ const TeacherProfile = () => {
     }
   };
 
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const handleSave = async () => {
-    try {
-      setSaving(true);
-      const response = await apiService.teachers.updateTeacherProfile(formData);
-      
-      if (response.success) {
-        setProfile(formData);
-        setEditing(false);
-        alert('Profile updated successfully!');
-      } else {
-        alert(response.message || 'Failed to update profile');
-      }
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      alert('Error updating profile. Please try again.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleCancel = () => {
-    setFormData(profile);
-    setEditing(false);
-  };
-
   const handlePasswordChange = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       alert('New passwords do not match!');
@@ -102,7 +78,6 @@ const TeacherProfile = () => {
     }
 
     try {
-      setSaving(true);
       const response = await apiService.teachers.changePassword({
         currentPassword: passwordData.currentPassword,
         newPassword: passwordData.newPassword,
@@ -122,15 +97,20 @@ const TeacherProfile = () => {
     } catch (error) {
       console.error('Error changing password:', error);
       alert('Error changing password. Please try again.');
-    } finally {
-      setSaving(false);
     }
   };
 
   const handleLogout = () => {
-    if (window.confirm('Are you sure you want to logout?')) {
-      logout();
-    }
+    setShowLogoutModal(true);
+  };
+
+  const confirmLogout = () => {
+    setShowLogoutModal(false);
+    logout();
+  };
+
+  const cancelLogout = () => {
+    setShowLogoutModal(false);
   };
 
   const handleBack = () => {
@@ -174,20 +154,30 @@ const TeacherProfile = () => {
     return String(value);
   };
 
-
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          {/* Mobile Back Button */}
+          {mobileView && (
+            <div className="flex items-center mb-2">
+              <button
+                onClick={handleBack}
+                className="flex items-center text-white hover:text-blue-100 transition-colors p-2"
+              >
+                <ArrowLeftIcon className="w-6 h-6" />
+              </button>
+            </div>
+          )}
+          
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-center"
           >
-            <h1 className="text-3xl font-bold mb-2">My Profile</h1>
-            <p className="text-blue-100">View and manage your account information</p>
+            <h1 className="text-2xl font-bold mb-1">My Profile</h1>
+            <p className="text-blue-100 text-sm">View your account information</p>
           </motion.div>
         </div>
       </div>
@@ -223,36 +213,6 @@ const TeacherProfile = () => {
                   <p className="text-sm text-gray-500">Employee ID: {safeDisplay(profile?.employeeId, 'N/A')}</p>
                 </div>
               </div>
-              
-              <div className="flex space-x-2">
-                {!editing ? (
-                  <button
-                    onClick={() => setEditing(true)}
-                    className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <PencilIcon className="w-4 h-4" />
-                    <span>Edit Profile</span>
-                  </button>
-                ) : (
-                  <>
-                    <button
-                      onClick={handleSave}
-                      disabled={saving}
-                      className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-                    >
-                      <CheckIcon className="w-4 h-4" />
-                      <span>{saving ? 'Saving...' : 'Save'}</span>
-                    </button>
-                    <button
-                      onClick={handleCancel}
-                      className="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                    >
-                      <XMarkIcon className="w-4 h-4" />
-                      <span>Cancel</span>
-                    </button>
-                  </>
-                )}
-              </div>
             </div>
           </div>
 
@@ -264,74 +224,29 @@ const TeacherProfile = () => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                  {editing ? (
-                    <input
-                      type="text"
-                      value={formData.name || ''}
-                      onChange={(e) => handleInputChange('name', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  ) : (
-                    <p className="text-gray-900">{safeDisplay(profile?.name)}</p>
-                  )}
+                  <p className="text-gray-900">{safeDisplay(profile?.name)}</p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  {editing ? (
-                    <input
-                      type="email"
-                      value={formData.email || ''}
-                      onChange={(e) => handleInputChange('email', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  ) : (
-                    <p className="text-gray-900">{safeDisplay(profile?.email)}</p>
-                  )}
+                  <p className="text-gray-900">{safeDisplay(profile?.email)}</p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                  {editing ? (
-                    <input
-                      type="tel"
-                      value={formData.phone || ''}
-                      onChange={(e) => handleInputChange('phone', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  ) : (
-                    <p className="text-gray-900">{safeDisplay(profile?.phone)}</p>
-                  )}
+                  <p className="text-gray-900">{safeDisplay(profile?.phone)}</p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-                  {editing ? (
-                    <input
-                      type="date"
-                      value={formData.dateOfBirth ? formData.dateOfBirth.split('T')[0] : ''}
-                      onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  ) : (
-                    <p className="text-gray-900">
-                      {profile?.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString() : 'Not provided'}
-                    </p>
-                  )}
+                  <p className="text-gray-900">
+                    {profile?.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString() : 'Not provided'}
+                  </p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                  {editing ? (
-                    <textarea
-                      value={formData.address || ''}
-                      onChange={(e) => handleInputChange('address', e.target.value)}
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  ) : (
-                    <p className="text-gray-900">{formatAddress(profile?.address)}</p>
-                  )}
+                  <p className="text-gray-900">{formatAddress(profile?.address)}</p>
                 </div>
               </div>
             </div>
@@ -342,52 +257,34 @@ const TeacherProfile = () => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Employee ID</label>
-                                      <p className="text-gray-900">{safeDisplay(profile?.employeeId, 'Not assigned')}</p>
+                  <p className="text-gray-900">{safeDisplay(profile?.employeeId, 'Not assigned')}</p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
-                                      <p className="text-gray-900">{safeDisplay(profile?.designation, 'Teacher')}</p>
+                  <p className="text-gray-900">{safeDisplay(profile?.designation, 'Teacher')}</p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                                      <p className="text-gray-900">{safeDisplay(profile?.department, 'Not assigned')}</p>
+                  <p className="text-gray-900">{safeDisplay(profile?.department, 'Not assigned')}</p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Joining Date</label>
-                                      <p className="text-gray-900">
-                      {profile?.joiningDate ? new Date(profile.joiningDate).toLocaleDateString() : 'Not provided'}
-                    </p>
+                  <p className="text-gray-900">
+                    {profile?.joiningDate ? new Date(profile.joiningDate).toLocaleDateString() : 'Not provided'}
+                  </p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Qualification</label>
-                  {editing ? (
-                    <input
-                      type="text"
-                      value={formData.qualification || ''}
-                      onChange={(e) => handleInputChange('qualification', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  ) : (
-                    <p className="text-gray-900">{safeDisplay(profile?.qualification)}</p>
-                  )}
+                  <p className="text-gray-900">{safeDisplay(profile?.qualification)}</p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Experience (Years)</label>
-                  {editing ? (
-                    <input
-                      type="number"
-                      value={formData.experience || ''}
-                      onChange={(e) => handleInputChange('experience', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  ) : (
-                    <p className="text-gray-900">{safeDisplay(profile?.experience)} years</p>
-                  )}
+                  <p className="text-gray-900">{safeDisplay(profile?.experience)} years</p>
                 </div>
               </div>
             </div>
@@ -420,13 +317,53 @@ const TeacherProfile = () => {
       </div>
       )}
 
-      {/* Password Change Modal */}
-      {showPasswordModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="bg-white rounded-xl p-6 w-full max-w-md mx-4"
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="bg-white rounded-xl p-6 w-full max-w-sm mx-auto shadow-2xl"
+          >
+            <div className="flex items-center justify-center mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />
+              </div>
+            </div>
+            
+            <div className="text-center mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Confirm Logout</h3>
+              <p className="text-gray-600 text-sm">
+                Are you sure you want to logout? You will need to login again to access your account.
+              </p>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={cancelLogout}
+                className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmLogout}
+                className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Logout
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Password Change Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-xl p-6 w-full max-w-md mx-auto shadow-2xl"
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Change Password</h3>
@@ -470,7 +407,7 @@ const TeacherProfile = () => {
               </div>
             </div>
             
-            <div className="flex justify-end space-x-2 mt-6 pt-4 border-t border-gray-200">
+            <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2 mt-6 pt-4 border-t border-gray-200">
               <button
                 onClick={() => setShowPasswordModal(false)}
                 className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
@@ -479,10 +416,9 @@ const TeacherProfile = () => {
               </button>
               <button
                 onClick={handlePasswordChange}
-                disabled={saving}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
-                {saving ? 'Changing...' : 'Change Password'}
+                Change Password
               </button>
             </div>
           </motion.div>
