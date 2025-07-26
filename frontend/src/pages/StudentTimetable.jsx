@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
+import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import appConfig from "../config/environment";
 
 // Helper for day names
@@ -167,7 +168,16 @@ const StudentTimetable = () => {
   const [classId, setClassId] = useState(null);
   const [classData, setClassData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [mobileView, setMobileView] = useState(window.innerWidth < 768);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleResize = () => {
+      setMobileView(window.innerWidth < 768);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -204,6 +214,28 @@ const StudentTimetable = () => {
           >
             Return to Dashboard
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (mobileView) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {/* Mobile Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+          <div className="flex items-center p-4">
+            <Link to="/student/dashboard" className="p-2 -ml-2">
+              <ArrowLeftIcon className="w-6 h-6" />
+            </Link>
+            <h1 className="text-lg font-semibold text-center flex-1">Timetable</h1>
+            <div className="w-10"></div> {/* Spacer for centering */}
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="px-4 py-6">
+          <StudentTimetableMobile classId={classId} classData={classData} />
         </div>
       </div>
     );
