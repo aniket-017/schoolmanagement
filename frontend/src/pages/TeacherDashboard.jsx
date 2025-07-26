@@ -58,30 +58,42 @@ const TeacherDashboard = () => {
     try {
       setLoading(true);
       
+      // Make all API calls in parallel for better performance
+      const promises = [];
+
       // Load teacher timetable
       if (user?._id) {
-        try {
-          const timetableResponse = await apiService.timetable.getTeacherTimetable(user._id);
-          if (timetableResponse.success) {
-            setTimetableData(timetableResponse.data);
-          }
-        } catch (error) {
-          console.log('Timetable not available:', error.message);
-        }
+        promises.push(
+          apiService.timetable.getTeacherTimetable(user._id)
+            .then(response => response.success ? response.data : null)
+            .catch(error => {
+              console.log('Timetable not available:', error.message);
+              return null;
+            })
+        );
+      } else {
+        promises.push(Promise.resolve(null));
       }
 
       // Load announcements
-      try {
-        const announcementsResponse = await apiService.announcements.getTeacherAnnouncements({ 
+      promises.push(
+        apiService.announcements.getTeacherAnnouncements({ 
           activeOnly: true, 
           limit: 5 
-        });
-        if (announcementsResponse.success) {
-          setAnnouncements(announcementsResponse.data || []);
-        }
-      } catch (error) {
-        console.log('Announcements not available:', error.message);
-      }
+        })
+          .then(response => response.success ? response.data || [] : [])
+          .catch(error => {
+            console.log('Announcements not available:', error.message);
+            return [];
+          })
+      );
+
+      // Wait for all promises to resolve
+      const [timetableData, announcements] = await Promise.all(promises);
+
+      // Set state with all data at once
+      setTimetableData(timetableData);
+      setAnnouncements(announcements);
 
       // Calculate stats from available data
       const todaySchedule = getTodaySchedule();
@@ -95,6 +107,15 @@ const TeacherDashboard = () => {
 
     } catch (error) {
       console.error('Error loading dashboard data:', error);
+      // Set default values on complete failure
+      setTimetableData(null);
+      setAnnouncements([]);
+      setTeacherStats({
+        todayClasses: 0,
+        totalStudents: 0,
+        pendingTasks: 0,
+        attendanceRate: '0%'
+      });
     } finally {
       setLoading(false);
       setRefreshing(false);

@@ -82,15 +82,41 @@ const getStudentAttendance = async (req, res) => {
     const { studentId } = req.params;
     const { startDate, endDate, month, year, limit = 30 } = req.query;
 
+    // Get student information
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found",
+      });
+    }
+
     const studentAttendance = await StudentAttendance.findOne({ studentId })
       .populate("studentId", "name studentId rollNumber")
       .populate("classId", "name grade section")
       .populate("attendanceRecords.markedBy", "name");
 
+    // If no attendance record exists, return empty data instead of 404
     if (!studentAttendance) {
-      return res.status(404).json({
-        success: false,
-        message: "Student attendance record not found",
+      return res.json({
+        success: true,
+        data: {
+          student: {
+            _id: student._id,
+            name: student.name,
+            studentId: student.studentId,
+            rollNumber: student.rollNumber
+          },
+          class: student.class || null,
+          attendance: [],
+          statistics: {
+            totalDays: 0,
+            presentDays: 0,
+            absentDays: 0,
+            lateDays: 0,
+            attendancePercentage: 0,
+          },
+        },
       });
     }
 

@@ -22,6 +22,32 @@ import { useTeacherAuth } from "../context/TeacherAuthContext";
 import apiService from "../services/apiService";
 import logo from "../assets/logo.jpeg";
 
+// Skeleton loading component
+const SkeletonCard = () => (
+  <div className="bg-white rounded-lg shadow-md p-6 animate-pulse">
+    <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+    <div className="h-3 bg-gray-200 rounded w-1/2 mb-2"></div>
+    <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+  </div>
+);
+
+const SkeletonSchedule = () => (
+  <div className="bg-white rounded-lg shadow-md p-6 animate-pulse">
+    <div className="h-5 bg-gray-200 rounded w-1/3 mb-4"></div>
+    <div className="space-y-3">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="flex items-center space-x-3">
+          <div className="h-8 w-8 bg-gray-200 rounded"></div>
+          <div className="flex-1">
+            <div className="h-3 bg-gray-200 rounded w-1/2 mb-1"></div>
+            <div className="h-2 bg-gray-200 rounded w-1/3"></div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
 const StudentDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -63,102 +89,167 @@ const StudentDashboard = () => {
     try {
       setLoading(true);
 
+      // Make all API calls in parallel for better performance
+      const promises = [];
+
       // Load student timetable (class timetable)
       if (user?.class?._id || user?.class) {
-        try {
-          const classId = user.class._id || user.class;
-          const timetableResponse = await apiService.timetable.getClassTimetable(classId);
-          if (timetableResponse.success) {
-            setTimetableData(timetableResponse.data);
-          }
-        } catch (error) {
-          console.log("Timetable not available:", error.message);
-        }
+        const classId = user.class._id || user.class;
+        promises.push(
+          apiService.timetable.getClassTimetable(classId)
+            .then(response => response.success ? response.data : null)
+            .catch(error => {
+              console.log("Timetable not available:", error.message);
+              return null;
+            })
+        );
+      } else {
+        promises.push(Promise.resolve(null));
       }
 
-      // Load today's attendance
+      // Load today's attendance with better error handling
       if (user?._id || user?.id) {
-        try {
-          const today = new Date();
-          const studentId = user._id || user.id;
-          const attendanceResponse = await apiService.attendance.getStudentAttendance(studentId, {
+        const today = new Date();
+        const studentId = user._id || user.id;
+        promises.push(
+          apiService.attendance.getStudentAttendance(studentId, {
             startDate: today.toISOString().split("T")[0],
             endDate: today.toISOString().split("T")[0],
-          });
-          if (attendanceResponse.success && attendanceResponse.data?.attendance?.length > 0) {
-            setTodayAttendance(attendanceResponse.data.attendance[0]);
-          } else {
-            setTodayAttendance(null);
-          }
-        } catch (error) {
-          setTodayAttendance(null);
-          console.log("Today's attendance not available:", error.message);
-        }
+          })
+            .then(response => {
+              if (response.success && response.data?.attendance?.length > 0) {
+                return response.data.attendance[0];
+              }
+              // Return default attendance data if no records exist
+              return {
+                status: "not_marked",
+                date: today.toISOString().split("T")[0],
+                timeIn: null,
+                timeOut: null,
+                remarks: "Attendance not marked yet"
+              };
+            })
+            .catch(error => {
+              console.log("Today's attendance not available:", error.message);
+              // Return default attendance data on error
+              return {
+                status: "not_marked",
+                date: today.toISOString().split("T")[0],
+                timeIn: null,
+                timeOut: null,
+                remarks: "Attendance not marked yet"
+              };
+            })
+        );
+      } else {
+        promises.push(Promise.resolve(null));
       }
 
       // Load announcements for student
-      try {
-        const userId = user?._id || user?.id;
-        if (userId) {
-          const announcementsResponse = await apiService.announcements.getAnnouncementsForStudent(userId, {
+      const userId = user?._id || user?.id;
+      if (userId) {
+        promises.push(
+          apiService.announcements.getAnnouncementsForStudent(userId, {
             activeOnly: true,
             limit: 5,
-          });
-          if (announcementsResponse.success) {
-            setAnnouncements(announcementsResponse.data || []);
-          }
-        }
-      } catch (error) {
-        console.log("Announcements not available:", error.message);
-        // Fallback to regular announcements
-        try {
-          const generalAnnouncements = await apiService.announcements.getTeacherAnnouncements({
-            activeOnly: true,
-            limit: 5,
-          });
-          if (generalAnnouncements.success) {
-            setAnnouncements(generalAnnouncements.data || []);
-          }
-        } catch (fallbackError) {
-          console.log("General announcements not available:", fallbackError.message);
-        }
+          })
+            .then(response => response.success ? response.data || [] : [])
+            .catch(error => {
+              console.log("Announcements not available:", error.message);
+              // Fallback to regular announcements
+              return apiService.announcements.getTeacherAnnouncements({
+                activeOnly: true,
+                limit: 5,
+              })
+                .then(response => response.success ? response.data || [] : [])
+                .catch(fallbackError => {
+                  console.log("General announcements not available:", fallbackError.message);
+                  return [];
+                });
+            })
+        );
+      } else {
+        promises.push(Promise.resolve([]));
       }
 
-      // Fetch monthly attendance stats
-      try {
+      // Fetch monthly attendance stats with better error handling
+      if (user?._id || user?.id) {
         const today = new Date();
-        const monthlyResponse = await apiService.attendance.getStudentAttendance(user._id || user.id, {
-          month: today.getMonth() + 1,
-          year: today.getFullYear(),
-        });
-        if (monthlyResponse.success && monthlyResponse.data?.statistics) {
-          setStudentStats({
-            attendanceRate: (monthlyResponse.data.statistics.attendancePercentage || 0) + "%",
-            presentDays: monthlyResponse.data.statistics.presentDays || 0,
-            absentDays: monthlyResponse.data.statistics.absentDays || 0,
-            lateDays: monthlyResponse.data.statistics.lateDays || 0,
-            totalDays: monthlyResponse.data.statistics.totalDays || 0,
-          });
-        } else {
-          setStudentStats({
-            attendanceRate: "0%",
-            presentDays: 0,
-            absentDays: 0,
-            lateDays: 0,
-            totalDays: 0,
-          });
-        }
-      } catch (error) {
-        setStudentStats({
+        promises.push(
+          apiService.attendance.getStudentAttendance(user._id || user.id, {
+            month: today.getMonth() + 1,
+            year: today.getFullYear(),
+          })
+            .then(response => {
+              if (response.success && response.data?.statistics) {
+                return {
+                  attendanceRate: (response.data.statistics.attendancePercentage || 0) + "%",
+                  presentDays: response.data.statistics.presentDays || 0,
+                  absentDays: response.data.statistics.absentDays || 0,
+                  lateDays: response.data.statistics.lateDays || 0,
+                  totalDays: response.data.statistics.totalDays || 0,
+                };
+              } else {
+                // Return default stats if no attendance records exist
+                return {
+                  attendanceRate: "0%",
+                  presentDays: 0,
+                  absentDays: 0,
+                  lateDays: 0,
+                  totalDays: 0,
+                };
+              }
+            })
+            .catch(error => {
+              console.log("Monthly stats not available:", error.message);
+              // Return default stats on error
+              return {
+                attendanceRate: "0%",
+                presentDays: 0,
+                absentDays: 0,
+                lateDays: 0,
+                totalDays: 0,
+              };
+            })
+        );
+      } else {
+        promises.push(Promise.resolve({
           attendanceRate: "0%",
           presentDays: 0,
           absentDays: 0,
           lateDays: 0,
           totalDays: 0,
-        });
+        }));
       }
+
+      // Wait for all promises to resolve
+      const [timetableData, todayAttendance, announcements, studentStats] = await Promise.all(promises);
+
+      // Set state with all data at once
+      setTimetableData(timetableData);
+      setTodayAttendance(todayAttendance);
+      setAnnouncements(announcements);
+      setStudentStats(studentStats);
+
     } catch (error) {
       console.error("Error loading dashboard data:", error);
+      // Set default values on complete failure
+      setTimetableData(null);
+      setTodayAttendance({
+        status: "not_marked",
+        date: new Date().toISOString().split("T")[0],
+        timeIn: null,
+        timeOut: null,
+        remarks: "Unable to load attendance data"
+      });
+      setAnnouncements([]);
+      setStudentStats({
+        attendanceRate: "0%",
+        presentDays: 0,
+        absentDays: 0,
+        lateDays: 0,
+        totalDays: 0,
+      });
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -176,10 +267,13 @@ const StudentDashboard = () => {
         if (response.success && response.data?.attendance) {
           setRecentAttendance(response.data.attendance.slice(0, 7));
         } else {
+          // Set empty array if no attendance records exist
           setRecentAttendance([]);
         }
       }
     } catch (error) {
+      console.log("Recent attendance not available:", error.message);
+      // Set empty array on error
       setRecentAttendance([]);
     }
   };
@@ -206,6 +300,8 @@ const StudentDashboard = () => {
         return "text-red-600 bg-red-50";
       case "late":
         return "text-yellow-600 bg-yellow-50";
+      case "not_marked":
+        return "text-gray-600 bg-gray-50";
       default:
         return "text-gray-600 bg-gray-50";
     }
@@ -219,6 +315,8 @@ const StudentDashboard = () => {
         return XCircleIcon;
       case "late":
         return ExclamationTriangleIcon;
+      case "not_marked":
+        return ClockIcon;
       default:
         return ClockIcon;
     }
@@ -262,10 +360,37 @@ const StudentDashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
+      <div className="min-h-screen bg-gray-50">
+        {/* Mobile Header Skeleton */}
+        <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+          <div className="flex items-center justify-between p-4">
+            <div className="w-10 h-10 bg-white/10 rounded-lg animate-pulse"></div>
+            <div className="w-20 h-8 bg-white/10 rounded animate-pulse"></div>
+            <div className="w-10 h-10 bg-white/10 rounded-lg animate-pulse"></div>
+          </div>
+          <div className="px-4 pb-6">
+            <div className="flex items-center space-x-4">
+              <div className="w-16 h-16 bg-white/20 rounded-full animate-pulse"></div>
+              <div className="flex-1">
+                <div className="h-3 bg-white/20 rounded w-24 mb-2 animate-pulse"></div>
+                <div className="h-5 bg-white/20 rounded w-32 animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content Skeleton */}
+        <div className="px-4 py-6 space-y-6 pb-24">
+          <SkeletonSchedule />
+          <div className="grid grid-cols-2 gap-4">
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+          <SkeletonCard />
+          <div className="grid grid-cols-1 gap-4">
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
         </div>
       </div>
     );

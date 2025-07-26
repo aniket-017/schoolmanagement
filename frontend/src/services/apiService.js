@@ -2,6 +2,10 @@ import { appConfig } from "../config/environment";
 
 const API_BASE_URL = appConfig.API_BASE_URL;
 
+// Simple cache implementation
+const cache = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 class ApiService {
   constructor() {
     this.baseURL = API_BASE_URL;
@@ -23,6 +27,30 @@ class ApiService {
       throw new Error(data.message || "Something went wrong");
     }
     return data;
+  }
+
+  // Cache helper methods
+  getCacheKey(url, params = {}) {
+    return `${url}?${JSON.stringify(params)}`;
+  }
+
+  getFromCache(key) {
+    const cached = cache.get(key);
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      return cached.data;
+    }
+    return null;
+  }
+
+  setCache(key, data) {
+    cache.set(key, {
+      data,
+      timestamp: Date.now()
+    });
+  }
+
+  clearCache() {
+    cache.clear();
   }
 
   // Authentication APIs
@@ -76,18 +104,30 @@ class ApiService {
   announcements = {
     getTeacherAnnouncements: async (params = {}) => {
       const queryString = new URLSearchParams(params).toString();
+      const cacheKey = this.getCacheKey(`/announcements/teachers`, params);
+      const cached = this.getFromCache(cacheKey);
+      if (cached) return cached;
+
       const response = await fetch(`${this.baseURL}/announcements/teachers?${queryString}`, {
         headers: this.getAuthHeaders(),
       });
-      return this.handleResponse(response);
+      const data = await this.handleResponse(response);
+      this.setCache(cacheKey, data);
+      return data;
     },
 
     getAnnouncementsForStudent: async (studentId, params = {}) => {
       const queryString = new URLSearchParams(params).toString();
+      const cacheKey = this.getCacheKey(`/announcements/student/${studentId}`, params);
+      const cached = this.getFromCache(cacheKey);
+      if (cached) return cached;
+
       const response = await fetch(`${this.baseURL}/announcements/student/${studentId}?${queryString}`, {
         headers: this.getAuthHeaders(),
       });
-      return this.handleResponse(response);
+      const data = await this.handleResponse(response);
+      this.setCache(cacheKey, data);
+      return data;
     },
 
     create: async (announcementData) => {
@@ -96,24 +136,39 @@ class ApiService {
         headers: this.getAuthHeaders(),
         body: JSON.stringify(announcementData),
       });
-      return this.handleResponse(response);
+      const data = await this.handleResponse(response);
+      // Clear cache when new announcement is created
+      this.clearCache();
+      return data;
     },
   };
 
   // Timetable APIs
   timetable = {
     getTeacherTimetable: async (teacherId) => {
+      const cacheKey = this.getCacheKey(`/timetables/teacher/${teacherId}`);
+      const cached = this.getFromCache(cacheKey);
+      if (cached) return cached;
+
       const response = await fetch(`${this.baseURL}/timetables/teacher/${teacherId}`, {
         headers: this.getAuthHeaders(),
       });
-      return this.handleResponse(response);
+      const data = await this.handleResponse(response);
+      this.setCache(cacheKey, data);
+      return data;
     },
 
     getClassTimetable: async (classId) => {
+      const cacheKey = this.getCacheKey(`/timetables/class/${classId}`);
+      const cached = this.getFromCache(cacheKey);
+      if (cached) return cached;
+
       const response = await fetch(`${this.baseURL}/timetables/class/${classId}`, {
         headers: this.getAuthHeaders(),
       });
-      return this.handleResponse(response);
+      const data = await this.handleResponse(response);
+      this.setCache(cacheKey, data);
+      return data;
     },
   };
 

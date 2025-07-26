@@ -66,6 +66,8 @@ const attendanceRecordSchema = new mongoose.Schema(
 // Create indexes for the embedded attendance records
 attendanceRecordSchema.index({ date: 1 });
 attendanceRecordSchema.index({ status: 1 });
+attendanceRecordSchema.index({ "markedBy": 1 });
+attendanceRecordSchema.index({ "date": 1, "status": 1 });
 
 // Student attendance schema - stores attendance records as an array
 const studentAttendanceSchema = new mongoose.Schema(
@@ -92,11 +94,14 @@ const studentAttendanceSchema = new mongoose.Schema(
   }
 );
 
-// Create indexes
+// Create comprehensive indexes for better query performance
 studentAttendanceSchema.index({ studentId: 1 });
 studentAttendanceSchema.index({ classId: 1 });
 studentAttendanceSchema.index({ academicYear: 1 });
 studentAttendanceSchema.index({ "attendanceRecords.date": 1 });
+studentAttendanceSchema.index({ studentId: 1, academicYear: 1 });
+studentAttendanceSchema.index({ classId: 1, academicYear: 1 });
+studentAttendanceSchema.index({ "attendanceRecords.date": 1, "attendanceRecords.status": 1 });
 
 // Virtual for getting attendance statistics
 studentAttendanceSchema.virtual("statistics").get(function () {
