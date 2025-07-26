@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import appConfig from "../config/environment";
 
 // Helper for day names
 const daysOfWeek = [
@@ -16,24 +17,41 @@ const StudentTimetableMobile = ({ classId, classData }) => {
   const [timetable, setTimetable] = useState({});
   const [selectedDay, setSelectedDay] = useState(daysOfWeek[0].full);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchTimetable = async () => {
       setLoading(true);
+      setError(null);
       const token = localStorage.getItem("token");
+      
+      if (!token) {
+        setError("Authentication required. Please log in again.");
+        setLoading(false);
+        return;
+      }
+
       try {
         const res = await fetch(
-          `http://localhost:1704/api/timetables/class/${classId}`,
+          `${appConfig.API_BASE_URL}/timetables/class/${classId}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
+        
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        
         const data = await res.json();
         if (data.success && data.data && data.data.weeklyTimetable) {
           setTimetable(data.data.weeklyTimetable);
         } else {
           setTimetable({});
+          setError("No timetable data available for this class.");
         }
       } catch (e) {
+        console.error("Error fetching timetable:", e);
         setTimetable({});
+        setError("Failed to load timetable. Please try again later.");
       } finally {
         setLoading(false);
       }
@@ -67,12 +85,34 @@ const StudentTimetableMobile = ({ classId, classData }) => {
           </button>
         ))}
       </div>
+      
+      {/* Error State */}
+      {error && (
+        <div className="text-center py-8">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+            <p className="text-red-600 text-sm">{error}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="mt-2 text-blue-600 hover:text-blue-700 text-sm underline"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      )}
+      
       {/* Period Cards */}
       {loading ? (
-        <div className="text-center py-8 text-gray-400">Loading timetable...</div>
-      ) : periods.length === 0 ? (
-        <div className="text-center py-8 text-gray-400">No periods scheduled for this day.</div>
-      ) : (
+        <div className="text-center py-8">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+          <p className="text-gray-500 text-sm">Loading timetable...</p>
+        </div>
+      ) : !error && periods.length === 0 ? (
+        <div className="text-center py-8 text-gray-400">
+          <p className="text-sm">No periods scheduled for {selectedDay}.</p>
+          <p className="text-xs text-gray-300 mt-1">Check back later or contact your administrator.</p>
+        </div>
+      ) : !error && (
         <div className="space-y-4">
           {periods.map((period, idx) => (
             <div
@@ -126,6 +166,7 @@ const StudentTimetableMobile = ({ classId, classData }) => {
 const StudentTimetable = () => {
   const [classId, setClassId] = useState(null);
   const [classData, setClassData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -134,12 +175,38 @@ const StudentTimetable = () => {
       setClassId(user.class._id || user.class);
       setClassData(user.class);
     } else {
+      // Show error message before redirecting
+      alert("No class information found. Please contact your administrator.");
       navigate("/student/dashboard");
     }
+    setLoading(false);
   }, [navigate]);
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading timetable...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!classId) {
-    return <div className="p-8 text-center text-gray-500">Loading timetable...</div>;
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-500 mb-4">Unable to load timetable</p>
+          <button 
+            onClick={() => navigate("/student/dashboard")}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          >
+            Return to Dashboard
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
