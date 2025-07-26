@@ -16,7 +16,6 @@ import {
   ArrowLeftOnRectangleIcon,
   XMarkIcon,
   BellIcon,
-  HomeIcon,
   ChartBarIcon,
 } from "@heroicons/react/24/outline";
 import { useTeacherAuth } from "../context/TeacherAuthContext";
@@ -255,18 +254,11 @@ const StudentDashboard = () => {
     { title: "Attendance", icon: CalendarIcon, href: "/student/attendance", color: "bg-blue-500" },
     { title: "Announcements", icon: MegaphoneIcon, href: "/student/announcements", color: "bg-green-500" },
     { title: "Timetable", icon: ClockIcon, href: "/student/timetable", color: "bg-orange-500" },
-    { title: "Grades", icon: ChartBarIcon, href: "/student/grades", color: "bg-purple-500" },
+    { title: "Annual Calendar", icon: CalendarIcon, href: "/student/annual-calendar", color: "bg-purple-500" },
     { title: "Profile", icon: UserIcon, href: "/student/profile", color: "bg-blue-600" },
   ];
 
-  const bottomNavItems = [
-    { title: "Dashboard", icon: HomeIcon, href: "/student/dashboard", active: true },
-    { title: "Attendance", icon: CalendarIcon, href: "/student/attendance" },
-    { title: "Announcements", icon: MegaphoneIcon, href: "/student/announcements" },
-    { title: "Grades", icon: ChartBarIcon, href: "/student/grades" },
-    { title: "Timetable", icon: ClockIcon, href: "/student/timetable" },
-    { title: "Logout", icon: ArrowLeftOnRectangleIcon, action: handleLogout, isLogout: true },
-  ];
+
 
   if (loading) {
     return (
@@ -508,34 +500,7 @@ const StudentDashboard = () => {
           {/* Recent Attendance Section - REMOVED */}
         </div>
 
-        {/* Bottom Navigation - Exact match */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2">
-          <div className="flex justify-around">
-            {bottomNavItems.map((item) => (
-              item.isLogout ? (
-                <button
-                  key={item.title}
-                  onClick={item.action}
-                  className="flex flex-col items-center py-2 px-3 rounded-lg text-red-600 hover:text-red-700 hover:bg-red-50"
-                >
-                  <item.icon className="w-6 h-6 mb-1" />
-                  <span className="text-xs font-medium">{item.title}</span>
-                </button>
-              ) : (
-                <Link
-                  key={item.title}
-                  to={item.href}
-                  className={`flex flex-col items-center py-2 px-3 rounded-lg ${
-                    item.active ? "text-blue-600 bg-blue-50" : "text-gray-600 hover:text-blue-600 hover:bg-gray-50"
-                  }`}
-                >
-                  <item.icon className="w-6 h-6 mb-1" />
-                  <span className="text-xs font-medium">{item.title}</span>
-                </Link>
-              )
-            ))}
-          </div>
-        </div>
+
 
         {/* Mobile Sidebar */}
         {sidebarOpen && (
@@ -568,8 +533,8 @@ const StudentDashboard = () => {
                   <Link to="/student/timetable" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
                     Timetable
                   </Link>
-                  <Link to="/student/grades" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
-                    Grades
+                  <Link to="/student/annual-calendar" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
+                    Annual Calendar
                   </Link>
                   <Link to="/student/profile" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
                     Profile

@@ -21,7 +21,7 @@ import StudentTeacherLogin from "./pages/StudentTeacherLogin";
 import StudentDashboard from "./pages/StudentDashboard";
 import StudentAttendance from "./pages/StudentAttendance";
 import StudentProfile from "./pages/StudentProfile";
-import StudentGrades from "./pages/StudentGrades";
+
 import TeacherDashboard from "./pages/TeacherDashboard";
 import TeacherProtectedRoute from "./components/TeacherProtectedRoute";
 
@@ -52,6 +52,7 @@ import ChangePassword from "./components/ChangePassword";
 import TeacherAnnouncements from "./pages/TeacherAnnouncements";
 import StudentTimetable from "./pages/StudentTimetable";
 import StudentAnnouncements from "./pages/StudentAnnouncements";
+import StudentAnnualCalendar from "./pages/StudentAnnualCalendar";
 
 function AppContent() {
   const { requirePasswordChange } = useAuth();
@@ -179,14 +180,7 @@ function AppContent() {
             </TeacherProtectedRoute>
           }
         />
-        <Route
-          path="/student/grades"
-          element={
-            <TeacherProtectedRoute allowedRoles={["student"]}>
-              <StudentGrades />
-            </TeacherProtectedRoute>
-          }
-        />
+
         <Route
           path="/student/timetable"
           element={
@@ -200,6 +194,14 @@ function AppContent() {
           element={
             <TeacherProtectedRoute allowedRoles={["student"]}>
               <StudentAnnouncements />
+            </TeacherProtectedRoute>
+          }
+        />
+        <Route
+          path="/student/annual-calendar"
+          element={
+            <TeacherProtectedRoute allowedRoles={["student"]}>
+              <StudentAnnualCalendar />
             </TeacherProtectedRoute>
           }
         />

@@ -6,9 +6,6 @@ import {
   EnvelopeIcon,
   PhoneIcon,
   CalendarIcon,
-  HomeIcon,
-  ChartBarIcon,
-  ClockIcon,
   PencilIcon,
   FolderIcon,
   HeartIcon,
@@ -83,13 +80,7 @@ const StudentProfile = () => {
     return <div className="text-red-500 p-4">Unable to load student profile. Please log in as a student.</div>;
   }
 
-  const bottomNavItems = [
-    { title: "Dashboard", icon: HomeIcon, href: "/student/dashboard" },
-    { title: "Attendance", icon: CalendarIcon, href: "/student/attendance" },
-    { title: "Grades", icon: ChartBarIcon, href: "/student/grades" },
-    { title: "Timetable", icon: ClockIcon, href: "/student/timetable" },
-    { title: "Logout", icon: ArrowLeftOnRectangleIcon, action: handleLogout, isLogout: true },
-  ];
+
 
   // Mock data similar to the screenshots - will be replaced with real data from backend
   const studentData = {
@@ -207,32 +198,7 @@ const StudentProfile = () => {
           </div>
         </div>
 
-        {/* Bottom Navigation */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2">
-          <div className="flex justify-around">
-            {bottomNavItems.map((item) => (
-              item.isLogout ? (
-                <button
-                  key={item.title}
-                  onClick={item.action}
-                  className="flex flex-col items-center py-2 px-3 rounded-lg text-red-600 hover:text-red-700 hover:bg-red-50"
-                >
-                  <item.icon className="w-6 h-6 mb-1" />
-                  <span className="text-xs font-medium">{item.title}</span>
-                </button>
-              ) : (
-                <Link
-                  key={item.title}
-                  to={item.href}
-                  className="flex flex-col items-center py-2 px-3 rounded-lg text-gray-600 hover:text-blue-600 hover:bg-gray-50"
-                >
-                  <item.icon className="w-6 h-6 mb-1" />
-                  <span className="text-xs font-medium">{item.title}</span>
-                </Link>
-              )
-            ))}
-          </div>
-        </div>
+
       </div>
     );
   }

@@ -39,8 +39,8 @@ const AnnualCalendarAdmin = () => {
     const res = await fetch(`${appConfig.API_BASE_URL}/annual-calendar`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    const data = await res.json();
-    setEvents(data);
+    const response = await res.json();
+    setEvents(response.data || response);
     setLoading(false);
   };
 

@@ -277,6 +277,13 @@ class ApiService {
       });
       return this.handleResponse(response);
     },
+    
+    getStudentCalendar: async () => {
+      const response = await fetch(`${this.baseURL}/annual-calendar`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
   };
 }
 
