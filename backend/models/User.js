@@ -72,7 +72,7 @@ const userSchema = new mongoose.Schema(
     // Educational Qualification
     highestAcademicQualification: { type: String },
     highestProfessionalQualification: { type: String },
-    subjectsSpecializedIn: [{ type: String }],
+    subjectsSpecializedIn: [{ type: mongoose.Schema.Types.ObjectId, ref: "Subject" }],
     mediumOfInstruction: { type: String },
     // Training Details
     inServiceTraining: { type: Boolean, default: false },

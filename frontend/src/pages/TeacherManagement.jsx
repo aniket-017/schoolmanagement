@@ -22,8 +22,8 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import appConfig from "../config/environment";
-import { useNavigate } from 'react-router-dom';
-import { ChevronLeftIcon } from '@heroicons/react/24/outline';
+import { useNavigate } from "react-router-dom";
+import { ChevronLeftIcon } from "@heroicons/react/24/outline";
 
 const TeacherManagement = () => {
   const [teachers, setTeachers] = useState([]);
@@ -32,12 +32,72 @@ const TeacherManagement = () => {
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedTeacher, setSelectedTeacher] = useState(null);
   const [showTeacherModal, setShowTeacherModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingTeacher, setEditingTeacher] = useState(null);
+  const [subjects, setSubjects] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [editLoading, setEditLoading] = useState(false);
   const navigate = useNavigate();
+
+  // Edit form state
+  const [editForm, setEditForm] = useState({
+    // Personal Information
+    firstName: "",
+    middleName: "",
+    lastName: "",
+    gender: "",
+    dateOfBirth: "",
+    socialCategory: "",
+    disabilityStatus: "",
+    aadhaarNumber: "",
+    // Professional Information
+    teacherType: "",
+    natureOfAppointment: "",
+    appointedUnder: "",
+    dateOfJoiningService: "",
+    dateOfJoiningPresentSchool: "",
+    udiseCodePreviousSchool: "",
+    // Educational Qualification
+    highestAcademicQualification: "",
+    highestProfessionalQualification: "",
+    subjectsSpecializedIn: [],
+    subjects: [],
+    mediumOfInstruction: "",
+    // Training Details
+    inServiceTraining: false,
+    ictTraining: false,
+    flnTraining: false,
+    inclusiveEducationTraining: false,
+    // Posting & Work Details
+    classesTaught: "",
+    subjectsTaught: [],
+    periodsPerWeek: "",
+    multipleSubjectsOrGrades: false,
+    nonTeachingDuties: false,
+    nonTeachingDutiesDetails: "",
+    // Salary & Employment
+    salaryBand: "",
+    salaryPaymentMode: "",
+    workingStatus: "",
+    // Contact
+    phone: "",
+    email: "",
+    // Teaching Specializations
+    teachingSpecializations: [],
+    // Address
+    address: {
+      street: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      country: "",
+    },
+  });
 
   useEffect(() => {
     fetchTeachers();
+    fetchSubjects();
   }, [currentPage, filterStatus]);
 
   const fetchTeachers = async () => {
@@ -73,6 +133,21 @@ const TeacherManagement = () => {
     }
   };
 
+  const fetchSubjects = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${appConfig.API_BASE_URL}/subjects`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setSubjects(data.data || []);
+      }
+    } catch (error) {
+      console.error("Error fetching subjects:", error);
+    }
+  };
+
   const handleTeacherClick = async (teacher) => {
     try {
       const token = localStorage.getItem("token");
@@ -93,21 +168,142 @@ const TeacherManagement = () => {
     }
   };
 
-  const handleBack = () => {
-    navigate('/teacher/dashboard');
+  const handleEditClick = async (teacher, e) => {
+    e.stopPropagation(); // Prevent opening the view modal
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${appConfig.API_BASE_URL}/users/${teacher._id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setEditingTeacher(data.user);
+        // Populate the edit form with teacher data
+        setEditForm({
+          firstName: data.user.firstName || "",
+          middleName: data.user.middleName || "",
+          lastName: data.user.lastName || "",
+          gender: data.user.gender || "",
+          dateOfBirth: data.user.dateOfBirth ? data.user.dateOfBirth.split("T")[0] : "",
+          socialCategory: data.user.socialCategory || "",
+          disabilityStatus: data.user.disabilityStatus || "",
+          aadhaarNumber: data.user.aadhaarNumber || "",
+          teacherType: data.user.teacherType || "",
+          natureOfAppointment: data.user.natureOfAppointment || "",
+          appointedUnder: data.user.appointedUnder || "",
+          dateOfJoiningService: data.user.dateOfJoiningService ? data.user.dateOfJoiningService.split("T")[0] : "",
+          dateOfJoiningPresentSchool: data.user.dateOfJoiningPresentSchool
+            ? data.user.dateOfJoiningPresentSchool.split("T")[0]
+            : "",
+          udiseCodePreviousSchool: data.user.udiseCodePreviousSchool || "",
+          highestAcademicQualification: data.user.highestAcademicQualification || "",
+          highestProfessionalQualification: data.user.highestProfessionalQualification || "",
+          subjectsSpecializedIn: data.user.subjectsSpecializedIn || [],
+          subjects: data.user.subjects || [],
+          mediumOfInstruction: data.user.mediumOfInstruction || "",
+          inServiceTraining: data.user.inServiceTraining || false,
+          ictTraining: data.user.ictTraining || false,
+          flnTraining: data.user.flnTraining || false,
+          inclusiveEducationTraining: data.user.inclusiveEducationTraining || false,
+          classesTaught: data.user.classesTaught || "",
+          subjectsTaught: data.user.subjectsTaught || [],
+          periodsPerWeek: data.user.periodsPerWeek || "",
+          multipleSubjectsOrGrades: data.user.multipleSubjectsOrGrades || false,
+          nonTeachingDuties: data.user.nonTeachingDuties || false,
+          nonTeachingDutiesDetails: data.user.nonTeachingDutiesDetails || "",
+          salaryBand: data.user.salaryBand || "",
+          salaryPaymentMode: data.user.salaryPaymentMode || "",
+          workingStatus: data.user.workingStatus || "",
+          phone: data.user.phone || "",
+          email: data.user.email || "",
+          teachingSpecializations: data.user.teachingSpecializations || [],
+          address: {
+            street: data.user.address?.street || "",
+            city: data.user.address?.city || "",
+            state: data.user.address?.state || "",
+            zipCode: data.user.address?.zipCode || "",
+            country: data.user.address?.country || "",
+          },
+        });
+        setShowEditModal(true);
+      } else {
+        toast.error("Error fetching teacher details for editing");
+      }
+    } catch (error) {
+      console.error("Error fetching teacher details for editing:", error);
+      toast.error("Error loading teacher details for editing");
+    }
   };
 
-  const filteredTeachers = teachers.filter(
-    (teacher) => {
-      const teacherName = teacher.name || teacher.fullName || [teacher.firstName, teacher.middleName, teacher.lastName].filter(Boolean).join(" ") || teacher.email;
-      return (
-        teacherName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        teacher.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (teacher.subjects &&
-          teacher.subjects.some((subject) => subject.name.toLowerCase().includes(searchTerm.toLowerCase())))
-      );
+  const handleEditInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    if (name.includes(".")) {
+      const [parent, child] = name.split(".");
+      setEditForm((prev) => ({
+        ...prev,
+        [parent]: {
+          ...prev[parent],
+          [child]: value,
+        },
+      }));
+    } else {
+      setEditForm((prev) => ({
+        ...prev,
+        [name]: type === "checkbox" ? checked : value,
+      }));
     }
-  );
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setEditLoading(true);
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${appConfig.API_BASE_URL}/users/${editingTeacher._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(editForm),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success("Teacher updated successfully!");
+        setShowEditModal(false);
+        setEditingTeacher(null);
+        fetchTeachers(); // Refresh the list
+      } else {
+        toast.error(`Error: ${data.message}`);
+      }
+    } catch (error) {
+      console.error("Error updating teacher:", error);
+      toast.error("Error updating teacher. Please try again.");
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleBack = () => {
+    navigate("/teacher/dashboard");
+  };
+
+  const filteredTeachers = teachers.filter((teacher) => {
+    const teacherName =
+      teacher.name ||
+      teacher.fullName ||
+      [teacher.firstName, teacher.middleName, teacher.lastName].filter(Boolean).join(" ") ||
+      teacher.email;
+    return (
+      teacherName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      teacher.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (teacher.subjects &&
+        teacher.subjects.some((subject) => subject.name.toLowerCase().includes(searchTerm.toLowerCase())))
+    );
+  });
 
   const getWorkloadColor = (utilization) => {
     if (utilization >= 80) return "text-red-600";
@@ -195,8 +391,7 @@ const TeacherManagement = () => {
                   key={teacher._id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => handleTeacherClick(teacher)}
+                  className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
                 >
                   <div className="p-6">
                     {/* Teacher Header */}
@@ -207,13 +402,25 @@ const TeacherManagement = () => {
                         </div>
                         <div>
                           <h3 className="font-semibold text-gray-900">
-                      {teacher.name || teacher.fullName || [teacher.firstName, teacher.middleName, teacher.lastName].filter(Boolean).join(" ") || teacher.email}
-                    </h3>
+                            {teacher.name ||
+                              teacher.fullName ||
+                              [teacher.firstName, teacher.middleName, teacher.lastName].filter(Boolean).join(" ") ||
+                              teacher.email}
+                          </h3>
                           <p className="text-sm text-gray-500">{teacher.email}</p>
                         </div>
                       </div>
-                      <div className={`text-xs px-2 py-1 rounded-full ${availabilityStatus.color} bg-opacity-10`}>
-                        {availabilityStatus.status}
+                      <div className="flex items-center space-x-2">
+                        <div className={`text-xs px-2 py-1 rounded-full ${availabilityStatus.color} bg-opacity-10`}>
+                          {availabilityStatus.status}
+                        </div>
+                        <button
+                          onClick={(e) => handleEditClick(teacher, e)}
+                          className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                          title="Edit Teacher"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
 
@@ -302,6 +509,16 @@ const TeacherManagement = () => {
                         </span>
                       </div>
                     )}
+
+                    {/* View Details Button */}
+                    <div className="mt-4 pt-4 border-t">
+                      <button
+                        onClick={() => handleTeacherClick(teacher)}
+                        className="w-full text-center text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                      >
+                        View Details
+                      </button>
+                    </div>
                   </div>
                 </motion.div>
               );
@@ -345,6 +562,22 @@ const TeacherManagement = () => {
           }}
         />
       )}
+
+      {/* Edit Teacher Modal */}
+      {showEditModal && editingTeacher && (
+        <EditTeacherModal
+          teacher={editingTeacher}
+          editForm={editForm}
+          subjects={subjects}
+          onInputChange={handleEditInputChange}
+          onSubmit={handleEditSubmit}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingTeacher(null);
+          }}
+          loading={editLoading}
+        />
+      )}
     </div>
   );
 };
@@ -372,7 +605,12 @@ const TeacherDetailsModal = ({ teacher, onClose }) => {
               </div>
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">
-                  {teacher.teacher.name || teacher.teacher.fullName || [teacher.teacher.firstName, teacher.teacher.middleName, teacher.teacher.lastName].filter(Boolean).join(" ") || teacher.teacher.email}
+                  {teacher.teacher.name ||
+                    teacher.teacher.fullName ||
+                    [teacher.teacher.firstName, teacher.teacher.middleName, teacher.teacher.lastName]
+                      .filter(Boolean)
+                      .join(" ") ||
+                    teacher.teacher.email}
                 </h2>
                 <p className="text-gray-600">{teacher.teacher.email}</p>
               </div>
@@ -671,6 +909,680 @@ const AssignmentsTab = ({ teacher }) => {
             ))}
           </div>
         )}
+      </div>
+    </div>
+  );
+};
+
+// Edit Teacher Modal Component
+const EditTeacherModal = ({ teacher, editForm, subjects, onInputChange, onSubmit, onClose, loading }) => {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                <User className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Edit Teacher</h2>
+                <p className="text-gray-600">Update teacher details</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-2">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={onSubmit} className="space-y-6">
+            {/* Personal Information */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
+                  First Name
+                </label>
+                <input
+                  type="text"
+                  id="firstName"
+                  name="firstName"
+                  value={editForm.firstName}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="middleName" className="block text-sm font-medium text-gray-700">
+                  Middle Name
+                </label>
+                <input
+                  type="text"
+                  id="middleName"
+                  name="middleName"
+                  value={editForm.middleName}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
+                  Last Name
+                </label>
+                <input
+                  type="text"
+                  id="lastName"
+                  name="lastName"
+                  value={editForm.lastName}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="gender" className="block text-sm font-medium text-gray-700">
+                  Gender
+                </label>
+                <select
+                  id="gender"
+                  name="gender"
+                  value={editForm.gender}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                >
+                  <option value="">Select Gender</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700">
+                  Date of Birth
+                </label>
+                <input
+                  type="date"
+                  id="dateOfBirth"
+                  name="dateOfBirth"
+                  value={editForm.dateOfBirth}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="socialCategory" className="block text-sm font-medium text-gray-700">
+                  Social Category
+                </label>
+                <input
+                  type="text"
+                  id="socialCategory"
+                  name="socialCategory"
+                  value={editForm.socialCategory}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="disabilityStatus" className="block text-sm font-medium text-gray-700">
+                  Disability Status
+                </label>
+                <input
+                  type="text"
+                  id="disabilityStatus"
+                  name="disabilityStatus"
+                  value={editForm.disabilityStatus}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="aadhaarNumber" className="block text-sm font-medium text-gray-700">
+                  Aadhaar Number
+                </label>
+                <input
+                  type="text"
+                  id="aadhaarNumber"
+                  name="aadhaarNumber"
+                  value={editForm.aadhaarNumber}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Professional Information */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="teacherType" className="block text-sm font-medium text-gray-700">
+                  Teacher Type
+                </label>
+                <input
+                  type="text"
+                  id="teacherType"
+                  name="teacherType"
+                  value={editForm.teacherType}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="natureOfAppointment" className="block text-sm font-medium text-gray-700">
+                  Nature of Appointment
+                </label>
+                <input
+                  type="text"
+                  id="natureOfAppointment"
+                  name="natureOfAppointment"
+                  value={editForm.natureOfAppointment}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="appointedUnder" className="block text-sm font-medium text-gray-700">
+                  Appointed Under
+                </label>
+                <input
+                  type="text"
+                  id="appointedUnder"
+                  name="appointedUnder"
+                  value={editForm.appointedUnder}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="dateOfJoiningService" className="block text-sm font-medium text-gray-700">
+                  Date of Joining Service
+                </label>
+                <input
+                  type="date"
+                  id="dateOfJoiningService"
+                  name="dateOfJoiningService"
+                  value={editForm.dateOfJoiningService}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="dateOfJoiningPresentSchool" className="block text-sm font-medium text-gray-700">
+                  Date of Joining Present School
+                </label>
+                <input
+                  type="date"
+                  id="dateOfJoiningPresentSchool"
+                  name="dateOfJoiningPresentSchool"
+                  value={editForm.dateOfJoiningPresentSchool}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="udiseCodePreviousSchool" className="block text-sm font-medium text-gray-700">
+                  Udise Code Previous School
+                </label>
+                <input
+                  type="text"
+                  id="udiseCodePreviousSchool"
+                  name="udiseCodePreviousSchool"
+                  value={editForm.udiseCodePreviousSchool}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Educational Qualification */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="highestAcademicQualification" className="block text-sm font-medium text-gray-700">
+                  Highest Academic Qualification
+                </label>
+                <input
+                  type="text"
+                  id="highestAcademicQualification"
+                  name="highestAcademicQualification"
+                  value={editForm.highestAcademicQualification}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="highestProfessionalQualification" className="block text-sm font-medium text-gray-700">
+                  Highest Professional Qualification
+                </label>
+                <input
+                  type="text"
+                  id="highestProfessionalQualification"
+                  name="highestProfessionalQualification"
+                  value={editForm.highestProfessionalQualification}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="mediumOfInstruction" className="block text-sm font-medium text-gray-700">
+                  Medium of Instruction
+                </label>
+                <input
+                  type="text"
+                  id="mediumOfInstruction"
+                  name="mediumOfInstruction"
+                  value={editForm.mediumOfInstruction}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Training Details */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="inServiceTraining" className="block text-sm font-medium text-gray-700">
+                  In-Service Training
+                </label>
+                <input
+                  type="checkbox"
+                  id="inServiceTraining"
+                  name="inServiceTraining"
+                  checked={editForm.inServiceTraining}
+                  onChange={onInputChange}
+                  className="mt-1 focus:ring-blue-500 border-gray-300 rounded text-blue-600 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="ictTraining" className="block text-sm font-medium text-gray-700">
+                  ICT Training
+                </label>
+                <input
+                  type="checkbox"
+                  id="ictTraining"
+                  name="ictTraining"
+                  checked={editForm.ictTraining}
+                  onChange={onInputChange}
+                  className="mt-1 focus:ring-blue-500 border-gray-300 rounded text-blue-600 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="flnTraining" className="block text-sm font-medium text-gray-700">
+                  FLN Training
+                </label>
+                <input
+                  type="checkbox"
+                  id="flnTraining"
+                  name="flnTraining"
+                  checked={editForm.flnTraining}
+                  onChange={onInputChange}
+                  className="mt-1 focus:ring-blue-500 border-gray-300 rounded text-blue-600 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="inclusiveEducationTraining" className="block text-sm font-medium text-gray-700">
+                  Inclusive Education Training
+                </label>
+                <input
+                  type="checkbox"
+                  id="inclusiveEducationTraining"
+                  name="inclusiveEducationTraining"
+                  checked={editForm.inclusiveEducationTraining}
+                  onChange={onInputChange}
+                  className="mt-1 focus:ring-blue-500 border-gray-300 rounded text-blue-600 sm:text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Posting & Work Details */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="classesTaught" className="block text-sm font-medium text-gray-700">
+                  Classes Taught
+                </label>
+                <input
+                  type="text"
+                  id="classesTaught"
+                  name="classesTaught"
+                  value={editForm.classesTaught}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="periodsPerWeek" className="block text-sm font-medium text-gray-700">
+                  Periods Per Week
+                </label>
+                <input
+                  type="text"
+                  id="periodsPerWeek"
+                  name="periodsPerWeek"
+                  value={editForm.periodsPerWeek}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="multipleSubjectsOrGrades" className="block text-sm font-medium text-gray-700">
+                  Multiple Subjects/Grades
+                </label>
+                <input
+                  type="checkbox"
+                  id="multipleSubjectsOrGrades"
+                  name="multipleSubjectsOrGrades"
+                  checked={editForm.multipleSubjectsOrGrades}
+                  onChange={onInputChange}
+                  className="mt-1 focus:ring-blue-500 border-gray-300 rounded text-blue-600 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="nonTeachingDuties" className="block text-sm font-medium text-gray-700">
+                  Non-Teaching Duties
+                </label>
+                <input
+                  type="checkbox"
+                  id="nonTeachingDuties"
+                  name="nonTeachingDuties"
+                  checked={editForm.nonTeachingDuties}
+                  onChange={onInputChange}
+                  className="mt-1 focus:ring-blue-500 border-gray-300 rounded text-blue-600 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="nonTeachingDutiesDetails" className="block text-sm font-medium text-gray-700">
+                  Non-Teaching Duties Details
+                </label>
+                <textarea
+                  id="nonTeachingDutiesDetails"
+                  name="nonTeachingDutiesDetails"
+                  value={editForm.nonTeachingDutiesDetails}
+                  onChange={onInputChange}
+                  rows="3"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Salary & Employment */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="salaryBand" className="block text-sm font-medium text-gray-700">
+                  Salary Band
+                </label>
+                <input
+                  type="text"
+                  id="salaryBand"
+                  name="salaryBand"
+                  value={editForm.salaryBand}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="salaryPaymentMode" className="block text-sm font-medium text-gray-700">
+                  Salary Payment Mode
+                </label>
+                <input
+                  type="text"
+                  id="salaryPaymentMode"
+                  name="salaryPaymentMode"
+                  value={editForm.salaryPaymentMode}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="workingStatus" className="block text-sm font-medium text-gray-700">
+                  Working Status
+                </label>
+                <input
+                  type="text"
+                  id="workingStatus"
+                  name="workingStatus"
+                  value={editForm.workingStatus}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Contact */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+                  Phone
+                </label>
+                <input
+                  type="text"
+                  id="phone"
+                  name="phone"
+                  value={editForm.phone}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={editForm.email}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Address */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="address.street" className="block text-sm font-medium text-gray-700">
+                  Street
+                </label>
+                <input
+                  type="text"
+                  id="address.street"
+                  name="address.street"
+                  value={editForm.address.street}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="address.city" className="block text-sm font-medium text-gray-700">
+                  City
+                </label>
+                <input
+                  type="text"
+                  id="address.city"
+                  name="address.city"
+                  value={editForm.address.city}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="address.state" className="block text-sm font-medium text-gray-700">
+                  State
+                </label>
+                <input
+                  type="text"
+                  id="address.state"
+                  name="address.state"
+                  value={editForm.address.state}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="address.zipCode" className="block text-sm font-medium text-gray-700">
+                  Zip Code
+                </label>
+                <input
+                  type="text"
+                  id="address.zipCode"
+                  name="address.zipCode"
+                  value={editForm.address.zipCode}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="address.country" className="block text-sm font-medium text-gray-700">
+                  Country
+                </label>
+                <input
+                  type="text"
+                  id="address.country"
+                  name="address.country"
+                  value={editForm.address.country}
+                  onChange={onInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Subjects */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Main Subjects</label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {subjects.map((subject) => (
+                    <span
+                      key={subject._id}
+                      className={`px-3 py-1 rounded-full text-sm cursor-pointer ${
+                        editForm.subjects.includes(subject._id)
+                          ? "bg-indigo-100 text-indigo-800"
+                          : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                      }`}
+                      onClick={() => {
+                        const updatedSubjects = [...editForm.subjects];
+                        const index = updatedSubjects.indexOf(subject._id);
+                        if (index > -1) {
+                          updatedSubjects.splice(index, 1);
+                        } else {
+                          updatedSubjects.push(subject._id);
+                        }
+                        onInputChange({ target: { name: "subjects", value: updatedSubjects } });
+                      }}
+                    >
+                      {subject.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Subjects Specialized In</label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {subjects.map((subject) => (
+                    <span
+                      key={subject._id}
+                      className={`px-3 py-1 rounded-full text-sm cursor-pointer ${
+                        editForm.subjectsSpecializedIn.includes(subject._id)
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                      }`}
+                      onClick={() => {
+                        const updatedSubjects = [...editForm.subjectsSpecializedIn];
+                        const index = updatedSubjects.indexOf(subject._id);
+                        if (index > -1) {
+                          updatedSubjects.splice(index, 1);
+                        } else {
+                          updatedSubjects.push(subject._id);
+                        }
+                        onInputChange({ target: { name: "subjectsSpecializedIn", value: updatedSubjects } });
+                      }}
+                    >
+                      {subject.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Subjects Taught</label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {subjects.map((subject) => (
+                    <span
+                      key={subject._id}
+                      className={`px-3 py-1 rounded-full text-sm cursor-pointer ${
+                        editForm.subjectsTaught.includes(subject._id)
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                      }`}
+                      onClick={() => {
+                        const updatedSubjects = [...editForm.subjectsTaught];
+                        const index = updatedSubjects.indexOf(subject._id);
+                        if (index > -1) {
+                          updatedSubjects.splice(index, 1);
+                        } else {
+                          updatedSubjects.push(subject._id);
+                        }
+                        onInputChange({ target: { name: "subjectsTaught", value: updatedSubjects } });
+                      }}
+                    >
+                      {subject.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Teaching Specializations */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Teaching Specializations</label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {editForm.teachingSpecializations &&
+                    editForm.teachingSpecializations.length > 0 &&
+                    editForm.teachingSpecializations.map((spec, index) => (
+                      <span
+                        key={index}
+                        className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm cursor-pointer"
+                        onClick={() => {
+                          const updatedSpecs = [...editForm.teachingSpecializations];
+                          updatedSpecs.splice(index, 1);
+                          onInputChange({ target: { name: "teachingSpecializations", value: updatedSpecs } });
+                        }}
+                      >
+                        {spec} ×
+                      </span>
+                    ))}
+                </div>
+                <div className="mt-2">
+                  <input
+                    type="text"
+                    placeholder="Add new specialization"
+                    className="px-3 py-1 border border-gray-300 rounded-md text-sm"
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const newSpec = e.target.value.trim();
+                        if (newSpec && !editForm.teachingSpecializations.includes(newSpec)) {
+                          const updatedSpecs = [...editForm.teachingSpecializations, newSpec];
+                          onInputChange({ target: { name: "teachingSpecializations", value: updatedSpecs } });
+                          e.target.value = "";
+                        }
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+              >
+                {loading ? "Updating..." : "Update Teacher"}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

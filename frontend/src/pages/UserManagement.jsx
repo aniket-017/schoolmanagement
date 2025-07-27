@@ -15,6 +15,7 @@ import {
   AcademicCapIcon,
   BuildingLibraryIcon,
   ArrowDownTrayIcon,
+  PencilIcon,
 } from "@heroicons/react/24/outline";
 import Layout from "../components/Layout";
 import TeacherCredentials from "../components/TeacherCredentials";
@@ -28,6 +29,12 @@ const UserManagement = () => {
   const [pagination, setPagination] = useState({});
   const [showCredentials, setShowCredentials] = useState(false);
   const [newTeacher, setNewTeacher] = useState(null);
+
+  // Edit functionality state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [editLoading, setEditLoading] = useState(false);
+
   const [filters, setFilters] = useState({
     page: 1,
     limit: 10,
@@ -87,6 +94,62 @@ const UserManagement = () => {
       country: "",
     },
   });
+
+  // Edit form state
+  const [editForm, setEditForm] = useState({
+    // Personal Information
+    firstName: "",
+    middleName: "",
+    lastName: "",
+    gender: "",
+    dateOfBirth: "",
+    socialCategory: "",
+    disabilityStatus: "",
+    aadhaarNumber: "",
+    // Professional Information
+    teacherType: "",
+    natureOfAppointment: "",
+    appointedUnder: "",
+    dateOfJoiningService: "",
+    dateOfJoiningPresentSchool: "",
+    udiseCodePreviousSchool: "",
+    // Educational Qualification
+    highestAcademicQualification: "",
+    highestProfessionalQualification: "",
+    subjectsSpecializedIn: [],
+    subjects: [],
+    mediumOfInstruction: "",
+    // Training Details
+    inServiceTraining: false,
+    ictTraining: false,
+    flnTraining: false,
+    inclusiveEducationTraining: false,
+    // Posting & Work Details
+    classesTaught: "",
+    subjectsTaught: [],
+    periodsPerWeek: "",
+    multipleSubjectsOrGrades: false,
+    nonTeachingDuties: false,
+    nonTeachingDutiesDetails: "",
+    // Salary & Employment
+    salaryBand: "",
+    salaryPaymentMode: "",
+    workingStatus: "",
+    // Contact
+    phone: "",
+    email: "",
+    // Teaching Specializations
+    teachingSpecializations: [],
+    // Address
+    address: {
+      street: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      country: "",
+    },
+  });
+
   // Remove localSubjects and newSubjectName, add newSubject state for name/code
   const [newSubject, setNewSubject] = useState({ name: "" });
   const [addingSubject, setAddingSubject] = useState(false);
@@ -106,32 +169,36 @@ const UserManagement = () => {
   }, [activeTab, filters]);
 
   const fetchUsers = async () => {
-    setLoading(true);
     try {
+      setLoading(true);
       const token = localStorage.getItem("token");
-      const queryParams = new URLSearchParams();
-
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value) queryParams.append(key, value);
+      const queryParams = new URLSearchParams({
+        page: filters.page,
+        limit: filters.limit,
       });
+
+      if (filters.role) queryParams.append("role", filters.role);
+      if (filters.status) queryParams.append("status", filters.status);
+      if (filters.search) queryParams.append("search", filters.search);
 
       const response = await fetch(`${appConfig.API_BASE_URL}/users?${queryParams}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
- 
-
       const data = await response.json();
-      console.log(data);
       if (data.success) {
-        setUsers(data.users);
-        setPagination(data.pagination);
+        setUsers(data.users || []);
+        setPagination({
+          current: data.pagination?.current || 1,
+          total: data.pagination?.total || 1,
+          totalUsers: data.pagination?.totalUsers || 0,
+        });
+      } else {
+        toast.error("Error fetching users");
       }
     } catch (error) {
       console.error("Error fetching users:", error);
-      toast.error("Error fetching users");
+      toast.error("Error loading users");
     } finally {
       setLoading(false);
     }
@@ -140,20 +207,15 @@ const UserManagement = () => {
   const fetchSubjects = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${appConfig.API_BASE_URL}/users/subjects`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const response = await fetch(`${appConfig.API_BASE_URL}/subjects`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-   
-
       const data = await response.json();
       if (data.success) {
-        setSubjects(data.subjects);
+        setSubjects(data.data || []);
       }
     } catch (error) {
       console.error("Error fetching subjects:", error);
-      toast.error("Error fetching subjects");
     }
   };
 
@@ -204,6 +266,127 @@ const UserManagement = () => {
       toast.error("Error creating teacher. Please try again.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEditClick = async (user, e) => {
+    e.stopPropagation();
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${appConfig.API_BASE_URL}/users/${user._id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setEditingUser(data.user);
+        // Fetch subjects for the edit form
+        await fetchSubjects();
+        // Populate the edit form with user data
+        setEditForm({
+          firstName: data.user.firstName || "",
+          middleName: data.user.middleName || "",
+          lastName: data.user.lastName || "",
+          gender: data.user.gender || "",
+          dateOfBirth: data.user.dateOfBirth ? data.user.dateOfBirth.split("T")[0] : "",
+          socialCategory: data.user.socialCategory || "",
+          disabilityStatus: data.user.disabilityStatus || "",
+          aadhaarNumber: data.user.aadhaarNumber || "",
+          teacherType: data.user.teacherType || "",
+          natureOfAppointment: data.user.natureOfAppointment || "",
+          appointedUnder: data.user.appointedUnder || "",
+          dateOfJoiningService: data.user.dateOfJoiningService ? data.user.dateOfJoiningService.split("T")[0] : "",
+          dateOfJoiningPresentSchool: data.user.dateOfJoiningPresentSchool
+            ? data.user.dateOfJoiningPresentSchool.split("T")[0]
+            : "",
+          udiseCodePreviousSchool: data.user.udiseCodePreviousSchool || "",
+          highestAcademicQualification: data.user.highestAcademicQualification || "",
+          highestProfessionalQualification: data.user.highestProfessionalQualification || "",
+          subjectsSpecializedIn: data.user.subjectsSpecializedIn || [],
+          subjects: data.user.subjects || [],
+          mediumOfInstruction: data.user.mediumOfInstruction || "",
+          inServiceTraining: data.user.inServiceTraining || false,
+          ictTraining: data.user.ictTraining || false,
+          flnTraining: data.user.flnTraining || false,
+          inclusiveEducationTraining: data.user.inclusiveEducationTraining || false,
+          classesTaught: data.user.classesTaught || "",
+          subjectsTaught: data.user.subjectsTaught || [],
+          periodsPerWeek: data.user.periodsPerWeek || "",
+          multipleSubjectsOrGrades: data.user.multipleSubjectsOrGrades || false,
+          nonTeachingDuties: data.user.nonTeachingDuties || false,
+          nonTeachingDutiesDetails: data.user.nonTeachingDutiesDetails || "",
+          salaryBand: data.user.salaryBand || "",
+          salaryPaymentMode: data.user.salaryPaymentMode || "",
+          workingStatus: data.user.workingStatus || "",
+          phone: data.user.phone || "",
+          email: data.user.email || "",
+          teachingSpecializations: data.user.teachingSpecializations || [],
+          address: {
+            street: data.user.address?.street || "",
+            city: data.user.address?.city || "",
+            state: data.user.address?.state || "",
+            zipCode: data.user.address?.zipCode || "",
+            country: data.user.address?.country || "",
+          },
+        });
+        setShowEditModal(true);
+      } else {
+        toast.error("Error fetching user details for editing");
+      }
+    } catch (error) {
+      console.error("Error fetching user details for editing:", error);
+      toast.error("Error loading user details for editing");
+    }
+  };
+
+  const handleEditInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    if (name.includes(".")) {
+      const [parent, child] = name.split(".");
+      setEditForm((prev) => ({
+        ...prev,
+        [parent]: {
+          ...prev[parent],
+          [child]: value,
+        },
+      }));
+    } else {
+      setEditForm((prev) => ({
+        ...prev,
+        [name]: type === "checkbox" ? checked : value,
+      }));
+    }
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setEditLoading(true);
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${appConfig.API_BASE_URL}/users/${editingUser._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(editForm),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success("User updated successfully!");
+        setShowEditModal(false);
+        setEditingUser(null);
+        fetchUsers(); // Refresh the list
+      } else {
+        toast.error(`Error: ${data.message}`);
+      }
+    } catch (error) {
+      console.error("Error updating user:", error);
+      toast.error("Error updating user. Please try again.");
+    } finally {
+      setEditLoading(false);
     }
   };
 
@@ -605,6 +788,15 @@ const UserManagement = () => {
                               >
                                 {user.status === "approved" ? "Suspend" : "Activate"}
                               </button>
+                              {user.role === "teacher" && (
+                                <button
+                                  onClick={(e) => handleEditClick(user, e)}
+                                  className="ml-2 text-indigo-600 hover:text-indigo-900"
+                                  title="Edit Teacher"
+                                >
+                                  <PencilIcon className="h-5 w-5" />
+                                </button>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -866,6 +1058,36 @@ const UserManagement = () => {
                         />
                       </div>
                       <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Main Subjects</label>
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {subjects.map((subject) => (
+                            <label
+                              key={subject._id}
+                              className="flex items-center gap-2 border border-gray-200 rounded px-2 py-1 cursor-pointer"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={(teacherForm.subjects || []).includes(subject._id)}
+                                onChange={() => {
+                                  setTeacherForm((prev) => {
+                                    const current = prev.subjects || [];
+                                    const updated = current.includes(subject._id)
+                                      ? current.filter((id) => id !== subject._id)
+                                      : [...current, subject._id];
+                                    return {
+                                      ...prev,
+                                      subjects: updated,
+                                    };
+                                  });
+                                }}
+                                className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                              />
+                              <span>{subject.name}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-gray-700 mb-2">Subjects Specialized In</label>
                         <div className="flex flex-wrap gap-2 mb-2">
                           {subjects.map((subject) => (
@@ -1009,28 +1231,31 @@ const UserManagement = () => {
                       <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-gray-700 mb-2">Subjects Taught</label>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                          {teacherForm.subjectsTaught?.map((subjectId) => (
+                          {subjects.map((subject) => (
                             <label
-                              key={subjectId}
+                              key={subject._id}
                               className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
                             >
                               <input
                                 type="checkbox"
-                                checked={teacherForm.subjectsTaught.includes(subjectId)}
+                                checked={(teacherForm.subjectsTaught || []).includes(subject._id)}
                                 onChange={() => {
-                                  setTeacherForm((prev) => ({
-                                    ...prev,
-                                    subjectsTaught: prev.subjectsTaught.includes(subjectId)
-                                      ? prev.subjectsTaught.filter((id) => id !== subjectId)
-                                      : [...prev.subjectsTaught, subjectId],
-                                  }));
+                                  setTeacherForm((prev) => {
+                                    const current = prev.subjectsTaught || [];
+                                    const updated = current.includes(subject._id)
+                                      ? current.filter((id) => id !== subject._id)
+                                      : [...current, subject._id];
+                                    return {
+                                      ...prev,
+                                      subjectsTaught: updated,
+                                      subjects: updated, // Also update the subjects field
+                                    };
+                                  });
                                 }}
                                 className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                               />
                               <div className="ml-3">
-                                <div className="text-sm font-medium text-gray-900">
-                                  {subjects.find((s) => s._id === subjectId)?.name}
-                                </div>
+                                <div className="text-sm font-medium text-gray-900">{subject.name}</div>
                               </div>
                             </label>
                           ))}
@@ -1371,6 +1596,1250 @@ const UserManagement = () => {
             setNewTeacher(null);
           }}
         />
+      )}
+      {showEditModal && editingUser && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+          <div className="relative p-8 border w-2/3 shadow-lg rounded-md bg-white">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Edit User</h3>
+              <button onClick={() => setShowEditModal(false)} className="text-gray-500 hover:text-gray-700">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <form onSubmit={handleEditSubmit} className="space-y-6">
+              {/* Personal Information */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+                  <input
+                    type="text"
+                    name="firstName"
+                    value={editForm.firstName}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Middle Name</label>
+                  <input
+                    type="text"
+                    name="middleName"
+                    value={editForm.middleName}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+                  <input
+                    type="text"
+                    name="lastName"
+                    value={editForm.lastName}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
+                  <select
+                    name="gender"
+                    value={editForm.gender}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  >
+                    <option value="">Select</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
+                  <input
+                    type="date"
+                    name="dateOfBirth"
+                    value={editForm.dateOfBirth}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Social Category</label>
+                  <input
+                    type="text"
+                    name="socialCategory"
+                    value={editForm.socialCategory}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Disability Status</label>
+                  <input
+                    type="text"
+                    name="disabilityStatus"
+                    value={editForm.disabilityStatus}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Aadhaar Number</label>
+                  <input
+                    type="text"
+                    name="aadhaarNumber"
+                    value={editForm.aadhaarNumber}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+              </div>
+              {/* Professional Information */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Teacher Type</label>
+                  <select
+                    name="teacherType"
+                    value={editForm.teacherType}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  >
+                    <option value="">Select</option>
+                    <option value="Head Teacher">Head Teacher</option>
+                    <option value="Assistant Teacher">Assistant Teacher</option>
+                    <option value="Principal">Principal</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Nature of Appointment</label>
+                  <select
+                    name="natureOfAppointment"
+                    value={editForm.natureOfAppointment}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  >
+                    <option value="">Select</option>
+                    <option value="Regular">Regular</option>
+                    <option value="Contractual">Contractual</option>
+                    <option value="Part-time">Part-time</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Appointed Under</label>
+                  <select
+                    name="appointedUnder"
+                    value={editForm.appointedUnder}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  >
+                    <option value="">Select</option>
+                    <option value="State Govt">State Govt</option>
+                    <option value="Central Govt">Central Govt</option>
+                    <option value="SSA">SSA</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Date of Joining Service</label>
+                  <input
+                    type="date"
+                    name="dateOfJoiningService"
+                    value={editForm.dateOfJoiningService}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Date of Joining Present School</label>
+                  <input
+                    type="date"
+                    name="dateOfJoiningPresentSchool"
+                    value={editForm.dateOfJoiningPresentSchool}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">UDISE Code of Previous School</label>
+                  <input
+                    type="text"
+                    name="udiseCodePreviousSchool"
+                    value={editForm.udiseCodePreviousSchool}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+              </div>
+              {/* Educational Qualification */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Highest Academic Qualification</label>
+                  <input
+                    type="text"
+                    name="highestAcademicQualification"
+                    value={editForm.highestAcademicQualification}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Highest Professional Qualification
+                  </label>
+                  <input
+                    type="text"
+                    name="highestProfessionalQualification"
+                    value={editForm.highestProfessionalQualification}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Main Subjects</label>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {subjects.map((subject) => (
+                      <label
+                        key={subject._id}
+                        className="flex items-center gap-2 border border-gray-200 rounded px-2 py-1 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={(editForm.subjects || []).includes(subject._id)}
+                          onChange={() => {
+                            setEditForm((prev) => {
+                              const current = prev.subjects || [];
+                              const updated = current.includes(subject._id)
+                                ? current.filter((id) => id !== subject._id)
+                                : [...current, subject._id];
+                              return {
+                                ...prev,
+                                subjects: updated,
+                              };
+                            });
+                          }}
+                          className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                        />
+                        <span>{subject.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Subjects Specialized In</label>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {subjects.map((subject) => (
+                      <label
+                        key={subject._id}
+                        className="flex items-center gap-2 border border-gray-200 rounded px-2 py-1 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={(editForm.subjectsSpecializedIn || []).includes(subject._id)}
+                          onChange={() => {
+                            setEditForm((prev) => {
+                              const current = prev.subjectsSpecializedIn || [];
+                              const updated = current.includes(subject._id)
+                                ? current.filter((id) => id !== subject._id)
+                                : [...current, subject._id];
+                              return {
+                                ...prev,
+                                subjectsSpecializedIn: updated,
+                              };
+                            });
+                          }}
+                          className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                        />
+                        <span>{subject.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {addingSubject ? (
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        placeholder="Add New Subject"
+                        value={newSubject.name}
+                        onChange={(e) => setNewSubject((s) => ({ ...s, name: e.target.value }))}
+                        className="px-3 py-2 border border-gray-300 rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddSubject}
+                        disabled={subjectLoading}
+                        className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+                      >
+                        {subjectLoading ? "Adding..." : "Add"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAddingSubject(false)}
+                        className="px-2 py-2 text-gray-500 hover:text-gray-700"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setAddingSubject(true)}
+                      className="mt-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
+                    >
+                      + Add New Subject
+                    </button>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Medium of Instruction Known</label>
+                  <input
+                    type="text"
+                    name="mediumOfInstruction"
+                    value={editForm.mediumOfInstruction}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+              </div>
+              {/* Training Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    name="inServiceTraining"
+                    checked={editForm.inServiceTraining}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, inServiceTraining: e.target.checked }))}
+                    className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                  />
+                  In-service Training Received
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    name="ictTraining"
+                    checked={editForm.ictTraining}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, ictTraining: e.target.checked }))}
+                    className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                  />
+                  ICT Training Received
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    name="flnTraining"
+                    checked={editForm.flnTraining}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, flnTraining: e.target.checked }))}
+                    className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                  />
+                  Foundational Literacy and Numeracy (FLN) Training
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    name="inclusiveEducationTraining"
+                    checked={editForm.inclusiveEducationTraining}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, inclusiveEducationTraining: e.target.checked }))}
+                    className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                  />
+                  Inclusive Education Training
+                </label>
+              </div>
+              {/* Posting & Work Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Class or Classes Taught</label>
+                  <input
+                    type="text"
+                    name="classesTaught"
+                    value={editForm.classesTaught}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Subjects Taught</label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {subjects.map((subject) => (
+                      <label
+                        key={subject._id}
+                        className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={(editForm.subjectsTaught || []).includes(subject._id)}
+                          onChange={() => {
+                            setEditForm((prev) => {
+                              const current = prev.subjectsTaught || [];
+                              const updated = current.includes(subject._id)
+                                ? current.filter((id) => id !== subject._id)
+                                : [...current, subject._id];
+                              return {
+                                ...prev,
+                                subjectsTaught: updated,
+                                subjects: updated, // Also update the subjects field
+                              };
+                            });
+                          }}
+                          className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                        />
+                        <div className="ml-3">
+                          <div className="text-sm font-medium text-gray-900">{subject.name}</div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="mt-4">
+                    {addingSubject ? (
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="text"
+                          placeholder="Subject Name"
+                          value={newSubject.name}
+                          onChange={(e) => setNewSubject((s) => ({ ...s, name: e.target.value }))}
+                          className="px-3 py-2 border border-gray-300 rounded-lg"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddSubject}
+                          disabled={subjectLoading}
+                          className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+                        >
+                          {subjectLoading ? "Adding..." : "Add"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAddingSubject(false)}
+                          className="px-2 py-2 text-gray-500 hover:text-gray-700"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setAddingSubject(true)}
+                        className="mt-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
+                      >
+                        + Add New Subject
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Number of periods per week</label>
+                  <input
+                    type="number"
+                    name="periodsPerWeek"
+                    value={editForm.periodsPerWeek}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    name="multipleSubjectsOrGrades"
+                    checked={editForm.multipleSubjectsOrGrades}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, multipleSubjectsOrGrades: e.target.checked }))}
+                    className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                  />
+                  Handling multiple subjects or grades
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    name="nonTeachingDuties"
+                    checked={editForm.nonTeachingDuties}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, nonTeachingDuties: e.target.checked }))}
+                    className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                  />
+                  Involved in non-teaching duties
+                </label>
+                {editForm.nonTeachingDuties && (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Non-teaching Duties Details</label>
+                    <input
+                      type="text"
+                      name="nonTeachingDutiesDetails"
+                      value={editForm.nonTeachingDutiesDetails}
+                      onChange={handleEditInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+                )}
+              </div>
+              {/* Salary & Employment */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Salary Band</label>
+                  <input
+                    type="text"
+                    name="salaryBand"
+                    value={editForm.salaryBand}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Mode of Salary Payment</label>
+                  <select
+                    name="salaryPaymentMode"
+                    value={editForm.salaryPaymentMode}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  >
+                    <option value="">Select</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Working Status</label>
+                  <select
+                    name="workingStatus"
+                    value={editForm.workingStatus}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  >
+                    <option value="">Select</option>
+                    <option value="Active">Active</option>
+                    <option value="Transferred">Transferred</option>
+                    <option value="Retired">Retired</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+              {/* Contact Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Mobile Number</label>
+                  <input
+                    type="text"
+                    name="phone"
+                    value={editForm.phone}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Email ID</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={editForm.email}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+              </div>
+              {/* Address Information (keep as is) */}
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Address Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Street Address</label>
+                    <input
+                      type="text"
+                      name="address.street"
+                      placeholder="123 Main Street"
+                      value={editForm.address.street}
+                      onChange={handleEditInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
+                    <input
+                      type="text"
+                      name="address.city"
+                      placeholder="City"
+                      value={editForm.address.city}
+                      onChange={handleEditInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
+                    <input
+                      type="text"
+                      name="address.state"
+                      placeholder="State"
+                      value={editForm.address.state}
+                      onChange={handleEditInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Zip Code</label>
+                    <input
+                      type="text"
+                      name="address.zipCode"
+                      placeholder="12345"
+                      value={editForm.address.zipCode}
+                      onChange={handleEditInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
+                    <input
+                      type="text"
+                      name="address.country"
+                      placeholder="Country"
+                      value={editForm.address.country}
+                      onChange={handleEditInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-6">
+                <button
+                  type="submit"
+                  disabled={editLoading}
+                  className="w-full md:w-auto px-8 py-3 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {editLoading ? "Updating User..." : "Update User"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Teacher Credentials Modal */}
+      {showCredentials && newTeacher && (
+        <TeacherCredentials
+          teacher={newTeacher}
+          onClose={() => {
+            setShowCredentials(false);
+            setNewTeacher(null);
+          }}
+        />
+      )}
+
+      {/* Edit User Modal */}
+      {showEditModal && editingUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-4">
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                    <UserPlusIcon className="w-8 h-8 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Edit Teacher</h2>
+                    <p className="text-gray-600">Update teacher details</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingUser(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 p-2"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Form */}
+              <form onSubmit={handleEditSubmit} className="space-y-6">
+                {/* Personal Information */}
+                <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                  <h3 className="text-lg font-semibold mb-4">Personal Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+                      <input
+                        type="text"
+                        name="firstName"
+                        value={editForm.firstName}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Middle Name</label>
+                      <input
+                        type="text"
+                        name="middleName"
+                        value={editForm.middleName}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+                      <input
+                        type="text"
+                        name="lastName"
+                        value={editForm.lastName}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
+                      <select
+                        name="gender"
+                        value={editForm.gender}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      >
+                        <option value="">Select</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
+                      <input
+                        type="date"
+                        name="dateOfBirth"
+                        value={editForm.dateOfBirth}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Social Category</label>
+                      <select
+                        name="socialCategory"
+                        value={editForm.socialCategory}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      >
+                        <option value="">Select</option>
+                        <option value="General">General</option>
+                        <option value="SC">SC</option>
+                        <option value="ST">ST</option>
+                        <option value="OBC">OBC</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Disability Status</label>
+                      <input
+                        type="text"
+                        name="disabilityStatus"
+                        value={editForm.disabilityStatus}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Aadhaar Number</label>
+                      <input
+                        type="text"
+                        name="aadhaarNumber"
+                        value={editForm.aadhaarNumber}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Professional Information */}
+                <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                  <h3 className="text-lg font-semibold mb-4">Professional Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Teacher Type</label>
+                      <select
+                        name="teacherType"
+                        value={editForm.teacherType}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      >
+                        <option value="">Select</option>
+                        <option value="Head Teacher">Head Teacher</option>
+                        <option value="Assistant Teacher">Assistant Teacher</option>
+                        <option value="Principal">Principal</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Nature of Appointment</label>
+                      <select
+                        name="natureOfAppointment"
+                        value={editForm.natureOfAppointment}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      >
+                        <option value="">Select</option>
+                        <option value="Regular">Regular</option>
+                        <option value="Contractual">Contractual</option>
+                        <option value="Part-time">Part-time</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Appointed Under</label>
+                      <select
+                        name="appointedUnder"
+                        value={editForm.appointedUnder}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      >
+                        <option value="">Select</option>
+                        <option value="State Govt">State Govt</option>
+                        <option value="Central Govt">Central Govt</option>
+                        <option value="SSA">SSA</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Date of Joining Service</label>
+                      <input
+                        type="date"
+                        name="dateOfJoiningService"
+                        value={editForm.dateOfJoiningService}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Date of Joining Present School
+                      </label>
+                      <input
+                        type="date"
+                        name="dateOfJoiningPresentSchool"
+                        value={editForm.dateOfJoiningPresentSchool}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        UDISE Code of Previous School
+                      </label>
+                      <input
+                        type="text"
+                        name="udiseCodePreviousSchool"
+                        value={editForm.udiseCodePreviousSchool}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Educational Qualification */}
+                <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                  <h3 className="text-lg font-semibold mb-4">Educational Qualification</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Highest Academic Qualification
+                      </label>
+                      <input
+                        type="text"
+                        name="highestAcademicQualification"
+                        value={editForm.highestAcademicQualification}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Highest Professional Qualification
+                      </label>
+                      <input
+                        type="text"
+                        name="highestProfessionalQualification"
+                        value={editForm.highestProfessionalQualification}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Subjects Specialized In</label>
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {subjects.map((subject) => (
+                          <label
+                            key={subject._id}
+                            className="flex items-center gap-2 border border-gray-200 rounded px-2 py-1 cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={(editForm.subjectsSpecializedIn || []).includes(subject._id)}
+                              onChange={() => {
+                                setEditForm((prev) => {
+                                  const current = prev.subjectsSpecializedIn || [];
+                                  const updated = current.includes(subject._id)
+                                    ? current.filter((id) => id !== subject._id)
+                                    : [...current, subject._id];
+                                  return {
+                                    ...prev,
+                                    subjectsSpecializedIn: updated,
+                                    subjectsTaught: updated, // keep in sync
+                                  };
+                                });
+                              }}
+                              className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                            />
+                            <span>{subject.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                      {addingSubject ? (
+                        <div className="flex gap-2 items-center">
+                          <input
+                            type="text"
+                            placeholder="Add New Subject"
+                            value={newSubject.name}
+                            onChange={(e) => setNewSubject((s) => ({ ...s, name: e.target.value }))}
+                            className="px-3 py-2 border border-gray-300 rounded-lg"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleAddSubject}
+                            disabled={subjectLoading}
+                            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+                          >
+                            {subjectLoading ? "Adding..." : "Add"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAddingSubject(false)}
+                            className="px-2 py-2 text-gray-500 hover:text-gray-700"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setAddingSubject(true)}
+                          className="mt-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
+                        >
+                          + Add New Subject
+                        </button>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Medium of Instruction Known
+                      </label>
+                      <input
+                        type="text"
+                        name="mediumOfInstruction"
+                        value={editForm.mediumOfInstruction}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Training Details */}
+                <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                  <h3 className="text-lg font-semibold mb-4">Training Details</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        name="inServiceTraining"
+                        checked={editForm.inServiceTraining}
+                        onChange={(e) => setEditForm((prev) => ({ ...prev, inServiceTraining: e.target.checked }))}
+                        className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                      />
+                      In-service Training Received
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        name="ictTraining"
+                        checked={editForm.ictTraining}
+                        onChange={(e) => setEditForm((prev) => ({ ...prev, ictTraining: e.target.checked }))}
+                        className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                      />
+                      ICT Training Received
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        name="flnTraining"
+                        checked={editForm.flnTraining}
+                        onChange={(e) => setEditForm((prev) => ({ ...prev, flnTraining: e.target.checked }))}
+                        className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                      />
+                      Foundational Literacy and Numeracy (FLN) Training
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        name="inclusiveEducationTraining"
+                        checked={editForm.inclusiveEducationTraining}
+                        onChange={(e) =>
+                          setEditForm((prev) => ({ ...prev, inclusiveEducationTraining: e.target.checked }))
+                        }
+                        className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                      />
+                      Inclusive Education Training
+                    </label>
+                  </div>
+                </div>
+
+                {/* Posting & Work Details */}
+                <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                  <h3 className="text-lg font-semibold mb-4">Posting & Work Details</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Class or Classes Taught</label>
+                      <input
+                        type="text"
+                        name="classesTaught"
+                        value={editForm.classesTaught}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Subjects Taught</label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {editForm.subjectsTaught?.map((subjectId) => (
+                          <label
+                            key={subjectId}
+                            className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={editForm.subjectsTaught.includes(subjectId)}
+                              onChange={() => {
+                                setEditForm((prev) => ({
+                                  ...prev,
+                                  subjectsTaught: prev.subjectsTaught.includes(subjectId)
+                                    ? prev.subjectsTaught.filter((id) => id !== subjectId)
+                                    : [...prev.subjectsTaught, subjectId],
+                                }));
+                              }}
+                              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                            />
+                            <div className="ml-3">
+                              <div className="text-sm font-medium text-gray-900">
+                                {subjects.find((s) => s._id === subjectId)?.name}
+                              </div>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Number of periods per week</label>
+                      <input
+                        type="number"
+                        name="periodsPerWeek"
+                        value={editForm.periodsPerWeek}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      />
+                    </div>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        name="multipleSubjectsOrGrades"
+                        checked={editForm.multipleSubjectsOrGrades}
+                        onChange={(e) =>
+                          setEditForm((prev) => ({ ...prev, multipleSubjectsOrGrades: e.target.checked }))
+                        }
+                        className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                      />
+                      Handling multiple subjects or grades
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        name="nonTeachingDuties"
+                        checked={editForm.nonTeachingDuties}
+                        onChange={(e) => setEditForm((prev) => ({ ...prev, nonTeachingDuties: e.target.checked }))}
+                        className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                      />
+                      Involved in non-teaching duties
+                    </label>
+                    {editForm.nonTeachingDuties && (
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Non-teaching Duties Details
+                        </label>
+                        <input
+                          type="text"
+                          name="nonTeachingDutiesDetails"
+                          value={editForm.nonTeachingDutiesDetails}
+                          onChange={handleEditInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Salary & Employment */}
+                <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                  <h3 className="text-lg font-semibold mb-4">Salary & Employment</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Salary Band</label>
+                      <input
+                        type="text"
+                        name="salaryBand"
+                        value={editForm.salaryBand}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Mode of Salary Payment</label>
+                      <select
+                        name="salaryPaymentMode"
+                        value={editForm.salaryPaymentMode}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      >
+                        <option value="">Select</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                        <option value="Cash">Cash</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Working Status</label>
+                      <select
+                        name="workingStatus"
+                        value={editForm.workingStatus}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      >
+                        <option value="">Select</option>
+                        <option value="Active">Active</option>
+                        <option value="Transferred">Transferred</option>
+                        <option value="Retired">Retired</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contact Information */}
+                <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                  <h3 className="text-lg font-semibold mb-4">Contact Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Mobile Number</label>
+                      <input
+                        type="text"
+                        name="phone"
+                        value={editForm.phone}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Email ID</label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={editForm.email}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Address Information */}
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Address Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Street Address</label>
+                      <input
+                        type="text"
+                        name="address.street"
+                        placeholder="123 Main Street"
+                        value={editForm.address.street}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
+                      <input
+                        type="text"
+                        name="address.city"
+                        placeholder="City"
+                        value={editForm.address.city}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
+                      <input
+                        type="text"
+                        name="address.state"
+                        placeholder="State"
+                        value={editForm.address.state}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Zip Code</label>
+                      <input
+                        type="text"
+                        name="address.zipCode"
+                        placeholder="12345"
+                        value={editForm.address.zipCode}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
+                      <input
+                        type="text"
+                        name="address.country"
+                        placeholder="Country"
+                        value={editForm.address.country}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-6">
+                  <button
+                    type="submit"
+                    disabled={editLoading}
+                    className="w-full md:w-auto px-8 py-3 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {editLoading ? "Updating User..." : "Update User"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
       )}
     </Layout>
   );

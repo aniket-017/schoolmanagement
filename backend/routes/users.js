@@ -458,6 +458,15 @@ router.put("/:id", auth, adminOrPrincipal, async (req, res) => {
   try {
     const { password, ...updateData } = req.body;
 
+    // For teachers, ensure subjects field is synchronized with subjectsTaught
+    if (updateData.subjectsTaught) {
+      // First check if the user is a teacher
+      const existingUser = await User.findById(req.params.id);
+      if (existingUser && existingUser.role === "teacher") {
+        updateData.subjects = updateData.subjectsTaught;
+      }
+    }
+
     const user = await User.findByIdAndUpdate(req.params.id, updateData, { new: true, runValidators: true }).select(
       "-password"
     );
