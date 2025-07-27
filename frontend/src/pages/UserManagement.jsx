@@ -36,6 +36,10 @@ const UserManagement = () => {
   const [editingUser, setEditingUser] = useState(null);
   const [editLoading, setEditLoading] = useState(false);
 
+  // View details state
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+
   const [filters, setFilters] = useState({
     page: 1,
     limit: 10,
@@ -335,6 +339,11 @@ const UserManagement = () => {
       console.error("Error fetching user details for editing:", error);
       toast.error("Error loading user details for editing");
     }
+  };
+
+  const handleViewDetails = async (user) => {
+    setSelectedUser(user);
+    setShowDetailsModal(true);
   };
 
   const handleEditInputChange = (e) => {
@@ -795,7 +804,11 @@ const UserManagement = () => {
                                   </div>
                                 </div>
                                 <div className="ml-4">
-                                  <div className="text-sm font-medium text-gray-900">
+                                  <div
+                                    className="text-sm font-medium text-gray-900 cursor-pointer hover:text-indigo-600 transition-colors"
+                                    onClick={() => handleViewDetails(user)}
+                                    title="Click to view details"
+                                  >
                                     {user.name ||
                                       user.fullName ||
                                       [user.firstName, user.middleName, user.lastName].filter(Boolean).join(" ") ||
@@ -2834,6 +2847,360 @@ const UserManagement = () => {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* User Details Modal */}
+      {showDetailsModal && selectedUser && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+          <div className="relative p-8 border w-4/5 max-w-4xl shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-semibold text-gray-900">User Details</h3>
+              <button onClick={() => setShowDetailsModal(false)} className="text-gray-500 hover:text-gray-700">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* User Header */}
+              <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+                <div className="h-16 w-16 rounded-full bg-indigo-100 flex items-center justify-center">
+                  <span className="text-2xl font-bold text-indigo-700">
+                    {(
+                      selectedUser.name?.charAt(0) ||
+                      selectedUser.firstName?.charAt(0) ||
+                      selectedUser.email?.charAt(0) ||
+                      "?"
+                    ).toUpperCase()}
+                  </span>
+                </div>
+                <div>
+                  <h4 className="text-xl font-semibold text-gray-900">
+                    {selectedUser.name ||
+                      selectedUser.fullName ||
+                      [selectedUser.firstName, selectedUser.middleName, selectedUser.lastName]
+                        .filter(Boolean)
+                        .join(" ") ||
+                      selectedUser.email}
+                  </h4>
+                  <p className="text-gray-600">{selectedUser.email}</p>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        selectedUser.role === "teacher"
+                          ? "bg-blue-100 text-blue-800"
+                          : selectedUser.role === "admin"
+                          ? "bg-purple-100 text-purple-800"
+                          : selectedUser.role === "principal"
+                          ? "bg-red-100 text-red-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      {selectedUser.role}
+                    </span>
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        selectedUser.status === "approved"
+                          ? "bg-green-100 text-green-800"
+                          : selectedUser.status === "pending"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {selectedUser.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Personal Information */}
+              <div className="bg-white border border-gray-200 rounded-lg p-6">
+                <h5 className="text-lg font-medium text-gray-900 mb-4">Personal Information</h5>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Employee ID</label>
+                    <p className="text-sm text-gray-900 mt-1">{selectedUser.employeeId || "Not provided"}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Gender</label>
+                    <p className="text-sm text-gray-900 mt-1">{selectedUser.gender || "Not provided"}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Date of Birth</label>
+                    <p className="text-sm text-gray-900 mt-1">
+                      {selectedUser.dateOfBirth
+                        ? new Date(selectedUser.dateOfBirth).toLocaleDateString()
+                        : "Not provided"}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Phone</label>
+                    <p className="text-sm text-gray-900 mt-1">{selectedUser.phone || "Not provided"}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Social Category</label>
+                    <p className="text-sm text-gray-900 mt-1">{selectedUser.socialCategory || "Not provided"}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Disability Status</label>
+                    <p className="text-sm text-gray-900 mt-1">{selectedUser.disabilityStatus || "Not provided"}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Aadhaar Number</label>
+                    <p className="text-sm text-gray-900 mt-1">{selectedUser.aadhaarNumber || "Not provided"}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Professional Information (for teachers) */}
+              {selectedUser.role === "teacher" && (
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <h5 className="text-lg font-medium text-gray-900 mb-4">Professional Information</h5>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Teacher Type</label>
+                      <p className="text-sm text-gray-900 mt-1">{selectedUser.teacherType || "Not provided"}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Nature of Appointment</label>
+                      <p className="text-sm text-gray-900 mt-1">{selectedUser.natureOfAppointment || "Not provided"}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Appointed Under</label>
+                      <p className="text-sm text-gray-900 mt-1">{selectedUser.appointedUnder || "Not provided"}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Date of Joining Service</label>
+                      <p className="text-sm text-gray-900 mt-1">
+                        {selectedUser.dateOfJoiningService
+                          ? new Date(selectedUser.dateOfJoiningService).toLocaleDateString()
+                          : "Not provided"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Date of Joining Present School</label>
+                      <p className="text-sm text-gray-900 mt-1">
+                        {selectedUser.dateOfJoiningPresentSchool
+                          ? new Date(selectedUser.dateOfJoiningPresentSchool).toLocaleDateString()
+                          : "Not provided"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">UDISE Code Previous School</label>
+                      <p className="text-sm text-gray-900 mt-1">
+                        {selectedUser.udiseCodePreviousSchool || "Not provided"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Educational Qualification (for teachers) */}
+              {selectedUser.role === "teacher" && (
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <h5 className="text-lg font-medium text-gray-900 mb-4">Educational Qualification</h5>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Highest Academic Qualification</label>
+                      <p className="text-sm text-gray-900 mt-1">
+                        {selectedUser.highestAcademicQualification || "Not provided"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Highest Professional Qualification
+                      </label>
+                      <p className="text-sm text-gray-900 mt-1">
+                        {selectedUser.highestProfessionalQualification || "Not provided"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Medium of Instruction</label>
+                      <p className="text-sm text-gray-900 mt-1">{selectedUser.mediumOfInstruction || "Not provided"}</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700">Subjects</label>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {selectedUser.subjects && selectedUser.subjects.length > 0 ? (
+                          selectedUser.subjects.map((subject, index) => (
+                            <span
+                              key={subject._id || index}
+                              className="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full"
+                            >
+                              {subject.name}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-sm text-gray-500">No subjects assigned</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Training Details (for teachers) */}
+              {selectedUser.role === "teacher" && (
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <h5 className="text-lg font-medium text-gray-900 mb-4">Training Details</h5>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-center">
+                      <span
+                        className={`w-4 h-4 rounded ${
+                          selectedUser.inServiceTraining ? "bg-green-500" : "bg-gray-300"
+                        } mr-2`}
+                      ></span>
+                      <span className="text-sm text-gray-900">In-Service Training</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span
+                        className={`w-4 h-4 rounded ${selectedUser.ictTraining ? "bg-green-500" : "bg-gray-300"} mr-2`}
+                      ></span>
+                      <span className="text-sm text-gray-900">ICT Training</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span
+                        className={`w-4 h-4 rounded ${selectedUser.flnTraining ? "bg-green-500" : "bg-gray-300"} mr-2`}
+                      ></span>
+                      <span className="text-sm text-gray-900">FLN Training</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span
+                        className={`w-4 h-4 rounded ${
+                          selectedUser.inclusiveEducationTraining ? "bg-green-500" : "bg-gray-300"
+                        } mr-2`}
+                      ></span>
+                      <span className="text-sm text-gray-900">Inclusive Education Training</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Work Details (for teachers) */}
+              {selectedUser.role === "teacher" && (
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <h5 className="text-lg font-medium text-gray-900 mb-4">Work Details</h5>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Classes Taught</label>
+                      <p className="text-sm text-gray-900 mt-1">{selectedUser.classesTaught || "Not provided"}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Periods Per Week</label>
+                      <p className="text-sm text-gray-900 mt-1">{selectedUser.periodsPerWeek || "Not provided"}</p>
+                    </div>
+                    <div className="flex items-center">
+                      <span
+                        className={`w-4 h-4 rounded ${
+                          selectedUser.multipleSubjectsOrGrades ? "bg-green-500" : "bg-gray-300"
+                        } mr-2`}
+                      ></span>
+                      <span className="text-sm text-gray-900">Multiple Subjects/Grades</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span
+                        className={`w-4 h-4 rounded ${
+                          selectedUser.nonTeachingDuties ? "bg-green-500" : "bg-gray-300"
+                        } mr-2`}
+                      ></span>
+                      <span className="text-sm text-gray-900">Non-Teaching Duties</span>
+                    </div>
+                    {selectedUser.nonTeachingDuties && selectedUser.nonTeachingDutiesDetails && (
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700">Non-Teaching Duties Details</label>
+                        <p className="text-sm text-gray-900 mt-1">{selectedUser.nonTeachingDutiesDetails}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Salary Information (for teachers) */}
+              {selectedUser.role === "teacher" && (
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <h5 className="text-lg font-medium text-gray-900 mb-4">Salary Information</h5>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Salary Band</label>
+                      <p className="text-sm text-gray-900 mt-1">{selectedUser.salaryBand || "Not provided"}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Salary Payment Mode</label>
+                      <p className="text-sm text-gray-900 mt-1">{selectedUser.salaryPaymentMode || "Not provided"}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Working Status</label>
+                      <p className="text-sm text-gray-900 mt-1">{selectedUser.workingStatus || "Not provided"}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Address Information */}
+              <div className="bg-white border border-gray-200 rounded-lg p-6">
+                <h5 className="text-lg font-medium text-gray-900 mb-4">Address Information</h5>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700">Street Address</label>
+                    <p className="text-sm text-gray-900 mt-1">{selectedUser.address?.street || "Not provided"}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">City</label>
+                    <p className="text-sm text-gray-900 mt-1">{selectedUser.address?.city || "Not provided"}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">State</label>
+                    <p className="text-sm text-gray-900 mt-1">{selectedUser.address?.state || "Not provided"}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Zip Code</label>
+                    <p className="text-sm text-gray-900 mt-1">{selectedUser.address?.zipCode || "Not provided"}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Country</label>
+                    <p className="text-sm text-gray-900 mt-1">{selectedUser.address?.country || "Not provided"}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Account Information */}
+              <div className="bg-white border border-gray-200 rounded-lg p-6">
+                <h5 className="text-lg font-medium text-gray-900 mb-4">Account Information</h5>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Account Created</label>
+                    <p className="text-sm text-gray-900 mt-1">
+                      {new Date(selectedUser.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Last Updated</label>
+                    <p className="text-sm text-gray-900 mt-1">
+                      {new Date(selectedUser.updatedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Password Status</label>
+                    <p className="text-sm text-gray-900 mt-1">
+                      {selectedUser.isFirstLogin ? "First Login Required" : "Password Changed"}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Account Status</label>
+                    <p className="text-sm text-gray-900 mt-1">{selectedUser.isActive ? "Active" : "Inactive"}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
