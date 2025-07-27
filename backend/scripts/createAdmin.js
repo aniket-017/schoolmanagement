@@ -22,13 +22,14 @@ const createAdminUser = async () => {
       console.log(`Email: ${existingAdmin.email}`);
       console.log(`Role: ${existingAdmin.role}`);
       console.log(`Status: ${existingAdmin.status}`);
+      console.log("Password: admin123");
       return;
     }
 
     const adminUser = new User({
-      name: "School Admin",
+      name: "School Administrator",
       email: "admin@school.com",
-      password: "admin123", // This will be hashed automatically
+      password: "Admin@2024", // More secure password
       role: "admin",
       phone: "+1234567890",
       address: {
@@ -46,11 +47,12 @@ const createAdminUser = async () => {
     });
 
     await adminUser.save();
-    console.log("Admin user created successfully!");
-    console.log("Email: admin@school.com");
-    console.log("Password: admin123");
-    console.log("Role: admin");
-    console.log("Status: approved");
+    console.log("✅ Admin user created successfully!");
+    console.log("📧 Email: admin@school.com");
+    console.log("🔑 Password: Admin@2024");
+    console.log("👤 Role: admin");
+    console.log("✅ Status: approved");
+    console.log("\n🎯 You can now login to the admin dashboard!");
 
     process.exit(0);
   } catch (error) {

@@ -119,14 +119,13 @@ router.post("/teacher", auth, adminOrPrincipal, async (req, res) => {
       udiseCodePreviousSchool,
       highestAcademicQualification,
       highestProfessionalQualification,
-      subjectsSpecializedIn,
+      subjects,
       mediumOfInstruction,
       inServiceTraining,
       ictTraining,
       flnTraining,
       inclusiveEducationTraining,
       classesTaught,
-      subjectsTaught,
       periodsPerWeek,
       multipleSubjectsOrGrades,
       nonTeachingDuties,
@@ -170,14 +169,13 @@ router.post("/teacher", auth, adminOrPrincipal, async (req, res) => {
       udiseCodePreviousSchool,
       highestAcademicQualification,
       highestProfessionalQualification,
-      subjectsSpecializedIn,
+      subjects,
       mediumOfInstruction,
       inServiceTraining,
       ictTraining,
       flnTraining,
       inclusiveEducationTraining,
       classesTaught,
-      subjectsTaught,
       periodsPerWeek,
       multipleSubjectsOrGrades,
       nonTeachingDuties,
@@ -194,8 +192,6 @@ router.post("/teacher", auth, adminOrPrincipal, async (req, res) => {
       status: "approved",
       approvedBy: req.user.id,
       approvedAt: new Date(),
-      // Set 'subjects' for compatibility with user list rendering
-      subjects: subjectsTaught,
     });
 
     res.status(201).json({
@@ -232,21 +228,61 @@ router.post("/teacher", auth, adminOrPrincipal, async (req, res) => {
 // @access  Private (Admin/Principal only)
 router.get("/excel-template", auth, adminOrPrincipal, (req, res) => {
   try {
-    // Define the template structure with exact column names
+    // Define the template structure with exact column names matching the teacher form
     const templateData = [
       {
-        Name: "John Doe",
-        Email: "john.doe@school.com",
-        Phone: "+1234567890",
-        Qualification: "M.Sc Mathematics",
-        Experience: 5,
+        // Personal Information (Required fields marked with *)
+        "First Name*": "John",
+        "Middle Name": "Michael",
+        "Last Name*": "Doe",
+        "Gender*": "Male",
         "Date of Birth": "1990-01-15",
-        Salary: 50000,
+        "Social Category": "General",
+        "Disability Status": "None",
+        "Aadhaar Number": "123456789012",
+
+        // Professional Information
+        "Teacher Type": "Regular",
+        "Nature of Appointment": "Permanent",
+        "Appointed Under": "Government",
+        "Date of Joining Service": "2015-06-01",
+        "Date of Joining Present School": "2020-09-01",
+        "UDISE Code Previous School": "12345678901",
+
+        // Educational Qualification
+        "Highest Academic Qualification": "M.Sc Mathematics",
+        "Highest Professional Qualification": "B.Ed",
+        Subjects: "Mathematics,Physics",
+        "Medium of Instruction": "English",
+
+        // Training Details
+        "In-Service Training": "Yes",
+        "ICT Training": "Yes",
+        "FLN Training": "No",
+        "Inclusive Education Training": "No",
+
+        // Posting & Work Details
+        "Classes Taught": "9th,10th",
+        "Periods Per Week": "24",
+        "Multiple Subjects or Grades": "Yes",
+        "Non-Teaching Duties": "No",
+        "Non-Teaching Duties Details": "",
+
+        // Salary & Employment
+        "Salary Band": "Level 8",
+        "Salary Payment Mode": "Bank Transfer",
+        "Working Status": "Active",
+
+        // Contact Information
+        "Phone*": "+1234567890",
+        "Email*": "john.doe@school.com",
+
+        // Address
         Street: "123 Main St",
         City: "Anytown",
         State: "State",
         "Zip Code": "12345",
-        Country: "Country",
+        Country: "India",
       },
     ];
 
@@ -256,14 +292,38 @@ router.get("/excel-template", auth, adminOrPrincipal, (req, res) => {
 
     // Set column widths for better readability
     const columnWidths = [
-      { wch: 20 }, // Name
-      { wch: 25 }, // Email
-      { wch: 15 }, // Phone
-      { wch: 20 }, // Department
-      { wch: 25 }, // Qualification
-      { wch: 10 }, // Experience
+      { wch: 15 }, // First Name*
+      { wch: 15 }, // Middle Name
+      { wch: 15 }, // Last Name*
+      { wch: 10 }, // Gender*
       { wch: 15 }, // Date of Birth
-      { wch: 10 }, // Salary
+      { wch: 15 }, // Social Category
+      { wch: 15 }, // Disability Status
+      { wch: 20 }, // Aadhaar Number
+      { wch: 15 }, // Teacher Type
+      { wch: 20 }, // Nature of Appointment
+      { wch: 15 }, // Appointed Under
+      { wch: 20 }, // Date of Joining Service
+      { wch: 25 }, // Date of Joining Present School
+      { wch: 25 }, // UDISE Code Previous School
+      { wch: 25 }, // Highest Academic Qualification
+      { wch: 25 }, // Highest Professional Qualification
+      { wch: 30 }, // Subjects
+      { wch: 20 }, // Medium of Instruction
+      { wch: 15 }, // In-Service Training
+      { wch: 15 }, // ICT Training
+      { wch: 15 }, // FLN Training
+      { wch: 25 }, // Inclusive Education Training
+      { wch: 15 }, // Classes Taught
+      { wch: 15 }, // Periods Per Week
+      { wch: 25 }, // Multiple Subjects or Grades
+      { wch: 20 }, // Non-Teaching Duties
+      { wch: 25 }, // Non-Teaching Duties Details
+      { wch: 15 }, // Salary Band
+      { wch: 20 }, // Salary Payment Mode
+      { wch: 15 }, // Working Status
+      { wch: 15 }, // Phone*
+      { wch: 25 }, // Email*
       { wch: 25 }, // Street
       { wch: 15 }, // City
       { wch: 15 }, // State
@@ -271,6 +331,28 @@ router.get("/excel-template", auth, adminOrPrincipal, (req, res) => {
       { wch: 15 }, // Country
     ];
     worksheet["!cols"] = columnWidths;
+
+    // Add color coding for required fields (red background for required fields)
+    const requiredFields = ["First Name*", "Last Name*", "Gender*", "Phone*", "Email*"];
+
+    // Apply red background to required field headers
+    const range = xlsx.utils.decode_range(worksheet["!ref"]);
+    for (let col = range.s.c; col <= range.e.c; col++) {
+      const cellAddress = xlsx.utils.encode_cell({ r: 0, c: col });
+      const cellValue = worksheet[cellAddress];
+      if (cellValue && requiredFields.includes(cellValue.v)) {
+        worksheet[cellAddress].s = {
+          fill: {
+            fgColor: { rgb: "FFFF0000" }, // Red background
+            patternType: "solid",
+          },
+          font: {
+            color: { rgb: "FFFFFFFF" }, // White text
+            bold: true,
+          },
+        };
+      }
+    }
 
     // Add worksheet to workbook
     xlsx.utils.book_append_sheet(workbook, worksheet, "Teachers Template");
@@ -328,17 +410,17 @@ router.post("/bulk-upload", auth, adminOrPrincipal, upload.single("excelFile"), 
 
       try {
         // Skip empty rows - using exact column names from template
-        if (!row.Name || !row.Email) {
+        if (!row["First Name*"] || !row["Last Name*"] || !row["Email*"]) {
           results.failed.push({
             row: i + 2, // +2 because Excel is 1-indexed and has header
             data: row,
-            error: "Name and email are required",
+            error: "First Name, Last Name, and Email are required",
           });
           continue;
         }
 
         // Check for duplicates
-        const existingUser = await User.findOne({ email: row.Email });
+        const existingUser = await User.findOne({ email: row["Email*"] });
         if (existingUser) {
           results.duplicates.push({
             row: i + 2,
@@ -352,16 +434,16 @@ router.post("/bulk-upload", auth, adminOrPrincipal, upload.single("excelFile"), 
         const employeeId = `EMP${Date.now()}${i}`;
         const tempPassword = generateTempPassword();
 
-        // Create teacher object
+        // Create teacher object with new field structure
         const teacherData = {
-          name: row.Name,
-          email: row.Email,
+          firstName: row["First Name*"],
+          middleName: row["Middle Name"] || "",
+          lastName: row["Last Name*"],
+          email: row["Email*"],
           password: tempPassword,
           role: "teacher",
-          phone: row.Phone || "",
-          qualification: row.Qualification || "",
-          experience: row.Experience || 0,
-          salary: row.Salary || 0,
+          gender: row["Gender*"] || "",
+          phone: row["Phone*"] || "",
           employeeId,
           status: "approved",
           approvedBy: req.user.id,
@@ -373,24 +455,71 @@ router.post("/bulk-upload", auth, adminOrPrincipal, upload.single("excelFile"), 
           teacherData.dateOfBirth = new Date(row["Date of Birth"]);
         }
 
+        // Add additional fields
+        if (row["Social Category"]) teacherData.socialCategory = row["Social Category"];
+        if (row["Disability Status"]) teacherData.disabilityStatus = row["Disability Status"];
+        if (row["Aadhaar Number"]) teacherData.aadhaarNumber = row["Aadhaar Number"];
+        if (row["Teacher Type"]) teacherData.teacherType = row["Teacher Type"];
+        if (row["Nature of Appointment"]) teacherData.natureOfAppointment = row["Nature of Appointment"];
+        if (row["Appointed Under"]) teacherData.appointedUnder = row["Appointed Under"];
+        if (row["Date of Joining Service"]) teacherData.dateOfJoiningService = new Date(row["Date of Joining Service"]);
+        if (row["Date of Joining Present School"])
+          teacherData.dateOfJoiningPresentSchool = new Date(row["Date of Joining Present School"]);
+        if (row["UDISE Code Previous School"]) teacherData.udiseCodePreviousSchool = row["UDISE Code Previous School"];
+        if (row["Highest Academic Qualification"])
+          teacherData.highestAcademicQualification = row["Highest Academic Qualification"];
+        if (row["Highest Professional Qualification"])
+          teacherData.highestProfessionalQualification = row["Highest Professional Qualification"];
+        if (row["Medium of Instruction"]) teacherData.mediumOfInstruction = row["Medium of Instruction"];
+        if (row["Classes Taught"]) teacherData.classesTaught = row["Classes Taught"];
+        if (row["Periods Per Week"]) teacherData.periodsPerWeek = parseInt(row["Periods Per Week"]) || 0;
+        if (row["Salary Band"]) teacherData.salaryBand = row["Salary Band"];
+        if (row["Salary Payment Mode"]) teacherData.salaryPaymentMode = row["Salary Payment Mode"];
+        if (row["Working Status"]) teacherData.workingStatus = row["Working Status"];
+
+        // Handle boolean fields
+        if (row["In-Service Training"])
+          teacherData.inServiceTraining = row["In-Service Training"].toLowerCase() === "yes";
+        if (row["ICT Training"]) teacherData.ictTraining = row["ICT Training"].toLowerCase() === "yes";
+        if (row["FLN Training"]) teacherData.flnTraining = row["FLN Training"].toLowerCase() === "yes";
+        if (row["Inclusive Education Training"])
+          teacherData.inclusiveEducationTraining = row["Inclusive Education Training"].toLowerCase() === "yes";
+        if (row["Multiple Subjects or Grades"])
+          teacherData.multipleSubjectsOrGrades = row["Multiple Subjects or Grades"].toLowerCase() === "yes";
+        if (row["Non-Teaching Duties"])
+          teacherData.nonTeachingDuties = row["Non-Teaching Duties"].toLowerCase() === "yes";
+        if (row["Non-Teaching Duties Details"])
+          teacherData.nonTeachingDutiesDetails = row["Non-Teaching Duties Details"];
+
+        // Handle subjects (comma-separated list)
+        if (row["Subjects"]) {
+          // For bulk upload, we'll skip subjects for now to avoid ObjectId issues
+          // Subjects can be added later through the edit form
+        }
+
         // Add address if provided
-        if (row.Street || row.City || row.State || row["Zip Code"] || row.Country) {
+        if (row["Street"] || row["City"] || row["State"] || row["Zip Code"] || row["Country"]) {
           teacherData.address = {
-            street: row.Street || "",
-            city: row.City || "",
-            state: row.State || "",
+            street: row["Street"] || "",
+            city: row["City"] || "",
+            state: row["State"] || "",
             zipCode: row["Zip Code"] || "",
-            country: row.Country || "",
+            country: row["Country"] || "",
           };
         }
 
-        const teacher = await User.create(teacherData);
+        let teacher;
+        try {
+          teacher = await User.create(teacherData);
+        } catch (createError) {
+          throw createError;
+        }
 
         results.successful.push({
           row: i + 2,
           teacher: {
             id: teacher._id,
-            name: teacher.name,
+            name: `${teacher.firstName} ${teacher.lastName}`,
             email: teacher.email,
             employeeId: teacher.employeeId,
             tempPassword: tempPassword,
@@ -458,15 +587,6 @@ router.put("/:id", auth, adminOrPrincipal, async (req, res) => {
   try {
     const { password, ...updateData } = req.body;
 
-    // For teachers, ensure subjects field is synchronized with subjectsTaught
-    if (updateData.subjectsTaught) {
-      // First check if the user is a teacher
-      const existingUser = await User.findById(req.params.id);
-      if (existingUser && existingUser.role === "teacher") {
-        updateData.subjects = updateData.subjectsTaught;
-      }
-    }
-
     const user = await User.findByIdAndUpdate(req.params.id, updateData, { new: true, runValidators: true }).select(
       "-password"
     );
@@ -493,11 +613,11 @@ router.put("/:id", auth, adminOrPrincipal, async (req, res) => {
 });
 
 // @route   DELETE /api/users/:id
-// @desc    Delete user (soft delete - deactivate)
+// @desc    Delete user permanently
 // @access  Private (Admin/Principal only)
 router.delete("/:id", auth, adminOrPrincipal, async (req, res) => {
   try {
-    const user = await User.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true }).select("-password");
+    const user = await User.findByIdAndDelete(req.params.id);
 
     if (!user) {
       return res.status(404).json({
@@ -508,8 +628,7 @@ router.delete("/:id", auth, adminOrPrincipal, async (req, res) => {
 
     res.json({
       success: true,
-      message: "User deactivated successfully",
-      user,
+      message: "User deleted successfully",
     });
   } catch (error) {
     console.error("Error deleting user:", error);

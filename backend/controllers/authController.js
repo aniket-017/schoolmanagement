@@ -160,9 +160,7 @@ const getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id)
       .populate("class", "name grade section")
-      .populate("subjects", "name")
-      .populate("subjectsTaught", "name")
-      .populate("subjectsSpecializedIn", "name");
+      .populate("subjects", "name");
 
     // Format the name properly for teachers
     let formattedUser = user.toObject();

@@ -81,17 +81,15 @@ export default function ProfileScreen({ navigation }) {
       return subject?.name || "Unknown Subject";
     };
 
-    // Check all possible subject fields and return the first non-empty array
-    const subjectFields = [user?.subjects, user?.subjectsTaught, user?.subjectsSpecializedIn].filter(
-      (field) => field && field.length > 0
-    );
+    // Only use the subjects field
+    const subjects = user?.subjects || [];
 
-    if (subjectFields.length === 0) {
+    if (subjects.length === 0) {
       return [];
     }
 
-    // Return the first available subject array with processed names
-    return subjectFields[0].map((subject) => ({
+    // Return the subjects array with processed names
+    return subjects.map((subject) => ({
       _id: subject._id || subject,
       name: getSubjectName(subject),
     }));

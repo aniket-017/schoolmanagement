@@ -16,6 +16,7 @@ import {
   BuildingLibraryIcon,
   ArrowDownTrayIcon,
   PencilIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
 import Layout from "../components/Layout";
 import TeacherCredentials from "../components/TeacherCredentials";
@@ -64,7 +65,7 @@ const UserManagement = () => {
     // Educational Qualification
     highestAcademicQualification: "",
     highestProfessionalQualification: "",
-    subjectsSpecializedIn: [],
+    subjects: [],
     mediumOfInstruction: "",
     // Training Details
     inServiceTraining: false,
@@ -73,7 +74,6 @@ const UserManagement = () => {
     inclusiveEducationTraining: false,
     // Posting & Work Details
     classesTaught: "",
-    subjectsTaught: [],
     periodsPerWeek: "",
     multipleSubjectsOrGrades: false,
     nonTeachingDuties: false,
@@ -116,7 +116,6 @@ const UserManagement = () => {
     // Educational Qualification
     highestAcademicQualification: "",
     highestProfessionalQualification: "",
-    subjectsSpecializedIn: [],
     subjects: [],
     mediumOfInstruction: "",
     // Training Details
@@ -126,7 +125,6 @@ const UserManagement = () => {
     inclusiveEducationTraining: false,
     // Posting & Work Details
     classesTaught: "",
-    subjectsTaught: [],
     periodsPerWeek: "",
     multipleSubjectsOrGrades: false,
     nonTeachingDuties: false,
@@ -282,6 +280,8 @@ const UserManagement = () => {
         setEditingUser(data.user);
         // Fetch subjects for the edit form
         await fetchSubjects();
+        // Debug: Log the subjects data
+        console.log("User subjects data:", data.user.subjects);
         // Populate the edit form with user data
         setEditForm({
           firstName: data.user.firstName || "",
@@ -302,15 +302,13 @@ const UserManagement = () => {
           udiseCodePreviousSchool: data.user.udiseCodePreviousSchool || "",
           highestAcademicQualification: data.user.highestAcademicQualification || "",
           highestProfessionalQualification: data.user.highestProfessionalQualification || "",
-          subjectsSpecializedIn: data.user.subjectsSpecializedIn || [],
-          subjects: data.user.subjects || [],
+          subjects: (data.user.subjects || []).map((subject) => (typeof subject === "string" ? subject : subject._id)),
           mediumOfInstruction: data.user.mediumOfInstruction || "",
           inServiceTraining: data.user.inServiceTraining || false,
           ictTraining: data.user.ictTraining || false,
           flnTraining: data.user.flnTraining || false,
           inclusiveEducationTraining: data.user.inclusiveEducationTraining || false,
           classesTaught: data.user.classesTaught || "",
-          subjectsTaught: data.user.subjectsTaught || [],
           periodsPerWeek: data.user.periodsPerWeek || "",
           multipleSubjectsOrGrades: data.user.multipleSubjectsOrGrades || false,
           nonTeachingDuties: data.user.nonTeachingDuties || false,
@@ -528,6 +526,90 @@ const UserManagement = () => {
       console.error("Error updating user status:", error);
       toast.error("Error updating user status");
     }
+  };
+
+  const handleDeleteUser = async (userId, userName) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${userName}"?\n\nThis action will permanently remove the user from the system and cannot be undone.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${appConfig.API_BASE_URL}/users/${userId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        fetchUsers();
+        toast.success(`User "${userName}" deleted successfully`);
+      } else {
+        toast.error(data.message || "Failed to delete user");
+      }
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      toast.error("Error deleting user");
+    }
+  };
+
+  const downloadPasswords = () => {
+    if (!uploadResults?.results?.successful || uploadResults.results.successful.length === 0) {
+      toast.error("No successful uploads to download passwords");
+      return;
+    }
+
+    // Create CSV content
+    const csvContent = [
+      "Employee ID,Email,Temporary Password",
+      ...uploadResults.results.successful.map(
+        (item) => `${item.teacher.employeeId},"${item.teacher.email}","${item.teacher.tempPassword}"`
+      ),
+    ].join("\n");
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `teacher_passwords_${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+
+    toast.success(`Password file downloaded successfully! (${uploadResults.results.successful.length} teachers)`);
+  };
+
+  const copyAllPasswords = () => {
+    if (!uploadResults?.results?.successful || uploadResults.results.successful.length === 0) {
+      toast.error("No successful uploads to copy passwords");
+      return;
+    }
+
+    // Create formatted text
+    const passwordText = uploadResults.results.successful
+      .map(
+        (item) =>
+          `Employee ID: ${item.teacher.employeeId}\nEmail: ${item.teacher.email}\nPassword: ${item.teacher.tempPassword}\n`
+      )
+      .join("\n---\n");
+
+    // Copy to clipboard
+    navigator.clipboard
+      .writeText(passwordText)
+      .then(() => {
+        toast.success(`All passwords copied to clipboard! (${uploadResults.results.successful.length} teachers)`);
+      })
+      .catch(() => {
+        toast.error("Failed to copy passwords");
+      });
   };
 
   // Add this function to create a new subject globally
@@ -778,25 +860,34 @@ const UserManagement = () => {
                               {new Date(user.createdAt).toLocaleDateString()}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                              <button
-                                onClick={() => toggleUserStatus(user._id, user.status)}
-                                className={`${
-                                  user.status === "approved"
-                                    ? "text-red-600 hover:text-red-900"
-                                    : "text-green-600 hover:text-green-900"
-                                } transition-colors`}
-                              >
-                                {user.status === "approved" ? "Suspend" : "Activate"}
-                              </button>
-                              {user.role === "teacher" && (
+                              <div className="flex items-center justify-end space-x-2">
                                 <button
-                                  onClick={(e) => handleEditClick(user, e)}
-                                  className="ml-2 text-indigo-600 hover:text-indigo-900"
-                                  title="Edit Teacher"
+                                  onClick={() => toggleUserStatus(user._id, user.status)}
+                                  className={`${
+                                    user.status === "approved"
+                                      ? "text-red-600 hover:text-red-900"
+                                      : "text-green-600 hover:text-green-900"
+                                  } transition-colors`}
                                 >
-                                  <PencilIcon className="h-5 w-5" />
+                                  {user.status === "approved" ? "Suspend" : "Activate"}
                                 </button>
-                              )}
+                                {user.role === "teacher" && (
+                                  <button
+                                    onClick={(e) => handleEditClick(user, e)}
+                                    className="text-indigo-600 hover:text-indigo-900"
+                                    title="Edit Teacher"
+                                  >
+                                    <PencilIcon className="h-5 w-5" />
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleDeleteUser(user._id, user.name || user.firstName || user.email)}
+                                  className="text-red-600 hover:text-red-900 transition-colors"
+                                  title="Delete User"
+                                >
+                                  <TrashIcon className="h-5 w-5" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -1057,8 +1148,9 @@ const UserManagement = () => {
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                         />
                       </div>
+
                       <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Main Subjects</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Subjects</label>
                         <div className="flex flex-wrap gap-2 mb-2">
                           {subjects.map((subject) => (
                             <label
@@ -1067,47 +1159,27 @@ const UserManagement = () => {
                             >
                               <input
                                 type="checkbox"
-                                checked={(teacherForm.subjects || []).includes(subject._id)}
+                                checked={(teacherForm.subjects || []).some((subjectId) =>
+                                  typeof subjectId === "string"
+                                    ? subjectId === subject._id
+                                    : subjectId._id === subject._id
+                                )}
                                 onChange={() => {
                                   setTeacherForm((prev) => {
                                     const current = prev.subjects || [];
-                                    const updated = current.includes(subject._id)
-                                      ? current.filter((id) => id !== subject._id)
+                                    const isSelected = current.some((subjectId) =>
+                                      typeof subjectId === "string"
+                                        ? subjectId === subject._id
+                                        : subjectId._id === subject._id
+                                    );
+                                    const updated = isSelected
+                                      ? current.filter((id) =>
+                                          typeof id === "string" ? id !== subject._id : id._id !== subject._id
+                                        )
                                       : [...current, subject._id];
                                     return {
                                       ...prev,
                                       subjects: updated,
-                                    };
-                                  });
-                                }}
-                                className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
-                              />
-                              <span>{subject.name}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Subjects Specialized In</label>
-                        <div className="flex flex-wrap gap-2 mb-2">
-                          {subjects.map((subject) => (
-                            <label
-                              key={subject._id}
-                              className="flex items-center gap-2 border border-gray-200 rounded px-2 py-1 cursor-pointer"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={(teacherForm.subjectsSpecializedIn || []).includes(subject._id)}
-                                onChange={() => {
-                                  setTeacherForm((prev) => {
-                                    const current = prev.subjectsSpecializedIn || [];
-                                    const updated = current.includes(subject._id)
-                                      ? current.filter((id) => id !== subject._id)
-                                      : [...current, subject._id];
-                                    return {
-                                      ...prev,
-                                      subjectsSpecializedIn: updated,
-                                      subjectsTaught: updated, // keep in sync
                                     };
                                   });
                                 }}
@@ -1228,75 +1300,7 @@ const UserManagement = () => {
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                         />
                       </div>
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Subjects Taught</label>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                          {subjects.map((subject) => (
-                            <label
-                              key={subject._id}
-                              className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={(teacherForm.subjectsTaught || []).includes(subject._id)}
-                                onChange={() => {
-                                  setTeacherForm((prev) => {
-                                    const current = prev.subjectsTaught || [];
-                                    const updated = current.includes(subject._id)
-                                      ? current.filter((id) => id !== subject._id)
-                                      : [...current, subject._id];
-                                    return {
-                                      ...prev,
-                                      subjectsTaught: updated,
-                                      subjects: updated, // Also update the subjects field
-                                    };
-                                  });
-                                }}
-                                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                              />
-                              <div className="ml-3">
-                                <div className="text-sm font-medium text-gray-900">{subject.name}</div>
-                              </div>
-                            </label>
-                          ))}
-                        </div>
-                        <div className="mt-4">
-                          {addingSubject ? (
-                            <div className="flex gap-2 items-center">
-                              <input
-                                type="text"
-                                placeholder="Subject Name"
-                                value={newSubject.name}
-                                onChange={(e) => setNewSubject((s) => ({ ...s, name: e.target.value }))}
-                                className="px-3 py-2 border border-gray-300 rounded-lg"
-                              />
-                              <button
-                                type="button"
-                                onClick={handleAddSubject}
-                                disabled={subjectLoading}
-                                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
-                              >
-                                {subjectLoading ? "Adding..." : "Add"}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setAddingSubject(false)}
-                                className="px-2 py-2 text-gray-500 hover:text-gray-700"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => setAddingSubject(true)}
-                              className="mt-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
-                            >
-                              + Add New Subject
-                            </button>
-                          )}
-                        </div>
-                      </div>
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Number of periods per week
@@ -1564,21 +1568,103 @@ const UserManagement = () => {
                     >
                       <h4 className="text-lg font-semibold text-gray-900 mb-2">Upload Results</h4>
                       <p className="text-gray-700">{uploadResults.message}</p>
-                      {uploadResults.success && uploadResults.data && uploadResults.data.length > 0 && (
+
+                      {/* Successful Teachers */}
+                      {uploadResults.results?.successful && uploadResults.results.successful.length > 0 && (
                         <div className="mt-4">
-                          <h5 className="text-md font-medium text-gray-900 mb-2">Created Teachers:</h5>
-                          <ul className="list-disc list-inside text-gray-700">
-                            {uploadResults.data.map((teacher, index) => (
-                              <li key={index}>
-                                {teacher.name} (ID: {teacher.employeeId})
-                              </li>
+                          <div className="flex justify-between items-center mb-2">
+                            <h5 className="text-md font-medium text-green-700">
+                              ✅ Successfully Created ({uploadResults.results.successful.length}):
+                            </h5>
+                            <div className="flex items-center space-x-3">
+                              <span className="text-xs text-gray-500">
+                                {uploadResults.results.successful.length} teacher
+                                {uploadResults.results.successful.length !== 1 ? "s" : ""} with passwords
+                              </span>
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={downloadPasswords}
+                                  className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                                  title="Download all passwords as CSV"
+                                >
+                                  📥 Download CSV
+                                </button>
+                                <button
+                                  onClick={copyAllPasswords}
+                                  className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                                  title="Copy all passwords to clipboard"
+                                >
+                                  📋 Copy All
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            {uploadResults.results.successful.map((item, index) => (
+                              <div key={index} className="bg-green-50 p-3 rounded border border-green-200">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <p className="font-medium text-gray-900">{item.teacher.name}</p>
+                                    <p className="text-sm text-gray-600">Employee ID: {item.teacher.employeeId}</p>
+                                    <p className="text-sm text-gray-600">Email: {item.teacher.email}</p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-sm font-medium text-gray-900">Temporary Password:</p>
+                                    <p className="text-sm bg-yellow-100 px-2 py-1 rounded font-mono text-gray-800">
+                                      {item.teacher.tempPassword}
+                                    </p>
+                                    <button
+                                      onClick={() => navigator.clipboard.writeText(item.teacher.tempPassword)}
+                                      className="text-xs text-blue-600 hover:text-blue-800 mt-1"
+                                    >
+                                      Copy Password
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
                             ))}
-                          </ul>
+                          </div>
                         </div>
                       )}
-                      {uploadResults.success && uploadResults.data && uploadResults.data.length === 0 && (
-                        <p className="text-gray-700">No new teachers were created from the uploaded file.</p>
+
+                      {/* Failed Entries */}
+                      {uploadResults.results?.failed && uploadResults.results.failed.length > 0 && (
+                        <div className="mt-4">
+                          <h5 className="text-md font-medium text-red-700 mb-2">
+                            ❌ Failed Entries ({uploadResults.results.failed.length}):
+                          </h5>
+                          <div className="space-y-2">
+                            {uploadResults.results.failed.map((item, index) => (
+                              <div key={index} className="bg-red-50 p-3 rounded border border-red-200">
+                                <p className="text-sm font-medium text-gray-900">Row {item.row}:</p>
+                                <p className="text-sm text-red-600">{item.error}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       )}
+
+                      {/* Duplicate Entries */}
+                      {uploadResults.results?.duplicates && uploadResults.results.duplicates.length > 0 && (
+                        <div className="mt-4">
+                          <h5 className="text-md font-medium text-yellow-700 mb-2">
+                            ⚠️ Duplicate Entries ({uploadResults.results.duplicates.length}):
+                          </h5>
+                          <div className="space-y-2">
+                            {uploadResults.results.duplicates.map((item, index) => (
+                              <div key={index} className="bg-yellow-50 p-3 rounded border border-yellow-200">
+                                <p className="text-sm font-medium text-gray-900">Row {item.row}:</p>
+                                <p className="text-sm text-yellow-600">{item.error}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {uploadResults.success &&
+                        (!uploadResults.results?.successful || uploadResults.results.successful.length === 0) && (
+                          <p className="text-gray-700">No new teachers were created from the uploaded file.</p>
+                        )}
                       {!uploadResults.success && <p className="text-red-700">{uploadResults.message}</p>}
                     </div>
                   </div>
@@ -1804,8 +1890,9 @@ const UserManagement = () => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                   />
                 </div>
+
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Main Subjects</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Subjects</label>
                   <div className="flex flex-wrap gap-2 mb-2">
                     {subjects.map((subject) => (
                       <label
@@ -1814,46 +1901,25 @@ const UserManagement = () => {
                       >
                         <input
                           type="checkbox"
-                          checked={(editForm.subjects || []).includes(subject._id)}
+                          checked={(editForm.subjects || []).some((subjectId) =>
+                            typeof subjectId === "string" ? subjectId === subject._id : subjectId._id === subject._id
+                          )}
                           onChange={() => {
                             setEditForm((prev) => {
                               const current = prev.subjects || [];
-                              const updated = current.includes(subject._id)
-                                ? current.filter((id) => id !== subject._id)
+                              const isSelected = current.some((subjectId) =>
+                                typeof subjectId === "string"
+                                  ? subjectId === subject._id
+                                  : subjectId._id === subject._id
+                              );
+                              const updated = isSelected
+                                ? current.filter((id) =>
+                                    typeof id === "string" ? id !== subject._id : id._id !== subject._id
+                                  )
                                 : [...current, subject._id];
                               return {
                                 ...prev,
                                 subjects: updated,
-                              };
-                            });
-                          }}
-                          className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
-                        />
-                        <span>{subject.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Subjects Specialized In</label>
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {subjects.map((subject) => (
-                      <label
-                        key={subject._id}
-                        className="flex items-center gap-2 border border-gray-200 rounded px-2 py-1 cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={(editForm.subjectsSpecializedIn || []).includes(subject._id)}
-                          onChange={() => {
-                            setEditForm((prev) => {
-                              const current = prev.subjectsSpecializedIn || [];
-                              const updated = current.includes(subject._id)
-                                ? current.filter((id) => id !== subject._id)
-                                : [...current, subject._id];
-                              return {
-                                ...prev,
-                                subjectsSpecializedIn: updated,
                               };
                             });
                           }}
@@ -1964,75 +2030,7 @@ const UserManagement = () => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                   />
                 </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Subjects Taught</label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {subjects.map((subject) => (
-                      <label
-                        key={subject._id}
-                        className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={(editForm.subjectsTaught || []).includes(subject._id)}
-                          onChange={() => {
-                            setEditForm((prev) => {
-                              const current = prev.subjectsTaught || [];
-                              const updated = current.includes(subject._id)
-                                ? current.filter((id) => id !== subject._id)
-                                : [...current, subject._id];
-                              return {
-                                ...prev,
-                                subjectsTaught: updated,
-                                subjects: updated, // Also update the subjects field
-                              };
-                            });
-                          }}
-                          className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                        />
-                        <div className="ml-3">
-                          <div className="text-sm font-medium text-gray-900">{subject.name}</div>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                  <div className="mt-4">
-                    {addingSubject ? (
-                      <div className="flex gap-2 items-center">
-                        <input
-                          type="text"
-                          placeholder="Subject Name"
-                          value={newSubject.name}
-                          onChange={(e) => setNewSubject((s) => ({ ...s, name: e.target.value }))}
-                          className="px-3 py-2 border border-gray-300 rounded-lg"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleAddSubject}
-                          disabled={subjectLoading}
-                          className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
-                        >
-                          {subjectLoading ? "Adding..." : "Add"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setAddingSubject(false)}
-                          className="px-2 py-2 text-gray-500 hover:text-gray-700"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setAddingSubject(true)}
-                        className="mt-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
-                      >
-                        + Add New Subject
-                      </button>
-                    )}
-                  </div>
-                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Number of periods per week</label>
                   <input
@@ -2471,7 +2469,7 @@ const UserManagement = () => {
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Subjects Specialized In</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Subjects</label>
                       <div className="flex flex-wrap gap-2 mb-2">
                         {subjects.map((subject) => (
                           <label
@@ -2480,17 +2478,16 @@ const UserManagement = () => {
                           >
                             <input
                               type="checkbox"
-                              checked={(editForm.subjectsSpecializedIn || []).includes(subject._id)}
+                              checked={(editForm.subjects || []).includes(subject._id)}
                               onChange={() => {
                                 setEditForm((prev) => {
-                                  const current = prev.subjectsSpecializedIn || [];
+                                  const current = prev.subjects || [];
                                   const updated = current.includes(subject._id)
                                     ? current.filter((id) => id !== subject._id)
                                     : [...current, subject._id];
                                   return {
                                     ...prev,
-                                    subjectsSpecializedIn: updated,
-                                    subjectsTaught: updated, // keep in sync
+                                    subjects: updated,
                                   };
                                 });
                               }}
