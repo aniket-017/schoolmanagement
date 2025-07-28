@@ -40,7 +40,7 @@ export default function TimetableScreen() {
     try {
       setLoading(true);
       setError(null);
-      
+
       if (!user?.class) {
         setError("No class assigned. Please contact your administrator.");
         setTimetable(null);
@@ -49,7 +49,7 @@ export default function TimetableScreen() {
 
       const classId = user.class._id || user.class;
       const response = await apiService.timetable.getClassTimetable(classId);
-      
+
       if (response.success) {
         setTimetable(response.data);
       } else {
@@ -167,7 +167,15 @@ export default function TimetableScreen() {
 
                 <View style={styles.detailRow}>
                   <Ionicons name="person-outline" size={16} color={theme.colors.secondary} />
-                  <Text style={styles.detailText}>{period.teacher?.name || "Unknown Teacher"}</Text>
+                  <Text style={styles.detailText}>
+                    {period.teacher?.name ||
+                      period.teacher?.fullName ||
+                      [period.teacher?.firstName, period.teacher?.middleName, period.teacher?.lastName]
+                        .filter(Boolean)
+                        .join(" ") ||
+                      period.teacher?.email ||
+                      "Unknown Teacher"}
+                  </Text>
                 </View>
 
                 {period.room && (
@@ -200,7 +208,11 @@ export default function TimetableScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Class Timetable</Text>
         <Text style={styles.subtitle}>
-          {user?.class ? `${user.class.grade || user.class.name || 'Class'} - ${user.class.section || user.class.division || 'Section'}` : "No Class Assigned"}
+          {user?.class
+            ? `${user.class.grade || user.class.name || "Class"} - ${
+                user.class.section || user.class.division || "Section"
+              }`
+            : "No Class Assigned"}
         </Text>
       </View>
 

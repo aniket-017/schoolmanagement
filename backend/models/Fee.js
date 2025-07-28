@@ -7,6 +7,40 @@ const feeSchema = new mongoose.Schema(
       ref: "User",
       required: [true, "Student ID is required"],
     },
+    feeOutlineId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "FeeOutline",
+    },
+    installmentNumber: {
+      type: Number,
+      min: 1,
+    },
+    concessionApplied: {
+      type: {
+        name: {
+          type: String,
+          enum: ["scholarship", "sibling_discount", "merit_based", "need_based", "staff_ward", "free", "other"],
+        },
+        discountType: {
+          type: String,
+          enum: ["percentage", "fixed"],
+        },
+        discountValue: {
+          type: Number,
+          min: 0,
+        },
+        discountAmount: {
+          type: Number,
+          min: 0,
+        },
+        approvedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        approvedDate: Date,
+        reason: String,
+      },
+    },
 
     // Fee Details
     feeType: {

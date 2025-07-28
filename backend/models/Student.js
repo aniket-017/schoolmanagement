@@ -47,7 +47,7 @@ const studentSchema = new mongoose.Schema(
     },
     bloodGroup: {
       type: String,
-      enum: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", null, ''],
+      enum: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", null, ""],
     },
     photo: {
       type: String, // URL to photo
@@ -201,10 +201,44 @@ const studentSchema = new mongoose.Schema(
     },
 
     // Fees & Finance
+    feeOutlineId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "FeeOutline",
+    },
     feeStructure: {
       type: String,
       enum: ["regular", "scholarship", "concession", "free"],
       default: "regular",
+    },
+    concessionDetails: {
+      type: {
+        name: {
+          type: String,
+          enum: ["scholarship", "sibling_discount", "merit_based", "need_based", "staff_ward", "free", "other"],
+        },
+        discountType: {
+          type: String,
+          enum: ["percentage", "fixed"],
+        },
+        discountValue: {
+          type: Number,
+          min: 0,
+        },
+        discountAmount: {
+          type: Number,
+          min: 0,
+        },
+        approvedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        approvedDate: Date,
+        reason: String,
+        isActive: {
+          type: Boolean,
+          default: true,
+        },
+      },
     },
     feeDiscount: {
       type: Number,

@@ -17,6 +17,7 @@ import {
   ArrowDownTrayIcon,
   PencilIcon,
   TrashIcon,
+  InformationCircleIcon,
 } from "@heroicons/react/24/outline";
 import Layout from "../components/Layout";
 import TeacherCredentials from "../components/TeacherCredentials";
@@ -711,10 +712,11 @@ const UserManagement = () => {
                       <input
                         type="text"
                         name="search"
-                        placeholder="Search users..."
+                        placeholder="Search users by name, email, phone, or ID..."
                         value={filters.search}
                         onChange={handleFilterChange}
                         className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        title="Search across: First Name, Middle Name, Last Name, Email, Phone Number, Employee ID, Student ID"
                       />
                     </div>
 
@@ -753,6 +755,26 @@ const UserManagement = () => {
                       <option value="50">50 per page</option>
                     </select>
                   </div>
+
+                  {/* Search Results Indicator */}
+                  {filters.search && (
+                    <div className="mb-4 flex items-center justify-between text-sm text-gray-600">
+                      <div className="flex items-center space-x-2">
+                        <MagnifyingGlassIcon className="h-4 w-4 text-gray-500" />
+                        <span>
+                          Showing results for: <span className="font-medium text-gray-900">"{filters.search}"</span>
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setFilters((prev) => ({ ...prev, search: "" }));
+                        }}
+                        className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* User Table */}

@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import toast, { Toaster } from "react-hot-toast";
 import {
   DollarSign,
   CreditCard,
@@ -15,6 +16,10 @@ import {
   Clock,
   TrendingUp,
   FileText,
+  Edit3,
+  Trash2,
+  Copy,
+  Settings,
 } from "lucide-react";
 import {
   BarChart,
@@ -33,10 +38,67 @@ import {
 } from "recharts";
 import Layout from "../components/Layout";
 import { cn } from "../utils/cn";
+import { appConfig } from "../config/environment";
 
 const FeeManagement = () => {
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("outlines");
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Fee Outline Management
+  const [feeOutlines, setFeeOutlines] = useState([]);
+  const [classes, setClasses] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [classesLoading, setClassesLoading] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingOutline, setEditingOutline] = useState(null);
+
+  // Form states
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    classId: "",
+    academicYear: "2024-25",
+    totalAmount: 0,
+    components: [],
+    installments: [],
+    concessionTypes: [],
+    lateFeeStructure: {
+      enabled: false,
+      gracePeriodinDays: 0,
+      feeType: "fixed_per_day",
+      amount: 0,
+      maxAmount: 0,
+    },
+    isDefault: false,
+  });
+
+  // Available fee components
+  const feeComponents = [
+    "tuition",
+    "admission",
+    "library",
+    "laboratory",
+    "sports",
+    "transport",
+    "examination",
+    "development",
+    "maintenance",
+    "uniform",
+    "books",
+    "miscellaneous",
+  ];
+
+  // Available concession types
+  const concessionOptions = [
+    "scholarship",
+    "sibling_discount",
+    "merit_based",
+    "need_based",
+    "staff_ward",
+    "free",
+    "other",
+  ];
 
   // Sample data
   const feeStats = [
@@ -134,7 +196,184 @@ const FeeManagement = () => {
     },
   ];
 
+  // API Functions
+  const fetchFeeOutlines = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${appConfig.API_BASE_URL}/fee-outlines`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setFeeOutlines(data.data);
+      } else {
+        toast.error("Failed to fetch fee outlines");
+      }
+    } catch (error) {
+      console.error("Error fetching fee outlines:", error);
+      toast.error("Error fetching fee outlines");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchClasses = async () => {
+    setClassesLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${appConfig.API_BASE_URL}/classes`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setClasses(data.classes || data.data || []);
+      } else {
+        toast.error("Failed to fetch classes");
+      }
+    } catch (error) {
+      console.error("Error fetching classes:", error);
+      toast.error("Error fetching classes");
+    } finally {
+      setClassesLoading(false);
+    }
+  };
+
+  const handleCreateOutline = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${appConfig.API_BASE_URL}/fee-outlines`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success("Fee outline created successfully");
+        setShowCreateModal(false);
+        resetForm();
+        fetchFeeOutlines();
+      } else {
+        toast.error(data.message || "Failed to create fee outline");
+      }
+    } catch (error) {
+      console.error("Error creating fee outline:", error);
+      toast.error("Error creating fee outline");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateOutline = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${appConfig.API_BASE_URL}/fee-outlines/${editingOutline._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success("Fee outline updated successfully");
+        setShowEditModal(false);
+        resetForm();
+        fetchFeeOutlines();
+      } else {
+        toast.error(data.message || "Failed to update fee outline");
+      }
+    } catch (error) {
+      console.error("Error updating fee outline:", error);
+      toast.error("Error updating fee outline");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteOutline = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this fee outline?")) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${appConfig.API_BASE_URL}/fee-outlines/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success("Fee outline deleted successfully");
+        fetchFeeOutlines();
+      } else {
+        toast.error(data.message || "Failed to delete fee outline");
+      }
+    } catch (error) {
+      console.error("Error deleting fee outline:", error);
+      toast.error("Error deleting fee outline");
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      description: "",
+      classId: "",
+      academicYear: "2024-25",
+      totalAmount: 0,
+      components: [],
+      installments: [],
+      concessionTypes: [],
+      lateFeeStructure: {
+        enabled: false,
+        gracePeriodinDays: 0,
+        feeType: "fixed_per_day",
+        amount: 0,
+        maxAmount: 0,
+      },
+      isDefault: false,
+    });
+    setEditingOutline(null);
+  };
+
+  const handleEdit = (outline) => {
+    setEditingOutline(outline);
+    setFormData({
+      name: outline.name,
+      description: outline.description,
+      classId: outline.classId._id,
+      academicYear: outline.academicYear,
+      totalAmount: outline.totalAmount,
+      components: outline.components,
+      installments: outline.installments,
+      concessionTypes: outline.concessionTypes,
+      lateFeeStructure: outline.lateFeeStructure,
+      isDefault: outline.isDefault,
+    });
+    setShowEditModal(true);
+  };
+
+  useEffect(() => {
+    fetchFeeOutlines();
+    fetchClasses();
+  }, []);
+
   const tabConfig = [
+    { id: "outlines", name: "Fee Outlines", icon: Settings },
     { id: "overview", name: "Overview", icon: TrendingUp },
     { id: "payments", name: "Payments", icon: CreditCard },
     { id: "reports", name: "Reports", icon: FileText },
@@ -174,7 +413,10 @@ const FeeManagement = () => {
       <div className="max-w-7xl mx-auto p-6 bg-gray-50 min-h-screen">
         <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
           {/* Header */}
-          <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-lg p-8 flex flex-col lg:flex-row lg:items-center lg:justify-between">
+          <motion.div
+            variants={itemVariants}
+            className="bg-white rounded-2xl shadow-lg p-8 flex flex-col lg:flex-row lg:items-center lg:justify-between"
+          >
             <div>
               <h1 className="text-4xl font-bold text-gray-900 mb-4">Fee Management</h1>
               <p className="text-xl text-gray-600 mb-2">Monitor payments, track fees, and manage financial records</p>
@@ -276,6 +518,133 @@ const FeeManagement = () => {
 
             {/* Tab Content */}
             <div className="p-6">
+              {activeTab === "outlines" && (
+                <div className="space-y-6">
+                  {/* Header with Create Button */}
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">Fee Outlines</h3>
+                      <p className="text-gray-600">Create and manage fee structures for different classes</p>
+                    </div>
+                    <button
+                      onClick={() => setShowCreateModal(true)}
+                      className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Fee Outline
+                    </button>
+                  </div>
+
+                  {/* Fee Outlines Table */}
+                  <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Name
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Class
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Academic Year
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Total Amount
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Installments
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Status
+                            </th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {loading ? (
+                            <tr>
+                              <td colSpan="7" className="px-6 py-4 text-center">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                              </td>
+                            </tr>
+                          ) : feeOutlines.length === 0 ? (
+                            <tr>
+                              <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
+                                No fee outlines found. Create your first fee outline to get started.
+                              </td>
+                            </tr>
+                          ) : (
+                            feeOutlines.map((outline) => (
+                              <tr key={outline._id} className="hover:bg-gray-50">
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="flex items-center">
+                                    <div>
+                                      <div className="text-sm font-medium text-gray-900">{outline.name}</div>
+                                      {outline.description && (
+                                        <div className="text-sm text-gray-500">{outline.description}</div>
+                                      )}
+                                    </div>
+                                    {outline.isDefault && (
+                                      <span className="ml-2 inline-flex px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                                        Default
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {outline.classId?.name || "N/A"}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {outline.academicYear}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                  ₹{outline.totalAmount.toLocaleString()}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {outline.installments.length} installments
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <span
+                                    className={cn(
+                                      "inline-flex px-2 py-1 text-xs font-semibold rounded-full",
+                                      outline.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                                    )}
+                                  >
+                                    {outline.isActive ? "Active" : "Inactive"}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                  <div className="flex items-center justify-end space-x-2">
+                                    <button
+                                      onClick={() => handleEdit(outline)}
+                                      className="text-blue-600 hover:text-blue-900"
+                                      title="Edit"
+                                    >
+                                      <Edit3 className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteOutline(outline._id)}
+                                      className="text-red-600 hover:text-red-900"
+                                      title="Delete"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {activeTab === "overview" && (
                 <div className="space-y-8">
                   {/* Charts Section */}
@@ -452,6 +821,510 @@ const FeeManagement = () => {
           </motion.div>
         </motion.div>
       </div>
+
+      {/* Create Fee Outline Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+          <div className="relative p-8 border w-4/5 max-w-4xl shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-semibold text-gray-900">Create Fee Outline</h3>
+              <button
+                onClick={() => {
+                  setShowCreateModal(false);
+                  resetForm();
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateOutline} className="space-y-6">
+              {/* Basic Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Name *</label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Class *</label>
+                  <select
+                    value={formData.classId}
+                    onChange={(e) => setFormData({ ...formData, classId: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  >
+                    <option value="">Select Class</option>
+                    {classesLoading ? (
+                      <option value="" disabled>
+                        Loading classes...
+                      </option>
+                    ) : classes && classes.length > 0 ? (
+                      classes.map((cls) => (
+                        <option key={cls._id} value={cls._id}>
+                          {cls.name}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="" disabled>
+                        No classes available
+                      </option>
+                    )}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Academic Year *</label>
+                  <input
+                    type="text"
+                    value={formData.academicYear}
+                    onChange={(e) => setFormData({ ...formData, academicYear: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Total Amount (₹) *</label>
+                  <input
+                    type="number"
+                    value={formData.totalAmount}
+                    onChange={(e) => setFormData({ ...formData, totalAmount: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                    min="0"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows="3"
+                />
+              </div>
+
+              {/* Fee Components */}
+              <div>
+                <h4 className="text-lg font-medium text-gray-900 mb-4">Fee Components</h4>
+                <div className="space-y-3">
+                  {feeComponents.map((component) => (
+                    <div key={component} className="flex items-center space-x-4">
+                      <div className="flex-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          {component.charAt(0).toUpperCase() + component.slice(1).replace("_", " ")}
+                        </label>
+                        <input
+                          type="number"
+                          placeholder="Amount"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          onChange={(e) => {
+                            const amount = parseFloat(e.target.value) || 0;
+                            const existingIndex = formData.components.findIndex((c) => c.name === component);
+                            const newComponents = [...formData.components];
+
+                            if (existingIndex >= 0) {
+                              newComponents[existingIndex] = { ...newComponents[existingIndex], amount };
+                            } else {
+                              newComponents.push({ name: component, amount, isOptional: false, description: "" });
+                            }
+
+                            setFormData({ ...formData, components: newComponents });
+                          }}
+                        />
+                      </div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id={`optional-${component}`}
+                          onChange={(e) => {
+                            const existingIndex = formData.components.findIndex((c) => c.name === component);
+                            const newComponents = [...formData.components];
+
+                            if (existingIndex >= 0) {
+                              newComponents[existingIndex] = {
+                                ...newComponents[existingIndex],
+                                isOptional: e.target.checked,
+                              };
+                            }
+
+                            setFormData({ ...formData, components: newComponents });
+                          }}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <label htmlFor={`optional-${component}`} className="ml-2 text-sm text-gray-700">
+                          Optional
+                        </label>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Installments */}
+              <div>
+                <h4 className="text-lg font-medium text-gray-900 mb-4">Installments</h4>
+                <div className="space-y-3">
+                  {[1, 2, 3, 4].map((num) => (
+                    <div key={num} className="flex items-center space-x-4">
+                      <div className="w-20">
+                        <label className="block text-sm font-medium text-gray-700">Installment {num}</label>
+                      </div>
+                      <div className="flex-1">
+                        <input
+                          type="number"
+                          placeholder="Amount"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          onChange={(e) => {
+                            const amount = parseFloat(e.target.value) || 0;
+                            const existingIndex = formData.installments.findIndex((i) => i.installmentNumber === num);
+                            const newInstallments = [...formData.installments];
+
+                            if (existingIndex >= 0) {
+                              newInstallments[existingIndex] = { ...newInstallments[existingIndex], amount };
+                            } else {
+                              newInstallments.push({
+                                installmentNumber: num,
+                                amount,
+                                dueDate: new Date().toISOString().split("T")[0],
+                                description: `Installment ${num}`,
+                              });
+                            }
+
+                            setFormData({ ...formData, installments: newInstallments });
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <input
+                          type="date"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          onChange={(e) => {
+                            const existingIndex = formData.installments.findIndex((i) => i.installmentNumber === num);
+                            const newInstallments = [...formData.installments];
+
+                            if (existingIndex >= 0) {
+                              newInstallments[existingIndex] = {
+                                ...newInstallments[existingIndex],
+                                dueDate: e.target.value,
+                              };
+                            }
+
+                            setFormData({ ...formData, installments: newInstallments });
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Concession Types */}
+              <div>
+                <h4 className="text-lg font-medium text-gray-900 mb-4">Concession Types</h4>
+                <div className="space-y-3">
+                  {concessionOptions.map((concession) => (
+                    <div key={concession} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h5 className="font-medium text-gray-900">
+                          {concession.charAt(0).toUpperCase() + concession.slice(1).replace("_", " ")}
+                        </h5>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newConcession = {
+                              name: concession,
+                              discountType: "percentage",
+                              discountValue: 0,
+                              maxAmount: 0,
+                              description: "",
+                              eligibilityCriteria: "",
+                            };
+                            setFormData({
+                              ...formData,
+                              concessionTypes: [...formData.concessionTypes, newConcession],
+                            });
+                          }}
+                          className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Late Fee Structure */}
+              <div>
+                <h4 className="text-lg font-medium text-gray-900 mb-4">Late Fee Structure</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={formData.lateFeeStructure.enabled}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          lateFeeStructure: { ...formData.lateFeeStructure, enabled: e.target.checked },
+                        })
+                      }
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label className="ml-2 text-sm text-gray-700">Enable Late Fees</label>
+                  </div>
+                  {formData.lateFeeStructure.enabled && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Grace Period (Days)</label>
+                        <input
+                          type="number"
+                          value={formData.lateFeeStructure.gracePeriodinDays}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              lateFeeStructure: {
+                                ...formData.lateFeeStructure,
+                                gracePeriodinDays: parseInt(e.target.value) || 0,
+                              },
+                            })
+                          }
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          min="0"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Fee Type</label>
+                        <select
+                          value={formData.lateFeeStructure.feeType}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              lateFeeStructure: { ...formData.lateFeeStructure, feeType: e.target.value },
+                            })
+                          }
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="percentage">Percentage</option>
+                          <option value="fixed_per_day">Fixed per Day</option>
+                          <option value="fixed_total">Fixed Total</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Amount</label>
+                        <input
+                          type="number"
+                          value={formData.lateFeeStructure.amount}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              lateFeeStructure: {
+                                ...formData.lateFeeStructure,
+                                amount: parseFloat(e.target.value) || 0,
+                              },
+                            })
+                          }
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          min="0"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Maximum Amount</label>
+                        <input
+                          type="number"
+                          value={formData.lateFeeStructure.maxAmount}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              lateFeeStructure: {
+                                ...formData.lateFeeStructure,
+                                maxAmount: parseFloat(e.target.value) || 0,
+                              },
+                            })
+                          }
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          min="0"
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Default Setting */}
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={formData.isDefault}
+                  onChange={(e) => setFormData({ ...formData, isDefault: e.target.checked })}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label className="ml-2 text-sm text-gray-700">Set as Default for this Class</label>
+              </div>
+
+              {/* Submit Button */}
+              <div className="flex justify-end space-x-3 pt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    resetForm();
+                  }}
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {loading ? "Creating..." : "Create Fee Outline"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Fee Outline Modal */}
+      {showEditModal && editingOutline && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+          <div className="relative p-8 border w-4/5 max-w-4xl shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-semibold text-gray-900">Edit Fee Outline</h3>
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  resetForm();
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateOutline} className="space-y-6">
+              {/* Same form fields as create modal */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Name *</label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Class *</label>
+                  <select
+                    value={formData.classId}
+                    onChange={(e) => setFormData({ ...formData, classId: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  >
+                    <option value="">Select Class</option>
+                    {classesLoading ? (
+                      <option value="" disabled>
+                        Loading classes...
+                      </option>
+                    ) : classes && classes.length > 0 ? (
+                      classes.map((cls) => (
+                        <option key={cls._id} value={cls._id}>
+                          {cls.name}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="" disabled>
+                        No classes available
+                      </option>
+                    )}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Academic Year *</label>
+                  <input
+                    type="text"
+                    value={formData.academicYear}
+                    onChange={(e) => setFormData({ ...formData, academicYear: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Total Amount (₹) *</label>
+                  <input
+                    type="number"
+                    value={formData.totalAmount}
+                    onChange={(e) => setFormData({ ...formData, totalAmount: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                    min="0"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows="3"
+                />
+              </div>
+
+              {/* Submit Button */}
+              <div className="flex justify-end space-x-3 pt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    resetForm();
+                  }}
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {loading ? "Updating..." : "Update Fee Outline"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <Toaster position="top-right" />
     </Layout>
   );
 };

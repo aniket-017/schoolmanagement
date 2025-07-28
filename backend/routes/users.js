@@ -59,9 +59,15 @@ router.get("/", auth, adminOrPrincipal, async (req, res) => {
     if (status) filter.status = status;
     if (search) {
       filter.$or = [
+        { firstName: { $regex: search, $options: "i" } },
+        { middleName: { $regex: search, $options: "i" } },
+        { lastName: { $regex: search, $options: "i" } },
         { name: { $regex: search, $options: "i" } },
+        { fullName: { $regex: search, $options: "i" } },
         { email: { $regex: search, $options: "i" } },
+        { phone: { $regex: search, $options: "i" } },
         { employeeId: { $regex: search, $options: "i" } },
+        { studentId: { $regex: search, $options: "i" } },
       ];
     }
 

@@ -29,7 +29,7 @@ app.use(express.urlencoded({ extended: true }));
 // Add caching headers for static assets
 app.use((req, res, next) => {
   if (req.path.match(/\.(css|js|png|jpg|jpeg|gif|ico|svg)$/)) {
-    res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1 year
+    res.setHeader("Cache-Control", "public, max-age=31536000"); // 1 year
   }
   next();
 });
@@ -59,6 +59,7 @@ app.use("/api/transports", require("./routes/transports"));
 app.use("/api/communications", require("./routes/communications"));
 app.use("/api/assignments-detailed", require("./routes/assignmentsroutes"));
 app.use("/api/fees-detailed", require("./routes/feesroutes"));
+app.use("/api/fee-outlines", require("./routes/feeOutlines"));
 app.use("/api/annual-calendar", require("./routes/annualCalendar"));
 
 // Health check route - must be before production static handling

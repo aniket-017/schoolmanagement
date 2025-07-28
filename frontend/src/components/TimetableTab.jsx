@@ -86,7 +86,7 @@ const TimetableTab = ({ classId, classData }) => {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
-      
+
       // Debug: Log the token and user info
       console.log("Token exists:", !!token);
       const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -211,12 +211,12 @@ const TimetableTab = ({ classId, classData }) => {
     try {
       const { day, period, subjectId, teacherId, room, type, applyAllDays } = periodData;
 
-      // Check for conflicts
+      // Check for conflicts (but don't block the addition)
       const conflicts = await checkConflicts(day, period, teacherId, room);
       if (conflicts.length > 0) {
         setConflicts(conflicts);
-        toast.error("Conflicts detected! Please resolve them.");
-        return;
+        toast.warning("Conflicts detected! You can continue anyway or resolve them.");
+        // Don't return - allow the user to proceed
       }
 
       const newPeriod = {
@@ -309,6 +309,7 @@ const TimetableTab = ({ classId, classData }) => {
           academicYear,
           semester: "1",
           outlineId: selectedOutlineId || null,
+          overrideConflicts: true, // Always allow override for now
         }),
       });
 
@@ -381,15 +382,37 @@ const TimetableTab = ({ classId, classData }) => {
   const getTeacherName = (teacherId) => {
     // First check in the original teachers array
     const teacher = teachers.find((t) => t._id === teacherId);
-    if (teacher) return teacher.name;
+    if (teacher) {
+      return (
+        teacher.name ||
+        teacher.fullName ||
+        [teacher.firstName, teacher.middleName, teacher.lastName].filter(Boolean).join(" ") ||
+        teacher.email
+      );
+    }
 
     // Then check in the available teachers array (for recently added periods)
     const availableTeacher = availableTeachers.find((t) => t._id === teacherId);
-    if (availableTeacher) return availableTeacher.name;
+    if (availableTeacher) {
+      return (
+        availableTeacher.name ||
+        availableTeacher.fullName ||
+        [availableTeacher.firstName, availableTeacher.middleName, availableTeacher.lastName]
+          .filter(Boolean)
+          .join(" ") ||
+        availableTeacher.email
+      );
+    }
 
     // If teacherId is an object with name property (populated data)
-    if (teacherId && typeof teacherId === "object" && teacherId.name) {
-      return teacherId.name;
+    if (teacherId && typeof teacherId === "object") {
+      return (
+        teacherId.name ||
+        teacherId.fullName ||
+        [teacherId.firstName, teacherId.middleName, teacherId.lastName].filter(Boolean).join(" ") ||
+        teacherId.email ||
+        "Unknown"
+      );
     }
 
     return "Unknown";
@@ -607,6 +630,7 @@ const TimetableTab = ({ classId, classData }) => {
               setAvailableTeachers([]);
             }}
             conflicts={conflicts}
+            setConflicts={setConflicts}
             availableTeachers={availableTeachers}
             loadingTeachers={loadingTeachers}
             onSubjectChange={fetchAvailableTeachers}
@@ -678,6 +702,7 @@ const AddPeriodModal = ({
   onAdd,
   onClose,
   conflicts,
+  setConflicts,
   availableTeachers,
   loadingTeachers,
   onSubjectChange,
@@ -750,11 +775,23 @@ const AddPeriodModal = ({
                 <AlertTriangle className="w-4 h-4 text-red-500" />
                 <span className="font-medium text-red-800">Conflicts Detected</span>
               </div>
-              <ul className="text-sm text-red-700 space-y-1">
+              <ul className="text-sm text-red-700 space-y-1 mb-3">
                 {conflicts.map((conflict, index) => (
                   <li key={index}>• {conflict.message}</li>
                 ))}
               </ul>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => {
+                    setConflicts([]);
+                    toast.info("Conflicts ignored. You can proceed with the lecture.");
+                  }}
+                  className="px-3 py-1 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors"
+                >
+                  Continue Anyway
+                </button>
+                <span className="text-xs text-red-600">Click to ignore conflicts and continue</span>
+              </div>
             </div>
           )}
 
@@ -903,8 +940,15 @@ const AddPeriodModal = ({
               >
                 Cancel
               </button>
-              <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                Add Period
+              <button
+                type="submit"
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  conflicts.length > 0
+                    ? "bg-orange-600 text-white hover:bg-orange-700"
+                    : "bg-blue-600 text-white hover:bg-blue-700"
+                }`}
+              >
+                {conflicts.length > 0 ? "Add Period Anyway" : "Add Period"}
               </button>
             </div>
           </form>

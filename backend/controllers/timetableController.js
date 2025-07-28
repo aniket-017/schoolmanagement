@@ -182,6 +182,20 @@ exports.getClassTimetable = async (req, res) => {
       Saturday: [],
     };
 
+    // Format teacher names in timetable data
+    timetables.forEach((timetable) => {
+      timetable.periods.forEach((period) => {
+        if (period.teacher) {
+          const nameParts = [period.teacher.firstName, period.teacher.middleName, period.teacher.lastName].filter(
+            Boolean
+          );
+          period.teacher.name =
+            nameParts.length > 0 ? nameParts.join(" ") : period.teacher.name || period.teacher.email;
+          period.teacher.fullName = period.teacher.name;
+        }
+      });
+    });
+
     timetables.forEach((timetable) => {
       if (weeklyTimetable[timetable.day]) {
         weeklyTimetable[timetable.day] = timetable.periods;
@@ -220,7 +234,7 @@ exports.createOrUpdateClassTimetable = async (req, res) => {
     console.log("Request params:", req.params);
 
     const { classId } = req.params;
-    const { weeklyTimetable, academicYear, semester, outlineId } = req.body;
+    const { weeklyTimetable, academicYear, semester, outlineId, overrideConflicts } = req.body;
 
     console.log("Received timetable save request:", {
       classId,
@@ -267,11 +281,15 @@ exports.createOrUpdateClassTimetable = async (req, res) => {
 
     if (allConflicts.length > 0) {
       console.log("Conflicts detected:", allConflicts);
-      return res.status(400).json({
-        success: false,
-        message: "Timetable conflicts detected",
-        conflicts: allConflicts,
-      });
+      if (!overrideConflicts) {
+        return res.status(400).json({
+          success: false,
+          message: "Timetable conflicts detected",
+          conflicts: allConflicts,
+        });
+      } else {
+        console.log("Conflicts detected but override requested - proceeding with save");
+      }
     } else {
       console.log("No conflicts detected - proceeding with save");
     }
@@ -410,11 +428,14 @@ exports.getTeacherTimetable = async (req, res) => {
       .sort({ day: 1, "periods.periodNumber": 1 });
 
     // Format teacher names in timetable data
-    timetables.forEach(timetable => {
-      timetable.periods.forEach(period => {
+    timetables.forEach((timetable) => {
+      timetable.periods.forEach((period) => {
         if (period.teacher) {
-          const nameParts = [period.teacher.firstName, period.teacher.middleName, period.teacher.lastName].filter(Boolean);
-          period.teacher.name = nameParts.length > 0 ? nameParts.join(" ") : period.teacher.name || period.teacher.email;
+          const nameParts = [period.teacher.firstName, period.teacher.middleName, period.teacher.lastName].filter(
+            Boolean
+          );
+          period.teacher.name =
+            nameParts.length > 0 ? nameParts.join(" ") : period.teacher.name || period.teacher.email;
           period.teacher.fullName = period.teacher.name;
         }
       });
