@@ -87,7 +87,7 @@ class ApiService {
       const response = await fetch(`${this.baseURL}/student-auth/login`, {
         method: "POST",
         headers: this.getAuthHeaders(),
-        body: JSON.stringify({ email: identifier, password }),
+        body: JSON.stringify({ mobileNumber: identifier, password }),
       });
       return this.handleResponse(response);
     },

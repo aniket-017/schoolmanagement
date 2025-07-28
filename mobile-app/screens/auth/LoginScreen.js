@@ -30,7 +30,7 @@ export default function LoginScreen({ navigation }) {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert("Error", "Please fill in all fields");
+      Alert.alert("Error", `Please fill in all fields (${userType === "student" ? "Mobile Number" : "Email"} and Password)`);
       return;
     }
 
@@ -118,23 +118,25 @@ export default function LoginScreen({ navigation }) {
                     </View>
                   </View>
 
-                  {/* Email Input */}
+                  {/* Email/Mobile Input */}
                   <View style={styles.inputContainer}>
-                    <Text style={styles.inputLabel}>Email Address</Text>
+                    <Text style={styles.inputLabel}>
+                      {userType === "student" ? "Mobile Number" : "Email Address"}
+                    </Text>
                     <View style={styles.inputWrapper}>
                       <Ionicons
-                        name="mail-outline"
+                        name={userType === "student" ? "call-outline" : "mail-outline"}
                         size={20}
                         color={theme.colors.textSecondary}
                         style={styles.inputIcon}
                       />
                       <TextInput
                         style={styles.input}
-                        placeholder="Enter your email"
+                        placeholder={userType === "student" ? "Enter your mobile number" : "Enter your email"}
                         placeholderTextColor={theme.colors.placeholder}
                         value={email}
                         onChangeText={setEmail}
-                        keyboardType="email-address"
+                        keyboardType={userType === "student" ? "phone-pad" : "email-address"}
                         autoCapitalize="none"
                         autoCorrect={false}
                       />

@@ -34,7 +34,7 @@ const StudentTeacherLogin = () => {
       title: "Student",
       icon: AcademicCapIcon,
       description: "Access your student portal",
-      placeholder: "Student ID or Email",
+      placeholder: "Mobile Number",
     },
     {
       id: "teacher",
@@ -63,7 +63,7 @@ const StudentTeacherLogin = () => {
     const newErrors = {};
 
     if (!loginData.identifier.trim()) {
-      newErrors.identifier = `${selectedRole === "student" ? "Student ID or Email" : "Email"} is required`;
+      newErrors.identifier = `${selectedRole === "student" ? "Mobile Number" : "Email"} is required`;
     }
 
     if (!loginData.password.trim()) {

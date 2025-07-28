@@ -13,18 +13,18 @@ const generateStudentToken = (id) => {
 // @access  Public
 const studentLogin = async (req, res) => {
   try {
-    const { email, password } = req.body;
-console.log(email,password)
+    const { mobileNumber, password } = req.body;
+console.log(mobileNumber,password)
     // Validate input
-    if (!email || !password) {
+    if (!mobileNumber || !password) {
       return res.status(400).json({
         success: false,
-        message: "Please provide email and password",
+        message: "Please provide mobile number and password",
       });
     }
 
-    // Find student by email
-    const student = await Student.findOne({ email })
+    // Find student by mobile number
+    const student = await Student.findOne({ mobileNumber })
       .populate("class", "name grade section")
       .select("+loginPassword");
 
@@ -81,6 +81,7 @@ console.log(email,password)
         id: student._id,
         name: student.fullName || student.name,
         email: student.email,
+        mobileNumber: student.mobileNumber,
         role: "student",
         studentId: student.studentId,
         rollNumber: student.rollNumber,

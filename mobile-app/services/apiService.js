@@ -64,7 +64,7 @@ export const apiService = {
       return response.data;
     },
     studentLogin: async (email, password) => {
-      const response = await api.post("/student-auth/login", { email, password });
+      const response = await api.post("/student-auth/login", { mobileNumber: email, password });
       if (response.data.token) {
         await AsyncStorage.setItem("token", response.data.token);
         await AsyncStorage.setItem("user", JSON.stringify(response.data.user));
