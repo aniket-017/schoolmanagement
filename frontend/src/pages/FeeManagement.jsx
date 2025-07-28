@@ -20,6 +20,7 @@ import {
   Trash2,
   Copy,
   Settings,
+  Percent,
 } from "lucide-react";
 import {
   BarChart,
@@ -41,64 +42,23 @@ import { cn } from "../utils/cn";
 import { appConfig } from "../config/environment";
 
 const FeeManagement = () => {
-  const [activeTab, setActiveTab] = useState("outlines");
+  const [activeTab, setActiveTab] = useState("slabs");
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Fee Outline Management
-  const [feeOutlines, setFeeOutlines] = useState([]);
-  const [classes, setClasses] = useState([]);
+  // Fee Slab Management
+  const [feeSlabs, setFeeSlabs] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [classesLoading, setClassesLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editingOutline, setEditingOutline] = useState(null);
+  const [editingSlab, setEditingSlab] = useState(null);
 
   // Form states
   const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    classId: "",
-    academicYear: "2024-25",
+    slabName: "",
     totalAmount: 0,
-    components: [],
-    installments: [],
-    concessionTypes: [],
-    lateFeeStructure: {
-      enabled: false,
-      gracePeriodinDays: 0,
-      feeType: "fixed_per_day",
-      amount: 0,
-      maxAmount: 0,
-    },
-    isDefault: false,
+    academicYear: "2024-25",
+    installments: [{ amount: 0, dueDate: "", description: "" }],
   });
-
-  // Available fee components
-  const feeComponents = [
-    "tuition",
-    "admission",
-    "library",
-    "laboratory",
-    "sports",
-    "transport",
-    "examination",
-    "development",
-    "maintenance",
-    "uniform",
-    "books",
-    "miscellaneous",
-  ];
-
-  // Available concession types
-  const concessionOptions = [
-    "scholarship",
-    "sibling_discount",
-    "merit_based",
-    "need_based",
-    "staff_ward",
-    "free",
-    "other",
-  ];
 
   // Sample data
   const feeStats = [
@@ -137,20 +97,19 @@ const FeeManagement = () => {
   ];
 
   const monthlyData = [
-    { month: "Jan", collected: 85000, pending: 15000 },
-    { month: "Feb", collected: 92000, pending: 12000 },
-    { month: "Mar", collected: 88000, pending: 18000 },
-    { month: "Apr", collected: 95000, pending: 10000 },
-    { month: "May", collected: 102000, pending: 8000 },
-    { month: "Jun", collected: 124850, pending: 28450 },
+    { month: "Jan", collected: 45000, pending: 12000, overdue: 5000 },
+    { month: "Feb", collected: 52000, pending: 15000, overdue: 3000 },
+    { month: "Mar", collected: 48000, pending: 18000, overdue: 7000 },
+    { month: "Apr", collected: 61000, pending: 22000, overdue: 4000 },
+    { month: "May", collected: 55000, pending: 25000, overdue: 6000 },
+    { month: "Jun", collected: 67000, pending: 28000, overdue: 2000 },
   ];
 
-  const feeBreakdown = [
-    { name: "Tuition", amount: 85000, color: "#3b82f6" },
-    { name: "Lab Fees", amount: 15000, color: "#10b981" },
-    { name: "Sports", amount: 12000, color: "#f59e0b" },
-    { name: "Library", amount: 8000, color: "#ef4444" },
-    { name: "Transport", amount: 22000, color: "#8b5cf6" },
+  const paymentMethods = [
+    { name: "Online", value: 45, color: "#3B82F6" },
+    { name: "Cash", value: 30, color: "#10B981" },
+    { name: "Card", value: 15, color: "#F59E0B" },
+    { name: "Cheque", value: 10, color: "#EF4444" },
   ];
 
   const recentPayments = [
@@ -197,55 +156,34 @@ const FeeManagement = () => {
   ];
 
   // API Functions
-  const fetchFeeOutlines = async () => {
+  const fetchFeeSlabs = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${appConfig.API_BASE_URL}/fee-outlines`, {
+      const response = await fetch(`${appConfig.API_BASE_URL}/fee-slabs`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
       if (data.success) {
-        setFeeOutlines(data.data);
+        setFeeSlabs(data.data);
       } else {
-        toast.error("Failed to fetch fee outlines");
+        toast.error("Failed to fetch fee slabs");
       }
     } catch (error) {
-      console.error("Error fetching fee outlines:", error);
-      toast.error("Error fetching fee outlines");
+      console.error("Error fetching fee slabs:", error);
+      toast.error("Error fetching fee slabs");
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchClasses = async () => {
-    setClassesLoading(true);
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`${appConfig.API_BASE_URL}/classes`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-      if (data.success) {
-        setClasses(data.classes || data.data || []);
-      } else {
-        toast.error("Failed to fetch classes");
-      }
-    } catch (error) {
-      console.error("Error fetching classes:", error);
-      toast.error("Error fetching classes");
-    } finally {
-      setClassesLoading(false);
-    }
-  };
-
-  const handleCreateOutline = async (e) => {
+  const handleCreateSlab = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${appConfig.API_BASE_URL}/fee-outlines`, {
+      const response = await fetch(`${appConfig.API_BASE_URL}/fee-slabs`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -256,28 +194,28 @@ const FeeManagement = () => {
 
       const data = await response.json();
       if (data.success) {
-        toast.success("Fee outline created successfully");
+        toast.success("Fee slab created successfully");
         setShowCreateModal(false);
         resetForm();
-        fetchFeeOutlines();
+        fetchFeeSlabs();
       } else {
-        toast.error(data.message || "Failed to create fee outline");
+        toast.error(data.message || "Failed to create fee slab");
       }
     } catch (error) {
-      console.error("Error creating fee outline:", error);
-      toast.error("Error creating fee outline");
+      console.error("Error creating fee slab:", error);
+      toast.error("Error creating fee slab");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleUpdateOutline = async (e) => {
+  const handleUpdateSlab = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${appConfig.API_BASE_URL}/fee-outlines/${editingOutline._id}`, {
+      const response = await fetch(`${appConfig.API_BASE_URL}/fee-slabs/${editingSlab._id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -288,102 +226,103 @@ const FeeManagement = () => {
 
       const data = await response.json();
       if (data.success) {
-        toast.success("Fee outline updated successfully");
+        toast.success("Fee slab updated successfully");
         setShowEditModal(false);
         resetForm();
-        fetchFeeOutlines();
+        fetchFeeSlabs();
       } else {
-        toast.error(data.message || "Failed to update fee outline");
+        toast.error(data.message || "Failed to update fee slab");
       }
     } catch (error) {
-      console.error("Error updating fee outline:", error);
-      toast.error("Error updating fee outline");
+      console.error("Error updating fee slab:", error);
+      toast.error("Error updating fee slab");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteOutline = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this fee outline?")) {
+  const handleDeleteSlab = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this fee slab?")) {
       return;
     }
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${appConfig.API_BASE_URL}/fee-outlines/${id}`, {
+      const response = await fetch(`${appConfig.API_BASE_URL}/fee-slabs/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
 
       const data = await response.json();
       if (data.success) {
-        toast.success("Fee outline deleted successfully");
-        fetchFeeOutlines();
+        toast.success("Fee slab deleted successfully");
+        fetchFeeSlabs();
       } else {
-        toast.error(data.message || "Failed to delete fee outline");
+        toast.error(data.message || "Failed to delete fee slab");
       }
     } catch (error) {
-      console.error("Error deleting fee outline:", error);
-      toast.error("Error deleting fee outline");
+      console.error("Error deleting fee slab:", error);
+      toast.error("Error deleting fee slab");
     }
   };
 
   const resetForm = () => {
     setFormData({
-      name: "",
-      description: "",
-      classId: "",
-      academicYear: "2024-25",
+      slabName: "",
       totalAmount: 0,
-      components: [],
-      installments: [],
-      concessionTypes: [],
-      lateFeeStructure: {
-        enabled: false,
-        gracePeriodinDays: 0,
-        feeType: "fixed_per_day",
-        amount: 0,
-        maxAmount: 0,
-      },
-      isDefault: false,
+      academicYear: "2024-25",
+      installments: [{ amount: 0, dueDate: "", description: "" }],
     });
-    setEditingOutline(null);
+    setEditingSlab(null);
   };
 
-  const handleEdit = (outline) => {
-    setEditingOutline(outline);
+  const handleEdit = (slab) => {
+    setEditingSlab(slab);
     setFormData({
-      name: outline.name,
-      description: outline.description,
-      classId: outline.classId._id,
-      academicYear: outline.academicYear,
-      totalAmount: outline.totalAmount,
-      components: outline.components,
-      installments: outline.installments,
-      concessionTypes: outline.concessionTypes,
-      lateFeeStructure: outline.lateFeeStructure,
-      isDefault: outline.isDefault,
+      slabName: slab.slabName,
+      totalAmount: slab.totalAmount,
+      academicYear: slab.academicYear,
+      installments: slab.installments.map((inst) => ({
+        amount: inst.amount,
+        dueDate: inst.dueDate.split("T")[0], // Format date for input
+        description: inst.description,
+      })),
     });
     setShowEditModal(true);
   };
 
-  useEffect(() => {
-    fetchFeeOutlines();
-    fetchClasses();
-  }, []);
+  const addInstallment = () => {
+    setFormData({
+      ...formData,
+      installments: [...formData.installments, { amount: 0, dueDate: "", description: "" }],
+    });
+  };
 
-  const tabConfig = [
-    { id: "outlines", name: "Fee Outlines", icon: Settings },
-    { id: "overview", name: "Overview", icon: TrendingUp },
-    { id: "payments", name: "Payments", icon: CreditCard },
-    { id: "reports", name: "Reports", icon: FileText },
-  ];
+  const removeInstallment = (index) => {
+    if (formData.installments.length > 1) {
+      const newInstallments = formData.installments.filter((_, i) => i !== index);
+      setFormData({ ...formData, installments: newInstallments });
+    }
+  };
+
+  const updateInstallment = (index, field, value) => {
+    const newInstallments = [...formData.installments];
+    newInstallments[index] = { ...newInstallments[index], [field]: value };
+    setFormData({ ...formData, installments: newInstallments });
+  };
+
+  const calculatePercentage = (amount) => {
+    if (formData.totalAmount === 0) return 0;
+    return ((amount / formData.totalAmount) * 100).toFixed(1);
+  };
 
   const filteredPayments = recentPayments.filter(
     (payment) =>
       payment.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       payment.studentId.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const filteredFeeSlabs = feeSlabs.filter((slab) => slab.slabName.toLowerCase().includes(searchTerm.toLowerCase()));
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -395,163 +334,109 @@ const FeeManagement = () => {
     },
   };
 
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        type: "spring",
-        stiffness: 300,
-        damping: 24,
-      },
-    },
-  };
+  const tabConfig = [
+    { id: "slabs", name: "Fee Slabs", icon: Settings },
+    { id: "overview", name: "Overview", icon: TrendingUp },
+    { id: "payments", name: "Payments", icon: CreditCard },
+    { id: "reports", name: "Reports", icon: FileText },
+  ];
+
+  useEffect(() => {
+    if (activeTab === "slabs") {
+      fetchFeeSlabs();
+    }
+  }, [activeTab]);
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto p-6 bg-gray-50 min-h-screen">
-        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
-          {/* Header */}
-          <motion.div
-            variants={itemVariants}
-            className="bg-white rounded-2xl shadow-lg p-8 flex flex-col lg:flex-row lg:items-center lg:justify-between"
-          >
-            <div>
-              <h1 className="text-4xl font-bold text-gray-900 mb-4">Fee Management</h1>
-              <p className="text-xl text-gray-600 mb-2">Monitor payments, track fees, and manage financial records</p>
-            </div>
-            <div className="mt-6 lg:mt-0 flex space-x-3">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="flex items-center px-5 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl font-medium"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Record Payment
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="flex items-center px-5 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all duration-200 shadow-lg hover:shadow-xl font-medium"
-              >
-                <Download className="w-5 h-5 mr-2" />
-                Export Report
-              </motion.button>
-            </div>
-          </motion.div>
+      <div className="min-h-screen bg-gray-50">
+        <Toaster position="top-right" />
 
-          {/* Statistics Cards */}
-          <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {feeStats.map((stat, index) => {
-              const Icon = stat.icon;
-              return (
-                <motion.div
-                  key={stat.name}
-                  whileHover={{ y: -4, scale: 1.02 }}
-                  className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 border border-gray-100"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div
-                      className={cn(
-                        "p-3 rounded-xl",
-                        stat.color === "primary" && "bg-blue-100",
-                        stat.color === "success" && "bg-green-100",
-                        stat.color === "warning" && "bg-orange-100",
-                        stat.color === "error" && "bg-red-100"
-                      )}
-                    >
-                      <Icon
-                        className={cn(
-                          "w-6 h-6",
-                          stat.color === "primary" && "text-blue-600",
-                          stat.color === "success" && "text-green-600",
-                          stat.color === "warning" && "text-orange-600",
-                          stat.color === "error" && "text-red-600"
-                        )}
-                      />
-                    </div>
-                    <div
-                      className={cn(
-                        "flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium",
-                        stat.changeType === "increase" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                      )}
-                    >
-                      <TrendingUp className={cn("w-3 h-3", stat.changeType === "decrease" && "rotate-180")} />
-                      <span>{stat.change}</span>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</p>
-                    <p className="text-sm font-medium text-gray-600">{stat.name}</p>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </motion.div>
+        {/* Header */}
+        <div className="bg-white shadow-sm border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center py-6">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Fee Management</h1>
+                <p className="text-gray-600">Manage fee slabs, payments, and financial reports</p>
+              </div>
+              <div className="flex space-x-3">
+                <button className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                  <Download className="w-4 h-4 mr-2" />
+                  Export Report
+                </button>
+                {activeTab === "slabs" && (
+                  <button
+                    onClick={() => setShowCreateModal(true)}
+                    className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Fee Slab
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
 
-          {/* Tabs and Content */}
-          <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-lg border border-gray-100">
-            {/* Tab Navigation */}
-            <div className="border-b border-gray-100 p-6 pb-0">
-              <nav className="flex space-x-1">
-                {tabConfig.map((tab) => {
-                  const Icon = tab.icon;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={cn(
-                        "flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200",
-                        activeTab === tab.id
-                          ? "bg-blue-50 text-blue-700 border border-blue-200"
-                          : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                      )}
-                    >
-                      <Icon className="w-4 h-4 mr-2" />
-                      {tab.name}
-                    </button>
-                  );
-                })}
+        {/* Main Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Tabs */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+            <div className="border-b border-gray-200">
+              <nav className="flex space-x-8 px-6">
+                {tabConfig.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={cn(
+                      "flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors",
+                      activeTab === tab.id
+                        ? "border-blue-500 text-blue-600"
+                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    )}
+                  >
+                    <tab.icon className="w-4 h-4 mr-2" />
+                    {tab.name}
+                  </button>
+                ))}
               </nav>
             </div>
 
             {/* Tab Content */}
             <div className="p-6">
-              {activeTab === "outlines" && (
+              {activeTab === "slabs" && (
                 <div className="space-y-6">
-                  {/* Header with Create Button */}
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">Fee Outlines</h3>
-                      <p className="text-gray-600">Create and manage fee structures for different classes</p>
+                  {/* Search and Filter */}
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex-1">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <input
+                          type="text"
+                          placeholder="Search fee slabs..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
                     </div>
-                    <button
-                      onClick={() => setShowCreateModal(true)}
-                      className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Create Fee Outline
-                    </button>
                   </div>
 
-                  {/* Fee Outlines Table */}
+                  {/* Fee Slabs Table */}
                   <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                           <tr>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Name
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Class
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Academic Year
+                              Slab Name
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Total Amount
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Academic Year
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Installments
@@ -567,73 +452,54 @@ const FeeManagement = () => {
                         <tbody className="bg-white divide-y divide-gray-200">
                           {loading ? (
                             <tr>
-                              <td colSpan="7" className="px-6 py-4 text-center">
+                              <td colSpan="6" className="px-6 py-4 text-center">
                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                               </td>
                             </tr>
-                          ) : feeOutlines.length === 0 ? (
+                          ) : filteredFeeSlabs.length === 0 ? (
                             <tr>
-                              <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
-                                No fee outlines found. Create your first fee outline to get started.
+                              <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                                No fee slabs found. Create your first fee slab to get started.
                               </td>
                             </tr>
                           ) : (
-                            feeOutlines.map((outline) => (
-                              <tr key={outline._id} className="hover:bg-gray-50">
+                            filteredFeeSlabs.map((slab) => (
+                              <tr key={slab._id} className="hover:bg-gray-50">
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="flex items-center">
-                                    <div>
-                                      <div className="text-sm font-medium text-gray-900">{outline.name}</div>
-                                      {outline.description && (
-                                        <div className="text-sm text-gray-500">{outline.description}</div>
-                                      )}
-                                    </div>
-                                    {outline.isDefault && (
-                                      <span className="ml-2 inline-flex px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-                                        Default
-                                      </span>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  {outline.classId?.name || "N/A"}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  {outline.academicYear}
+                                  <div className="text-sm font-medium text-gray-900">{slab.slabName}</div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                  ₹{outline.totalAmount.toLocaleString()}
+                                  ₹{slab.totalAmount.toLocaleString()}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  {outline.installments.length} installments
+                                  {slab.academicYear}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {slab.installments.length} installments
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <span
                                     className={cn(
-                                      "inline-flex px-2 py-1 text-xs font-semibold rounded-full",
-                                      outline.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                                      "inline-flex px-2 py-1 text-xs font-medium rounded-full",
+                                      slab.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
                                     )}
                                   >
-                                    {outline.isActive ? "Active" : "Inactive"}
+                                    {slab.isActive ? "Active" : "Inactive"}
                                   </span>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                  <div className="flex items-center justify-end space-x-2">
-                                    <button
-                                      onClick={() => handleEdit(outline)}
-                                      className="text-blue-600 hover:text-blue-900"
-                                      title="Edit"
-                                    >
-                                      <Edit3 className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                      onClick={() => handleDeleteOutline(outline._id)}
-                                      className="text-red-600 hover:text-red-900"
-                                      title="Delete"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </div>
+                                  <button
+                                    onClick={() => handleEdit(slab)}
+                                    className="text-blue-600 hover:text-blue-900 mr-3"
+                                  >
+                                    <Edit3 className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteSlab(slab._id)}
+                                    className="text-red-600 hover:text-red-900"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
                                 </td>
                               </tr>
                             ))
@@ -646,685 +512,543 @@ const FeeManagement = () => {
               )}
 
               {activeTab === "overview" && (
-                <div className="space-y-8">
-                  {/* Charts Section */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Monthly Collection */}
-                    <div>
+                <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
+                  {/* Stats Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {feeStats.map((stat, index) => (
+                      <motion.div
+                        key={stat.name}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-gray-600">{stat.name}</p>
+                            <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
+                            <div className="flex items-center mt-2">
+                              <span
+                                className={cn(
+                                  "text-sm font-medium",
+                                  stat.changeType === "increase" ? "text-green-600" : "text-red-600"
+                                )}
+                              >
+                                {stat.change}
+                              </span>
+                              <span className="text-sm text-gray-500 ml-1">from last month</span>
+                            </div>
+                          </div>
+                          <div
+                            className={cn(
+                              "p-3 rounded-full",
+                              stat.color === "success" && "bg-green-100 text-green-600",
+                              stat.color === "warning" && "bg-yellow-100 text-yellow-600",
+                              stat.color === "primary" && "bg-blue-100 text-blue-600",
+                              stat.color === "error" && "bg-red-100 text-red-600"
+                            )}
+                          >
+                            <stat.icon className="w-6 h-6" />
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+
+                  {/* Charts */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Monthly Collection Chart */}
+                    <div className="bg-white rounded-lg border border-gray-200 p-6">
                       <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Collection</h3>
                       <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={monthlyData}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                          <XAxis dataKey="month" stroke="#64748b" fontSize={12} />
-                          <YAxis stroke="#64748b" fontSize={12} />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: "white",
-                              border: "1px solid #e2e8f0",
-                              borderRadius: "8px",
-                              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                            }}
-                          />
+                        <LineChart data={monthlyData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="month" />
+                          <YAxis />
+                          <Tooltip />
                           <Legend />
-                          <Bar dataKey="collected" fill="#10b981" name="Collected" radius={[4, 4, 0, 0]} />
-                          <Bar dataKey="pending" fill="#f59e0b" name="Pending" radius={[4, 4, 0, 0]} />
-                        </BarChart>
+                          <Line type="monotone" dataKey="collected" stroke="#3B82F6" strokeWidth={2} name="Collected" />
+                          <Line type="monotone" dataKey="pending" stroke="#F59E0B" strokeWidth={2} name="Pending" />
+                          <Line type="monotone" dataKey="overdue" stroke="#EF4444" strokeWidth={2} name="Overdue" />
+                        </LineChart>
                       </ResponsiveContainer>
                     </div>
 
-                    {/* Fee Breakdown */}
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Fee Breakdown</h3>
+                    {/* Payment Methods Chart */}
+                    <div className="bg-white rounded-lg border border-gray-200 p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Methods</h3>
                       <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
                           <Pie
-                            data={feeBreakdown}
+                            data={paymentMethods}
                             cx="50%"
                             cy="50%"
-                            innerRadius={60}
-                            outerRadius={120}
-                            paddingAngle={5}
-                            dataKey="amount"
+                            outerRadius={80}
+                            dataKey="value"
+                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                           >
-                            {feeBreakdown.map((entry, index) => (
+                            {paymentMethods.map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={entry.color} />
                             ))}
                           </Pie>
-                          <Tooltip formatter={(value) => [`$${value.toLocaleString()}`, "Amount"]} />
+                          <Tooltip />
                         </PieChart>
                       </ResponsiveContainer>
-                      <div className="space-y-2 mt-4">
-                        {feeBreakdown.map((fee, index) => (
-                          <div key={index} className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: fee.color }}></div>
-                              <span className="text-sm text-gray-700">{fee.name}</span>
-                            </div>
-                            <span className="text-sm font-medium text-gray-900">${fee.amount.toLocaleString()}</span>
-                          </div>
-                        ))}
-                      </div>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               )}
 
               {activeTab === "payments" && (
                 <div className="space-y-6">
-                  {/* Search Bar */}
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder="Search payments..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10 pr-4 py-2 w-full sm:w-64 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-sm"
-                      />
+                  {/* Search and Filter */}
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex-1">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <input
+                          type="text"
+                          placeholder="Search payments..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <button className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
+                    <div className="flex space-x-2">
+                      <button className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
                         <Filter className="w-4 h-4 mr-2" />
                         Filter
+                      </button>
+                      <button className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                        <Download className="w-4 h-4 mr-2" />
+                        Export
                       </button>
                     </div>
                   </div>
 
                   {/* Payments Table */}
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Student
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Amount
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Fee Type
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Date
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Status
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {filteredPayments.map((payment) => (
-                          <tr key={payment.id} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div>
-                                <div className="text-sm font-medium text-gray-900">{payment.studentName}</div>
-                                <div className="text-sm text-gray-500">{payment.studentId}</div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-semibold text-gray-900">
-                                ${payment.amount.toLocaleString()}
-                              </div>
-                              <div className="text-sm text-gray-500">{payment.method}</div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{payment.feeType}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {new Date(payment.paymentDate).toLocaleDateString()}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span
-                                className={cn(
-                                  "inline-flex px-2 py-1 text-xs font-semibold rounded-full",
-                                  payment.status === "completed" && "bg-green-100 text-green-800",
-                                  payment.status === "pending" && "bg-yellow-100 text-yellow-800",
-                                  payment.status === "overdue" && "bg-red-100 text-red-800"
-                                )}
-                              >
-                                {payment.status}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                              <button className="text-blue-600 hover:text-blue-900 transition-colors">
-                                <Eye className="w-4 h-4" />
-                              </button>
-                            </td>
+                  <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Student
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Fee Type
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Amount
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Payment Date
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Method
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Status
+                            </th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Actions
+                            </th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {filteredPayments.map((payment) => (
+                            <tr key={payment.id} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div>
+                                  <div className="text-sm font-medium text-gray-900">{payment.studentName}</div>
+                                  <div className="text-sm text-gray-500">{payment.studentId}</div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{payment.feeType}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                ₹{payment.amount.toLocaleString()}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {payment.paymentDate}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{payment.method}</td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span
+                                  className={cn(
+                                    "inline-flex px-2 py-1 text-xs font-medium rounded-full",
+                                    payment.status === "completed" && "bg-green-100 text-green-800",
+                                    payment.status === "pending" && "bg-yellow-100 text-yellow-800",
+                                    payment.status === "overdue" && "bg-red-100 text-red-800"
+                                  )}
+                                >
+                                  {payment.status}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <button className="text-blue-600 hover:text-blue-900 mr-3">
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                                <button className="text-green-600 hover:text-green-900 mr-3">
+                                  <Edit3 className="w-4 h-4" />
+                                </button>
+                                <button className="text-red-600 hover:text-red-900">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               )}
 
               {activeTab === "reports" && (
-                <div className="text-center py-12">
-                  <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Financial Reports</h3>
-                  <p className="text-gray-600 mb-6">
-                    Generate comprehensive reports for fee collection and financial analysis
-                  </p>
-                  <div className="flex justify-center space-x-4">
-                    <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                      Generate Monthly Report
-                    </button>
-                    <button className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
-                      Export Data
-                    </button>
+                <div className="space-y-6">
+                  <div className="bg-white rounded-lg border border-gray-200 p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Financial Reports</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                        <FileText className="w-5 h-5 mr-3 text-blue-600" />
+                        <div className="text-left">
+                          <div className="font-medium text-gray-900">Monthly Report</div>
+                          <div className="text-sm text-gray-500">Generate monthly fee collection report</div>
+                        </div>
+                      </button>
+                      <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                        <FileText className="w-5 h-5 mr-3 text-green-600" />
+                        <div className="text-left">
+                          <div className="font-medium text-gray-900">Class-wise Report</div>
+                          <div className="text-sm text-gray-500">Fee collection by class</div>
+                        </div>
+                      </button>
+                      <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                        <FileText className="w-5 h-5 mr-3 text-purple-600" />
+                        <div className="text-left">
+                          <div className="font-medium text-gray-900">Defaulters Report</div>
+                          <div className="text-sm text-gray-500">List of fee defaulters</div>
+                        </div>
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
             </div>
-          </motion.div>
-        </motion.div>
-      </div>
+          </div>
+        </div>
 
-      {/* Create Fee Outline Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
-          <div className="relative p-8 border w-4/5 max-w-4xl shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-2xl font-semibold text-gray-900">Create Fee Outline</h3>
-              <button
-                onClick={() => {
-                  setShowCreateModal(false);
-                  resetForm();
-                }}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateOutline} className="space-y-6">
-              {/* Basic Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Name *</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Class *</label>
-                  <select
-                    value={formData.classId}
-                    onChange={(e) => setFormData({ ...formData, classId: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  >
-                    <option value="">Select Class</option>
-                    {classesLoading ? (
-                      <option value="" disabled>
-                        Loading classes...
-                      </option>
-                    ) : classes && classes.length > 0 ? (
-                      classes.map((cls) => (
-                        <option key={cls._id} value={cls._id}>
-                          {cls.name}
-                        </option>
-                      ))
-                    ) : (
-                      <option value="" disabled>
-                        No classes available
-                      </option>
-                    )}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Academic Year *</label>
-                  <input
-                    type="text"
-                    value={formData.academicYear}
-                    onChange={(e) => setFormData({ ...formData, academicYear: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Total Amount (₹) *</label>
-                  <input
-                    type="number"
-                    value={formData.totalAmount}
-                    onChange={(e) => setFormData({ ...formData, totalAmount: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                    min="0"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  rows="3"
-                />
-              </div>
-
-              {/* Fee Components */}
-              <div>
-                <h4 className="text-lg font-medium text-gray-900 mb-4">Fee Components</h4>
-                <div className="space-y-3">
-                  {feeComponents.map((component) => (
-                    <div key={component} className="flex items-center space-x-4">
-                      <div className="flex-1">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          {component.charAt(0).toUpperCase() + component.slice(1).replace("_", " ")}
-                        </label>
-                        <input
-                          type="number"
-                          placeholder="Amount"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          onChange={(e) => {
-                            const amount = parseFloat(e.target.value) || 0;
-                            const existingIndex = formData.components.findIndex((c) => c.name === component);
-                            const newComponents = [...formData.components];
-
-                            if (existingIndex >= 0) {
-                              newComponents[existingIndex] = { ...newComponents[existingIndex], amount };
-                            } else {
-                              newComponents.push({ name: component, amount, isOptional: false, description: "" });
-                            }
-
-                            setFormData({ ...formData, components: newComponents });
-                          }}
-                        />
-                      </div>
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id={`optional-${component}`}
-                          onChange={(e) => {
-                            const existingIndex = formData.components.findIndex((c) => c.name === component);
-                            const newComponents = [...formData.components];
-
-                            if (existingIndex >= 0) {
-                              newComponents[existingIndex] = {
-                                ...newComponents[existingIndex],
-                                isOptional: e.target.checked,
-                              };
-                            }
-
-                            setFormData({ ...formData, components: newComponents });
-                          }}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        />
-                        <label htmlFor={`optional-${component}`} className="ml-2 text-sm text-gray-700">
-                          Optional
-                        </label>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Installments */}
-              <div>
-                <h4 className="text-lg font-medium text-gray-900 mb-4">Installments</h4>
-                <div className="space-y-3">
-                  {[1, 2, 3, 4].map((num) => (
-                    <div key={num} className="flex items-center space-x-4">
-                      <div className="w-20">
-                        <label className="block text-sm font-medium text-gray-700">Installment {num}</label>
-                      </div>
-                      <div className="flex-1">
-                        <input
-                          type="number"
-                          placeholder="Amount"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          onChange={(e) => {
-                            const amount = parseFloat(e.target.value) || 0;
-                            const existingIndex = formData.installments.findIndex((i) => i.installmentNumber === num);
-                            const newInstallments = [...formData.installments];
-
-                            if (existingIndex >= 0) {
-                              newInstallments[existingIndex] = { ...newInstallments[existingIndex], amount };
-                            } else {
-                              newInstallments.push({
-                                installmentNumber: num,
-                                amount,
-                                dueDate: new Date().toISOString().split("T")[0],
-                                description: `Installment ${num}`,
-                              });
-                            }
-
-                            setFormData({ ...formData, installments: newInstallments });
-                          }}
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <input
-                          type="date"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          onChange={(e) => {
-                            const existingIndex = formData.installments.findIndex((i) => i.installmentNumber === num);
-                            const newInstallments = [...formData.installments];
-
-                            if (existingIndex >= 0) {
-                              newInstallments[existingIndex] = {
-                                ...newInstallments[existingIndex],
-                                dueDate: e.target.value,
-                              };
-                            }
-
-                            setFormData({ ...formData, installments: newInstallments });
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Concession Types */}
-              <div>
-                <h4 className="text-lg font-medium text-gray-900 mb-4">Concession Types</h4>
-                <div className="space-y-3">
-                  {concessionOptions.map((concession) => (
-                    <div key={concession} className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h5 className="font-medium text-gray-900">
-                          {concession.charAt(0).toUpperCase() + concession.slice(1).replace("_", " ")}
-                        </h5>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newConcession = {
-                              name: concession,
-                              discountType: "percentage",
-                              discountValue: 0,
-                              maxAmount: 0,
-                              description: "",
-                              eligibilityCriteria: "",
-                            };
-                            setFormData({
-                              ...formData,
-                              concessionTypes: [...formData.concessionTypes, newConcession],
-                            });
-                          }}
-                          className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-                        >
-                          Add
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Late Fee Structure */}
-              <div>
-                <h4 className="text-lg font-medium text-gray-900 mb-4">Late Fee Structure</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={formData.lateFeeStructure.enabled}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          lateFeeStructure: { ...formData.lateFeeStructure, enabled: e.target.checked },
-                        })
-                      }
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                    <label className="ml-2 text-sm text-gray-700">Enable Late Fees</label>
-                  </div>
-                  {formData.lateFeeStructure.enabled && (
-                    <>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Grace Period (Days)</label>
-                        <input
-                          type="number"
-                          value={formData.lateFeeStructure.gracePeriodinDays}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              lateFeeStructure: {
-                                ...formData.lateFeeStructure,
-                                gracePeriodinDays: parseInt(e.target.value) || 0,
-                              },
-                            })
-                          }
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          min="0"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Fee Type</label>
-                        <select
-                          value={formData.lateFeeStructure.feeType}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              lateFeeStructure: { ...formData.lateFeeStructure, feeType: e.target.value },
-                            })
-                          }
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="percentage">Percentage</option>
-                          <option value="fixed_per_day">Fixed per Day</option>
-                          <option value="fixed_total">Fixed Total</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Amount</label>
-                        <input
-                          type="number"
-                          value={formData.lateFeeStructure.amount}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              lateFeeStructure: {
-                                ...formData.lateFeeStructure,
-                                amount: parseFloat(e.target.value) || 0,
-                              },
-                            })
-                          }
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          min="0"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Maximum Amount</label>
-                        <input
-                          type="number"
-                          value={formData.lateFeeStructure.maxAmount}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              lateFeeStructure: {
-                                ...formData.lateFeeStructure,
-                                maxAmount: parseFloat(e.target.value) || 0,
-                              },
-                            })
-                          }
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          min="0"
-                        />
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Default Setting */}
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.isDefault}
-                  onChange={(e) => setFormData({ ...formData, isDefault: e.target.checked })}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label className="ml-2 text-sm text-gray-700">Set as Default for this Class</label>
-              </div>
-
-              {/* Submit Button */}
-              <div className="flex justify-end space-x-3 pt-6">
+        {/* Create Fee Slab Modal */}
+        {showCreateModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+            <div className="relative p-8 border w-4/5 max-w-4xl shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-semibold text-gray-900">Create Fee Slab</h3>
                 <button
-                  type="button"
                   onClick={() => {
                     setShowCreateModal(false);
                     resetForm();
                   }}
-                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="text-gray-500 hover:text-gray-700"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {loading ? "Creating..." : "Create Fee Outline"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Fee Outline Modal */}
-      {showEditModal && editingOutline && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
-          <div className="relative p-8 border w-4/5 max-w-4xl shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-2xl font-semibold text-gray-900">Edit Fee Outline</h3>
-              <button
-                onClick={() => {
-                  setShowEditModal(false);
-                  resetForm();
-                }}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <form onSubmit={handleUpdateOutline} className="space-y-6">
-              {/* Same form fields as create modal */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Name *</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Class *</label>
-                  <select
-                    value={formData.classId}
-                    onChange={(e) => setFormData({ ...formData, classId: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
                   >
-                    <option value="">Select Class</option>
-                    {classesLoading ? (
-                      <option value="" disabled>
-                        Loading classes...
-                      </option>
-                    ) : classes && classes.length > 0 ? (
-                      classes.map((cls) => (
-                        <option key={cls._id} value={cls._id}>
-                          {cls.name}
-                        </option>
-                      ))
-                    ) : (
-                      <option value="" disabled>
-                        No classes available
-                      </option>
-                    )}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Academic Year *</label>
-                  <input
-                    type="text"
-                    value={formData.academicYear}
-                    onChange={(e) => setFormData({ ...formData, academicYear: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Total Amount (₹) *</label>
-                  <input
-                    type="number"
-                    value={formData.totalAmount}
-                    onChange={(e) => setFormData({ ...formData, totalAmount: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                    min="0"
-                  />
-                </div>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  rows="3"
-                />
-              </div>
+              <form onSubmit={handleCreateSlab} className="space-y-6">
+                {/* Basic Information */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Slab Name *</label>
+                    <input
+                      type="text"
+                      value={formData.slabName}
+                      onChange={(e) => setFormData({ ...formData, slabName: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="e.g., 1st Class New"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Total Amount (₹) *</label>
+                    <input
+                      type="number"
+                      value={formData.totalAmount}
+                      onChange={(e) => setFormData({ ...formData, totalAmount: parseFloat(e.target.value) || 0 })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="20000"
+                      required
+                      min="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Academic Year *</label>
+                    <input
+                      type="text"
+                      value={formData.academicYear}
+                      onChange={(e) => setFormData({ ...formData, academicYear: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                </div>
 
-              {/* Submit Button */}
-              <div className="flex justify-end space-x-3 pt-6">
+                {/* Installments */}
+                <div>
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-lg font-medium text-gray-900">Installments</h4>
+                    <button
+                      type="button"
+                      onClick={addInstallment}
+                      className="flex items-center px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add Installment
+                    </button>
+                  </div>
+                  <div className="space-y-4">
+                    {formData.installments.map((installment, index) => (
+                      <div key={index} className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex justify-between items-center mb-3">
+                          <h5 className="font-medium text-gray-900">Installment {index + 1}</h5>
+                          {formData.installments.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeInstallment(index)}
+                              className="text-red-600 hover:text-red-800"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Amount (₹)</label>
+                            <input
+                              type="number"
+                              value={installment.amount}
+                              onChange={(e) => updateInstallment(index, "amount", parseFloat(e.target.value) || 0)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              placeholder="10000"
+                              min="0"
+                            />
+                            <div className="flex items-center mt-1 text-sm text-gray-500">
+                              <Percent className="w-3 h-3 mr-1" />
+                              {calculatePercentage(installment.amount)}%
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                            <input
+                              type="date"
+                              value={installment.dueDate}
+                              onChange={(e) => updateInstallment(index, "dueDate", e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                            <input
+                              type="text"
+                              value={installment.description}
+                              onChange={(e) => updateInstallment(index, "description", e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              placeholder={`Installment ${index + 1}`}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <div className="flex justify-end space-x-3 pt-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateModal(false);
+                      resetForm();
+                    }}
+                    className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {loading ? "Creating..." : "Create Fee Slab"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Fee Slab Modal */}
+        {showEditModal && editingSlab && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+            <div className="relative p-8 border w-4/5 max-w-4xl shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-semibold text-gray-900">Edit Fee Slab</h3>
                 <button
-                  type="button"
                   onClick={() => {
                     setShowEditModal(false);
                     resetForm();
                   }}
-                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="text-gray-500 hover:text-gray-700"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {loading ? "Updating..." : "Update Fee Outline"}
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
 
-      <Toaster position="top-right" />
+              <form onSubmit={handleUpdateSlab} className="space-y-6">
+                {/* Same form fields as create modal */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Slab Name *</label>
+                    <input
+                      type="text"
+                      value={formData.slabName}
+                      onChange={(e) => setFormData({ ...formData, slabName: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Total Amount (₹) *</label>
+                    <input
+                      type="number"
+                      value={formData.totalAmount}
+                      onChange={(e) => setFormData({ ...formData, totalAmount: parseFloat(e.target.value) || 0 })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                      min="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Academic Year *</label>
+                    <input
+                      type="text"
+                      value={formData.academicYear}
+                      onChange={(e) => setFormData({ ...formData, academicYear: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Installments (same as create modal) */}
+                <div>
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-lg font-medium text-gray-900">Installments</h4>
+                    <button
+                      type="button"
+                      onClick={addInstallment}
+                      className="flex items-center px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add Installment
+                    </button>
+                  </div>
+                  <div className="space-y-4">
+                    {formData.installments.map((installment, index) => (
+                      <div key={index} className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex justify-between items-center mb-3">
+                          <h5 className="font-medium text-gray-900">Installment {index + 1}</h5>
+                          {formData.installments.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeInstallment(index)}
+                              className="text-red-600 hover:text-red-800"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Amount (₹)</label>
+                            <input
+                              type="number"
+                              value={installment.amount}
+                              onChange={(e) => updateInstallment(index, "amount", parseFloat(e.target.value) || 0)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              min="0"
+                            />
+                            <div className="flex items-center mt-1 text-sm text-gray-500">
+                              <Percent className="w-3 h-3 mr-1" />
+                              {calculatePercentage(installment.amount)}%
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                            <input
+                              type="date"
+                              value={installment.dueDate}
+                              onChange={(e) => updateInstallment(index, "dueDate", e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                            <input
+                              type="text"
+                              value={installment.description}
+                              onChange={(e) => updateInstallment(index, "description", e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <div className="flex justify-end space-x-3 pt-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEditModal(false);
+                      resetForm();
+                    }}
+                    className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {loading ? "Updating..." : "Update Fee Slab"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
     </Layout>
   );
 };

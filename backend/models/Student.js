@@ -201,9 +201,9 @@ const studentSchema = new mongoose.Schema(
     },
 
     // Fees & Finance
-    feeOutlineId: {
+    feeSlabId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "FeeOutline",
+      ref: "FeeSlab",
     },
     feeStructure: {
       type: String,
@@ -240,11 +240,10 @@ const studentSchema = new mongoose.Schema(
         },
       },
     },
-    feeDiscount: {
+    concessionAmount: {
       type: Number,
       default: 0,
       min: 0,
-      max: 100,
     },
     paymentStatus: {
       type: String,

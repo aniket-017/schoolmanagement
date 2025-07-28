@@ -7,10 +7,7 @@ const feeSchema = new mongoose.Schema(
       ref: "User",
       required: [true, "Student ID is required"],
     },
-    feeOutlineId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "FeeOutline",
-    },
+
     installmentNumber: {
       type: Number,
       min: 1,
