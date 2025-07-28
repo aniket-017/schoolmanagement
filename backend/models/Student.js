@@ -76,7 +76,12 @@ const studentSchema = new mongoose.Schema(
     },
     mobileNumber: {
       type: String,
-      match: [/^[\+]?[\d\s\-\(\)]{7,15}$/, "Please enter a valid mobile number"],
+      required: [true, "Mobile number is required"],
+      match: [/^[1-9]\d{9}$/, "Mobile number must be exactly 10 digits and cannot start with 0"],
+    },
+    optionalMobileNumber: {
+      type: String,
+      match: [/^[1-9]\d{9}$/, "Mobile number must be exactly 10 digits and cannot start with 0"],
     },
     email: {
       type: String,
@@ -93,10 +98,6 @@ const studentSchema = new mongoose.Schema(
       occupation: {
         type: String,
         trim: true,
-      },
-      phone: {
-        type: String,
-        match: [/^[\+]?[\d\s\-\(\)]{7,15}$/, "Please enter a valid mobile number"],
       },
       email: {
         type: String,
@@ -118,10 +119,6 @@ const studentSchema = new mongoose.Schema(
         type: String,
         trim: true,
       },
-      phone: {
-        type: String,
-        match: [/^[\+]?[\d\s\-\(\)]{7,15}$/, "Please enter a valid mobile number"],
-      },
       email: {
         type: String,
         lowercase: true,
@@ -140,10 +137,6 @@ const studentSchema = new mongoose.Schema(
       relation: {
         type: String,
         trim: true,
-      },
-      phone: {
-        type: String,
-        match: [/^[\+]?[\d\s\-\(\)]{7,15}$/, "Please enter a valid mobile number"],
       },
       email: {
         type: String,

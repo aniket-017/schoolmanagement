@@ -29,16 +29,7 @@ export default function ParentInfo({ form, handleChange }) {
               className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Phone Number</label>
-            <input
-              type="tel"
-              name="fatherPhone"
-              value={form.fatherPhone || ""}
-              onChange={handleChange}
-              className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
+
           <div>
             <label className="block text-sm font-medium mb-1">Email</label>
             <input
@@ -87,17 +78,7 @@ export default function ParentInfo({ form, handleChange }) {
               className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Phone Number *</label>
-            <input
-              type="tel"
-              name="motherPhone"
-              value={form.motherPhone || ""}
-              onChange={handleChange}
-              required
-              className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
+
           <div>
             <label className="block text-sm font-medium mb-1">Email</label>
             <input
@@ -146,16 +127,7 @@ export default function ParentInfo({ form, handleChange }) {
               className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Phone Number</label>
-            <input
-              type="tel"
-              name="guardianPhone"
-              value={form.guardianPhone || ""}
-              onChange={handleChange}
-              className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
+
           <div>
             <label className="block text-sm font-medium mb-1">Email</label>
             <input

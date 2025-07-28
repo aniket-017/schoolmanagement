@@ -147,18 +147,21 @@ router.post("/:id/students", auth, adminOnly, async (req, res) => {
       // Accept all other possible fields
       ...otherFields
     } = req.body;
-    if (!firstName || !lastName || !dateOfBirth || !gender || !email || !mobileNumber || !rollNumber) {
+    if (!firstName || !lastName || !dateOfBirth || !gender || !mobileNumber || !rollNumber) {
       return res.status(400).json({
         success: false,
         message: "Missing required fields",
       });
     }
-    const existingStudent = await Student.findOne({ email });
-    if (existingStudent) {
-      return res.status(400).json({
-        success: false,
-        message: "Student with this email already exists",
-      });
+    // Check email uniqueness only if email is provided
+    if (email) {
+      const existingStudent = await Student.findOne({ email });
+      if (existingStudent) {
+        return res.status(400).json({
+          success: false,
+          message: "Student with this email already exists",
+        });
+      }
     }
     const existingRollNumber = await Student.findOne({
       class: req.params.id,
@@ -245,8 +248,9 @@ router.get("/:id/students/excel-template", auth, adminOnly, async (req, res) => 
         LastName: "Doe",
         DateOfBirth: "2010-05-15",
         Gender: "male",
-        Email: "john.doe@example.com",
-        MobileNumber: "+1234567890",
+        Email: "john.doe@example.com", // Optional
+        MobileNumber: "9876543210", // Required: 10 digits, no leading zero
+        OptionalMobileNumber: "9876543211", // Optional: 10 digits, no leading zero
         RollNumber: "001",
 
         // Personal Information (Optional)
@@ -267,17 +271,14 @@ router.get("/:id/students/excel-template", auth, adminOnly, async (req, res) => 
         // Parent/Guardian Information
         FatherName: "Robert Doe",
         FatherOccupation: "Engineer",
-        FatherPhone: "+1234567891",
         FatherEmail: "robert.doe@example.com",
         FatherIncome: "800000",
         MothersName: "Jane Doe",
         MotherOccupation: "Teacher",
-        ParentsMobileNumber: "+1234567892",
         MotherEmail: "jane.doe@example.com",
         MotherIncome: "600000",
         GuardianName: "",
         GuardianRelation: "",
-        GuardianPhone: "",
         GuardianEmail: "",
 
         // Academic Information
@@ -530,23 +531,35 @@ router.post("/:id/students/bulk", auth, adminOnly, upload.single("file"), async 
 
       try {
         // Validate required fields
-        if (!row.FirstName || !row.LastName || !row.Email || !row.RollNumber) {
+        if (!row.FirstName || !row.LastName || !row.MobileNumber || !row.RollNumber) {
           results.failed.push({
             row: rowNumber,
-            error: "FirstName, LastName, Email, and RollNumber are required",
+            error: "FirstName, LastName, MobileNumber, and RollNumber are required",
           });
           continue;
         }
 
-        // Check if student already exists with same email
-        const existingStudent = await Student.findOne({ email: row.Email });
-        if (existingStudent) {
-          results.duplicates.push({
+        // Validate mobile number format (10 digits, no leading zero)
+        const mobileRegex = /^[1-9]\d{9}$/;
+        if (!mobileRegex.test(row.MobileNumber)) {
+          results.failed.push({
             row: rowNumber,
-            data: row,
-            error: "Email already exists",
+            error: "Mobile number must be exactly 10 digits and cannot start with 0",
           });
           continue;
+        }
+
+        // Check if student already exists with same email (only if email is provided)
+        if (row.Email) {
+          const existingStudent = await Student.findOne({ email: row.Email });
+          if (existingStudent) {
+            results.duplicates.push({
+              row: rowNumber,
+              data: row,
+              error: "Email already exists",
+            });
+            continue;
+          }
         }
 
         // Check if roll number already exists in the class
@@ -580,7 +593,6 @@ router.post("/:id/students/bulk", auth, adminOnly, upload.single("file"), async 
           firstName: row.FirstName,
           middleName: row.MiddleName || "",
           lastName: row.LastName,
-          email: row.Email,
           mobileNumber: row.MobileNumber || row.Phone || "",
           rollNumber: row.RollNumber,
           dateOfBirth: row.DateOfBirth || null,
@@ -592,6 +604,16 @@ router.post("/:id/students/bulk", auth, adminOnly, upload.single("file"), async 
           currentGrade: `${classData.grade}${classData.getOrdinalSuffix(classData.grade)}`,
           createdBy: req.user.id,
         };
+
+        // Add email only if provided
+        if (row.Email) {
+          studentData.email = row.Email;
+        }
+
+        // Add optional mobile number if provided
+        if (row.OptionalMobileNumber) {
+          studentData.optionalMobileNumber = row.OptionalMobileNumber;
+        }
 
         // Personal Information
         if (row.Nationality) studentData.nationality = row.Nationality;
@@ -608,31 +630,28 @@ router.post("/:id/students/bulk", auth, adminOnly, upload.single("file"), async 
         if (row.PinCode) studentData.pinCode = row.PinCode;
 
         // Parent/Guardian Information
-        if (row.FatherName || row.FatherOccupation || row.FatherPhone || row.FatherEmail || row.FatherIncome) {
+        if (row.FatherName || row.FatherOccupation || row.FatherEmail || row.FatherIncome) {
           studentData.father = {
             name: row.FatherName || "",
             occupation: row.FatherOccupation || "",
-            phone: row.FatherPhone || "",
             email: row.FatherEmail || "",
             annualIncome: row.FatherIncome ? parseFloat(row.FatherIncome) : undefined,
           };
         }
 
-        if (row.MothersName || row.MotherOccupation || row.MotherPhone || row.ParentsMobileNumber || row.MotherEmail || row.MotherIncome) {
+        if (row.MothersName || row.MotherOccupation || row.MotherEmail || row.MotherIncome) {
           studentData.mother = {
             name: row.MothersName || row.ParentName || "",
             occupation: row.MotherOccupation || "",
-            phone: row.ParentsMobileNumber || row.MotherPhone || row.ParentPhone || "",
             email: row.MotherEmail || "",
             annualIncome: row.MotherIncome ? parseFloat(row.MotherIncome) : undefined,
           };
         }
 
-        if (row.GuardianName || row.GuardianRelation || row.GuardianPhone || row.GuardianEmail) {
+        if (row.GuardianName || row.GuardianRelation || row.GuardianEmail) {
           studentData.guardian = {
             name: row.GuardianName || "",
             relation: row.GuardianRelation || "",
-            phone: row.GuardianPhone || "",
             email: row.GuardianEmail || "",
           };
         }

@@ -211,11 +211,11 @@ const TimetableTab = ({ classId, classData }) => {
     try {
       const { day, period, subjectId, teacherId, room, type, applyAllDays } = periodData;
 
-      // Check for conflicts (but don't block the addition)
+      // Check for room conflicts only (teachers can teach multiple classes)
       const conflicts = await checkConflicts(day, period, teacherId, room);
       if (conflicts.length > 0) {
         setConflicts(conflicts);
-        toast.warning("Conflicts detected! You can continue anyway or resolve them.");
+        toast.warning("Room conflicts detected! You can continue anyway or resolve them.");
         // Don't return - allow the user to proceed
       }
 
@@ -273,13 +273,21 @@ const TimetableTab = ({ classId, classData }) => {
       const token = localStorage.getItem("token");
       const timeSlot = timeSlots[period - 1];
 
+      // Only check for room conflicts, not teacher conflicts
+      // Teachers can be assigned to multiple classes/subjects
+      if (!room) {
+        return []; // No room specified, no conflicts
+      }
+
       const response = await fetch(
-        `${appConfig.API_BASE_URL}/teachers/availability/check?day=${day}&startTime=${timeSlot.startTime}&endTime=${timeSlot.endTime}&teacherId=${teacherId}&excludeClassId=${classId}`,
+        `${appConfig.API_BASE_URL}/timetables/teacher/availability?day=${day}&startTime=${timeSlot.startTime}&endTime=${timeSlot.endTime}&teacherId=${teacherId}&excludeClassId=${classId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       const data = await response.json();
-      return data.success && !data.data.isAvailable ? data.data.conflicts : [];
+      // Only return room conflicts, ignore teacher conflicts
+      return data.success && data.data.conflicts ? 
+        data.data.conflicts.filter(conflict => conflict.type === 'room_conflict') : [];
     } catch (error) {
       console.error("Error checking conflicts:", error);
       return [];
@@ -770,12 +778,12 @@ const AddPeriodModal = ({
           </div>
 
           {conflicts.length > 0 && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
               <div className="flex items-center space-x-2 mb-2">
-                <AlertTriangle className="w-4 h-4 text-red-500" />
-                <span className="font-medium text-red-800">Conflicts Detected</span>
+                <AlertTriangle className="w-4 h-4 text-orange-500" />
+                <span className="font-medium text-orange-800">Room Conflicts Detected</span>
               </div>
-              <ul className="text-sm text-red-700 space-y-1 mb-3">
+              <ul className="text-sm text-orange-700 space-y-1 mb-3">
                 {conflicts.map((conflict, index) => (
                   <li key={index}>• {conflict.message}</li>
                 ))}
@@ -784,13 +792,13 @@ const AddPeriodModal = ({
                 <button
                   onClick={() => {
                     setConflicts([]);
-                    toast.info("Conflicts ignored. You can proceed with the lecture.");
+                    toast.info("Room conflicts ignored. You can proceed with the lecture.");
                   }}
                   className="px-3 py-1 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors"
                 >
                   Continue Anyway
                 </button>
-                <span className="text-xs text-red-600">Click to ignore conflicts and continue</span>
+                <span className="text-xs text-orange-600">Click to ignore room conflicts and continue</span>
               </div>
             </div>
           )}
@@ -830,7 +838,7 @@ const AddPeriodModal = ({
                   <option value="">{formData.subjectId ? "Select Teacher" : "Select a subject first"}</option>
                   {availableTeachers.map((teacher) => (
                     <option key={teacher._id} value={teacher._id}>
-                      {teacher.name} - {teacher.availability === "available" ? "✅ Available" : "❌ Conflict"}
+                      {teacher.name} - ✅ Available
                       {teacher.experienceLevel && ` (${teacher.experienceLevel})`}
                       {teacher.isSpecialized && " ⭐ Specialized"}
                     </option>
@@ -840,8 +848,7 @@ const AddPeriodModal = ({
 
               {formData.subjectId && availableTeachers.length > 0 && (
                 <div className="mt-2 text-xs text-gray-600">
-                  {availableTeachers.filter((t) => t.availability === "available").length} available,{" "}
-                  {availableTeachers.filter((t) => t.availability === "conflict").length} with conflicts
+                  {availableTeachers.length} teachers available for this subject
                 </div>
               )}
             </div>

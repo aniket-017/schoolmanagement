@@ -20,6 +20,7 @@ const initialForm = {
   state: "",
   pinCode: "",
   mobileNumber: "",
+  optionalMobileNumber: "",
   email: "",
 };
 
@@ -254,17 +255,32 @@ export default function StudentMultiStepForm({ onSubmit, onCancel }) {
                 value={form.mobileNumber}
                 onChange={handleChange}
                 required
+                pattern="^[1-9]\d{9}$"
+                title="Mobile number must be exactly 10 digits and cannot start with 0"
+                placeholder="Enter 10 digit mobile number"
                 className="w-full border rounded px-3 py-2"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Email *</label>
+              <label className="block text-sm font-medium mb-1">Optional Mobile Number</label>
+              <input
+                type="tel"
+                name="optionalMobileNumber"
+                value={form.optionalMobileNumber}
+                onChange={handleChange}
+                pattern="^[1-9]\d{9}$"
+                title="Mobile number must be exactly 10 digits and cannot start with 0"
+                placeholder="Enter 10 digit mobile number (optional)"
+                className="w-full border rounded px-3 py-2"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Email</label>
               <input
                 type="email"
                 name="email"
                 value={form.email}
                 onChange={handleChange}
-                required
                 className="w-full border rounded px-3 py-2"
               />
             </div>

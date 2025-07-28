@@ -76,14 +76,14 @@ Content-Type: application/json
 **Request Body**:
 ```json
 {
-  "name": "Jane Smith",
-  "email": "jane.smith@school.com",
-  "phone": "+1234567892",
+  "firstName": "Jane",
+  "lastName": "Smith",
+  "email": "jane.smith@school.com", // Optional
+  "mobileNumber": "9876543210", // Required: 10 digits, no leading zero
   "rollNumber": "STU001",
   "dateOfBirth": "2010-08-20",
-  "parentName": "John Smith",
-  "parentPhone": "+1234567893",
-  "address": "456 Oak Avenue, Anytown, State 12345, Country"
+  "gender": "female",
+  "currentAddress": "456 Oak Avenue, Anytown, State 12345, Country"
 }
 ```
 

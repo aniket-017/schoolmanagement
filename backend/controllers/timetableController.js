@@ -675,29 +675,8 @@ async function checkTimetableConflicts(classId, day, periods, academicYear) {
   const conflicts = [];
 
   for (const period of periods) {
-    // Check for teacher conflicts (same teacher, same time, different class)
-    if (period.teacher) {
-      const teacherConflict = await Timetable.findOne({
-        "periods.teacher": period.teacher,
-        day,
-        academicYear,
-        isActive: true,
-        classId: { $ne: classId },
-        "periods.startTime": { $lt: period.endTime },
-        "periods.endTime": { $gt: period.startTime },
-      });
-
-      if (teacherConflict) {
-        conflicts.push({
-          type: "teacher_conflict",
-          period: period.periodNumber,
-          teacher: period.teacher,
-          message: "Teacher is already scheduled at this time",
-        });
-      }
-    }
-
-    // Check for room conflicts (same room, same time, different class)
+    // Only check for room conflicts, not teacher conflicts
+    // Teachers can be assigned to multiple classes/subjects at the same time
     if (period.room) {
       const roomConflict = await Timetable.findOne({
         day,
@@ -725,30 +704,11 @@ async function checkTimetableConflicts(classId, day, periods, academicYear) {
 
 // Helper function to check teacher availability
 async function checkTeacherAvailability(teacherId, day, startTime, endTime, excludeClassId) {
-  const query = {
-    "periods.teacher": teacherId,
-    day,
-    isActive: true,
-    "periods.startTime": { $lt: endTime },
-    "periods.endTime": { $gt: startTime },
-  };
-
-  if (excludeClassId) {
-    query.classId = { $ne: excludeClassId };
-  }
-
-  const conflicts = await Timetable.find(query).populate([
-    { path: "classId", select: "grade division" },
-    { path: "periods.subject", select: "name" },
-  ]);
-
+  // Teachers are always available - they can teach multiple classes/subjects
+  // This function now returns that teachers are always available
   return {
-    isAvailable: conflicts.length === 0,
-    conflicts: conflicts.map((timetable) => ({
-      classId: timetable.classId._id,
-      className: `${timetable.classId.grade}${timetable.classId.division}`,
-      periods: timetable.periods.filter((period) => period.startTime < endTime && period.endTime > startTime),
-    })),
+    isAvailable: true,
+    conflicts: [],
   };
 }
 

@@ -191,6 +191,12 @@ const StudentDetailModal = ({
                     <span className="text-gray-600">Mobile Number:</span>
                     <span className="font-medium">{student.mobileNumber || student.phone || 'N/A'}</span>
                   </div>
+                  {student.optionalMobileNumber && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Optional Mobile Number:</span>
+                      <span className="font-medium">{student.optionalMobileNumber}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-gray-600">Address:</span>
                     <span className="font-medium text-right max-w-xs">
@@ -213,7 +219,7 @@ const StudentDetailModal = ({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Parent's Mobile:</span>
-                    <span className="font-medium">{student.parentsMobileNumber || student.mother?.phone || 'N/A'}</span>
+                    <span className="font-medium">N/A</span>
                   </div>
                   {student.father?.name && (
                     <div className="flex justify-between">

@@ -452,23 +452,8 @@ async function checkTeacherDetailedAvailability(teacherId, day, startTime, endTi
     };
   }
 
-  const query = {
-    "periods.teacher": teacherId,
-    day,
-    isActive: true,
-    "periods.startTime": { $lt: endTime },
-    "periods.endTime": { $gt: startTime },
-  };
-
-  if (excludeClassId) {
-    query.classId = { $ne: excludeClassId };
-  }
-
-  const conflicts = await Timetable.find(query).populate([
-    { path: "classId", select: "grade division" },
-    { path: "periods.subject", select: "name" },
-  ]);
-
+  // Teachers can be assigned to multiple classes/subjects at the same time
+  // Only check if they exceed their maximum periods per day
   const currentDayPeriods = await Timetable.aggregate([
     {
       $match: {
@@ -494,12 +479,8 @@ async function checkTeacherDetailedAvailability(teacherId, day, startTime, endTi
   const maxPeriods = dayAvailability.maxPeriods || teacher.maxPeriodsPerDay;
 
   return {
-    isAvailable: conflicts.length === 0 && currentPeriods < maxPeriods,
-    conflicts: conflicts.map((timetable) => ({
-      classId: timetable.classId._id,
-      className: `${timetable.classId.grade}${timetable.classId.division}`,
-      periods: timetable.periods.filter((period) => period.startTime < endTime && period.endTime > startTime),
-    })),
+    isAvailable: currentPeriods < maxPeriods,
+    conflicts: [], // No conflicts since teachers can teach multiple classes
     currentPeriods,
     maxPeriods,
     dayAvailability,

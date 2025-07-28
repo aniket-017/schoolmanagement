@@ -180,6 +180,7 @@ export default function StudentMultiStepForm({ onSubmit, onCancel, isSubmitting:
         gender: form.gender,
         email: form.email,
         mobileNumber: form.mobileNumber,
+        optionalMobileNumber: form.optionalMobileNumber,
         rollNumber: form.rollNumber,
         currentAddress: form.currentAddress,
 
@@ -198,7 +199,7 @@ export default function StudentMultiStepForm({ onSubmit, onCancel, isSubmitting:
         pinCode: form.pinCode,
         // Map parent fields to backend structure - use flat structure for required fields
         mothersName: form.motherName,
-        parentsMobileNumber: form.motherPhone,
+
         father: form.fatherName
           ? {
               name: form.fatherName,

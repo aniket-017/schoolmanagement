@@ -557,7 +557,7 @@ const ClassDetails = () => {
                   />
                   <p className="text-xs text-gray-600 mt-1">
                     File should contain columns: FirstName, MiddleName, LastName, Email, MobileNumber, DateOfBirth,
-                    Gender, CurrentAddress, MothersName, ParentsMobileNumber, RollNumber. Download the template for
+                    Gender, CurrentAddress, MothersName, RollNumber. Download the template for
                     complete column list.
                   </p>
                 </div>
