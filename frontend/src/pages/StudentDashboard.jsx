@@ -17,6 +17,7 @@ import {
   XMarkIcon,
   BellIcon,
   ChartBarIcon,
+  HomeIcon,
 } from "@heroicons/react/24/outline";
 import { useTeacherAuth } from "../context/TeacherAuthContext";
 import apiService from "../services/apiService";
@@ -356,6 +357,12 @@ const StudentDashboard = () => {
     { title: "Profile", icon: UserIcon, href: "/student/profile", color: "bg-blue-600" },
   ];
 
+  const bottomNavItems = [
+    { title: 'Home', icon: HomeIcon, href: '/student/dashboard', active: true },
+    { title: 'Attendance', icon: CalendarIcon, href: '/student/attendance' },
+    { title: 'Timetable', icon: ClockIcon, href: '/student/timetable' },
+    { title: 'Annual Calendar', icon: CalendarIcon, href: '/student/annual-calendar' }
+  ];
 
 
   if (loading) {
@@ -380,7 +387,7 @@ const StudentDashboard = () => {
         </div>
 
         {/* Main Content Skeleton */}
-        <div className="px-4 py-6 space-y-6 pb-24">
+        <div className="px-4 py-6 space-y-6 pb-32">
           <SkeletonSchedule />
           <div className="grid grid-cols-2 gap-4">
             <SkeletonCard />
@@ -434,7 +441,7 @@ const StudentDashboard = () => {
         </div>
 
         {/* Main Content */}
-        <div className="px-4 py-6 space-y-6 pb-24">
+        <div className="px-4 py-6 space-y-6 pb-32">
           {/* Today's Schedule - Exact match */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -467,9 +474,9 @@ const StudentDashboard = () => {
                     <div key={period.id || index} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
                       <div className="text-center min-w-[80px]">
                         <p className="text-blue-600 font-semibold text-sm">
-                          {period.time || `${9 + index}:00 - ${10 + index}:00`}
+                          {period.startTime && period.endTime ? `${period.startTime} - ${period.endTime}` : period.timeSlot || `${9 + index}:00 - ${10 + index}:00`}
                         </p>
-                        <p className="text-gray-500 text-xs">Period {period.period || index + 1}</p>
+                        <p className="text-gray-500 text-xs">Period {period.periodNumber || period.period || index + 1}</p>
                       </div>
 
                       <div className="flex-1">
@@ -627,6 +634,26 @@ const StudentDashboard = () => {
 
 
 
+        {/* Bottom Navigation - Mobile only */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 z-40">
+          <div className="flex justify-around">
+            {bottomNavItems.map((item) => (
+              <Link
+                key={item.title}
+                to={item.href}
+                className={`flex flex-col items-center py-2 px-3 rounded-lg ${
+                  item.active 
+                    ? 'text-blue-600 bg-blue-50' 
+                    : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
+                }`}
+              >
+                <item.icon className="w-6 h-6 mb-1" />
+                <span className="text-xs font-medium">{item.title}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+
         {/* Mobile Sidebar */}
         {sidebarOpen && (
           <div className="fixed inset-0 z-50">
@@ -769,9 +796,9 @@ const StudentDashboard = () => {
                     <div className="flex items-center space-x-4">
                       <div className="text-center">
                         <p className="text-sm font-semibold text-blue-600">
-                          {period.time || `${9 + index}:00-${10 + index}:00`}
+                          {period.startTime && period.endTime ? `${period.startTime}-${period.endTime}` : period.timeSlot || `${9 + index}:00-${10 + index}:00`}
                         </p>
-                        <p className="text-xs text-gray-500">Period {period.period || index + 1}</p>
+                        <p className="text-xs text-gray-500">Period {period.periodNumber || period.period || index + 1}</p>
                       </div>
                       <div>
                         <h4 className="font-medium text-gray-900">{period.subject?.name || `Subject ${index + 1}`}</h4>

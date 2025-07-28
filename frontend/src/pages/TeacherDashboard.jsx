@@ -264,13 +264,13 @@ const TeacherDashboard = () => {
                 {getTodaySchedule().slice(0, 4).map((period, index) => (
                   <div key={period.id || index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                     <div className="text-center min-w-[70px]">
-                      <p className="text-blue-600 font-semibold text-sm">{period.time || `${9 + index}:00 - ${10 + index}:00`}</p>
-                      <p className="text-gray-500 text-xs">Period {period.period || index + 1}</p>
+                      <p className="text-blue-600 font-semibold text-sm">{period.startTime && period.endTime ? `${period.startTime} - ${period.endTime}` : period.timeSlot || `${9 + index}:00 - ${10 + index}:00`}</p>
+                      <p className="text-gray-500 text-xs">Period {period.periodNumber || period.period || index + 1}</p>
                     </div>
                     
                     <div className="flex-1">
                       <h4 className="font-semibold text-gray-900 text-sm">{period.subject?.name || `Subject ${index + 1}`}</h4>
-                      <p className="text-gray-600 text-xs">Class {period.class?.name || `${10 + index}-A`}</p>
+                      <p className="text-gray-600 text-xs">Class {period.classId?.grade && period.classId?.division ? `${period.classId.grade}${period.classId.division}` : period.class?.name || `${10 + index}-A`}</p>
                       <div className="flex items-center space-x-2 mt-1">
                         <span className="text-gray-500 text-xs">{period.room || `Room ${101 + index}`}</span>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPeriodTypeColor(period.type || 'theory')}`}>
@@ -539,12 +539,12 @@ const TeacherDashboard = () => {
                   <div key={period.id || index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                     <div className="flex items-center space-x-4">
                       <div className="text-center">
-                        <p className="text-sm font-semibold text-blue-600">{period.time || `${9 + index}:00-${10 + index}:00`}</p>
-                        <p className="text-xs text-gray-500">Period {period.period || index + 1}</p>
+                        <p className="text-sm font-semibold text-blue-600">{period.startTime && period.endTime ? `${period.startTime}-${period.endTime}` : period.timeSlot || `${9 + index}:00-${10 + index}:00`}</p>
+                        <p className="text-xs text-gray-500">Period {period.periodNumber || period.period || index + 1}</p>
                       </div>
                       <div>
                         <h4 className="font-medium text-gray-900">{period.subject?.name || `Subject ${index + 1}`}</h4>
-                        <p className="text-sm text-gray-600">Class {period.class?.name || `${10 + index}-A`} • {period.room || `Room ${101 + index}`}</p>
+                        <p className="text-sm text-gray-600">Class {period.classId?.grade && period.classId?.division ? `${period.classId.grade}${period.classId.division}` : period.class?.name || `${10 + index}-A`} • {period.room || `Room ${101 + index}`}</p>
                       </div>
                     </div>
                     <Link
