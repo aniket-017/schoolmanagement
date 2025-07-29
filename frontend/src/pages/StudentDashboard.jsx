@@ -407,8 +407,7 @@ const StudentDashboard = () => {
     { title: 'Home', icon: HomeIcon, href: '/student/dashboard', active: true },
     { title: 'Attendance', icon: CalendarIcon, href: '/student/attendance' },
     { title: 'Homework', icon: BookOpenIcon, href: '/student/homework' },
-    { title: 'Timetable', icon: ClockIcon, href: '/student/timetable' },
-    { title: 'Annual Calendar', icon: CalendarIcon, href: '/student/annual-calendar' }
+    { title: 'Timetable', icon: ClockIcon, href: '/student/timetable' }
   ];
 
 
