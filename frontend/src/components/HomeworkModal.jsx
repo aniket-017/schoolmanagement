@@ -7,6 +7,10 @@ const HomeworkModal = ({ isOpen, onClose, homework = null, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [subjects, setSubjects] = useState([]);
   const [classes, setClasses] = useState([]);
+  const [timetableClasses, setTimetableClasses] = useState([]);
+  const [assignedClasses, setAssignedClasses] = useState([]);
+  const [timetableSubjects, setTimetableSubjects] = useState([]);
+  const [assignedSubjects, setAssignedSubjects] = useState([]);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -66,10 +70,45 @@ const HomeworkModal = ({ isOpen, onClose, homework = null, onSuccess }) => {
       let subjectsResponse, classesResponse;
       
       try {
-        [subjectsResponse, classesResponse] = await Promise.all([
+        // Get both timetable and assigned subjects and classes
+        const [assignedSubjectsResponse, timetableSubjectsResponse, timetableClassesResponse, assignedClassesResponse] = await Promise.all([
           apiService.subjects.getTeacherAssignedSubjects(),
+          apiService.subjects.getTeacherTimetableSubjects(),
+          apiService.classes.getTeacherTimetableClasses(),
           apiService.classes.getTeacherAssignedClasses()
         ]);
+
+        // Combine and deduplicate subjects
+        const assignedSubjectsData = assignedSubjectsResponse?.success ? assignedSubjectsResponse.data : [];
+        const timetableSubjectsData = timetableSubjectsResponse?.success ? timetableSubjectsResponse.data : [];
+        
+        // Set state for subject type identification
+        setAssignedSubjects(assignedSubjectsData);
+        setTimetableSubjects(timetableSubjectsData);
+        
+        // Combine subjects and remove duplicates based on _id
+        const allSubjects = [...assignedSubjectsData, ...timetableSubjectsData];
+        const uniqueSubjects = allSubjects.filter((subject, index, self) => 
+          index === self.findIndex(s => s._id === subject._id)
+        );
+
+        subjectsResponse = { success: true, data: uniqueSubjects };
+
+        // Combine and deduplicate classes
+        const timetableClassesData = timetableClassesResponse?.success ? timetableClassesResponse.data : [];
+        const assignedClassesData = assignedClassesResponse?.success ? assignedClassesResponse.data : [];
+        
+        // Set state for class type identification
+        setTimetableClasses(timetableClassesData);
+        setAssignedClasses(assignedClassesData);
+        
+        // Combine classes and remove duplicates based on _id
+        const allClasses = [...timetableClassesData, ...assignedClassesData];
+        const uniqueClasses = allClasses.filter((cls, index, self) => 
+          index === self.findIndex(c => c._id === cls._id)
+        );
+
+        classesResponse = { success: true, data: uniqueClasses };
       } catch (error) {
         // Fallback to getting all subjects and classes if teacher-specific endpoints don't exist
         console.log('Teacher-specific endpoints not available, falling back to all data');
@@ -225,11 +264,26 @@ const HomeworkModal = ({ isOpen, onClose, homework = null, onSuccess }) => {
                      {subjects.length === 0 ? (
                        <option value="" disabled>No subjects assigned to you</option>
                      ) : (
-                       subjects.map((subject) => (
-                         <option key={subject._id} value={subject._id}>
-                           {subject.name}
-                         </option>
-                       ))
+                       subjects.map((subject) => {
+                         // Check if this subject is from timetable or assigned
+                         const isFromTimetable = timetableSubjects?.some(ts => ts._id === subject._id);
+                         const isAssigned = assignedSubjects?.some(as => as._id === subject._id);
+                         
+                         let subjectType = '';
+                         if (isFromTimetable && isAssigned) {
+                           subjectType = ' (Teaching & Assigned)';
+                         } else if (isFromTimetable) {
+                           subjectType = ' (Teaching)';
+                         } else if (isAssigned) {
+                           subjectType = ' (Assigned)';
+                         }
+                         
+                         return (
+                           <option key={subject._id} value={subject._id}>
+                             {subject.name}{subjectType}
+                           </option>
+                         );
+                       })
                      )}
                    </select>
                    {subjects.length === 0 && (
@@ -254,11 +308,26 @@ const HomeworkModal = ({ isOpen, onClose, homework = null, onSuccess }) => {
                      {classes.length === 0 ? (
                        <option value="" disabled>No classes assigned to you</option>
                      ) : (
-                       classes.map((cls) => (
-                         <option key={cls._id} value={cls._id}>
-                           {cls.name} - {cls.grade}{cls.section}
-                         </option>
-                       ))
+                       classes.map((cls) => {
+                         // Check if this class is from timetable or assigned
+                         const isFromTimetable = timetableClasses?.some(tc => tc._id === cls._id);
+                         const isAssigned = assignedClasses?.some(ac => ac._id === cls._id);
+                         
+                         let classType = '';
+                         if (isFromTimetable && isAssigned) {
+                           classType = ' (Teaching & Assigned)';
+                         } else if (isFromTimetable) {
+                           classType = ' (Teaching)';
+                         } else if (isAssigned) {
+                           classType = ' (Assigned)';
+                         }
+                         
+                         return (
+                           <option key={cls._id} value={cls._id}>
+                             {cls.name} - Grade {cls.grade} {cls.division}{classType}
+                           </option>
+                         );
+                       })
                      )}
                    </select>
                    {classes.length === 0 && (

@@ -389,6 +389,11 @@ const StudentDashboard = () => {
     ));
   };
 
+  const handleViewHomeworkDetails = (homework) => {
+    // Navigate to homework page with the specific homework
+    window.location.href = `/student/homework`;
+  };
+
   const quickActions = [
     { title: "Attendance", icon: CalendarIcon, href: "/student/attendance", color: "bg-blue-500" },
     { title: "Homework", icon: BookOpenIcon, href: "/student/homework", color: "bg-indigo-500" },
@@ -618,6 +623,7 @@ const StudentDashboard = () => {
                     homework={hw}
                     isTeacher={false}
                     onProgressUpdate={handleHomeworkProgressUpdate}
+                    onViewDetails={handleViewHomeworkDetails}
                     showDetails={false}
                   />
                 ))}
@@ -1027,6 +1033,7 @@ const StudentDashboard = () => {
                     homework={hw}
                     isTeacher={false}
                     onProgressUpdate={handleHomeworkProgressUpdate}
+                    onViewDetails={handleViewHomeworkDetails}
                     showDetails={false}
                   />
                 ))}

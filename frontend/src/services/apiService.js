@@ -237,6 +237,13 @@ class ApiService {
       });
       return this.handleResponse(response);
     },
+
+    getTeacherTimetableSubjects: async () => {
+      const response = await fetch(`${this.baseURL}/subjects/teacher/timetable`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
   };
 
   // Classes APIs
@@ -258,6 +265,13 @@ class ApiService {
 
     getTeacherAssignedClasses: async () => {
       const response = await fetch(`${this.baseURL}/classes/teacher/assigned`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getTeacherTimetableClasses: async () => {
+      const response = await fetch(`${this.baseURL}/classes/teacher/timetable`, {
         headers: this.getAuthHeaders(),
       });
       return this.handleResponse(response);

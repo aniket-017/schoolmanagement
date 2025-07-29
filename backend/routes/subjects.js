@@ -7,14 +7,25 @@ const {
   updateSubject,
   deleteSubject,
   getTeacherAssignedSubjects,
+  getTeacherTimetableSubjects,
   assignSubjectToTeacher,
 } = require("../controllers/subjectController");
-const { auth, authorize } = require("../middleware/auth");
+const { auth, authorize, teacherOnly } = require("../middleware/auth");
 
 // @route   GET /api/subjects
 // @desc    Get all subjects
 // @access  Private
 router.get("/", auth, getAllSubjects);
+
+// @route   GET /api/subjects/teacher/assigned
+// @desc    Get teacher's assigned subjects
+// @access  Private (Teacher only)
+router.get("/teacher/assigned", auth, teacherOnly, getTeacherAssignedSubjects);
+
+// @route   GET /api/subjects/teacher/timetable
+// @desc    Get teacher's timetable subjects
+// @access  Private (Teacher only)
+router.get("/teacher/timetable", auth, teacherOnly, getTeacherTimetableSubjects);
 
 // @route   GET /api/subjects/:id
 // @desc    Get subject by ID
@@ -35,11 +46,6 @@ router.put("/:id", auth, authorize("admin"), updateSubject);
 // @desc    Delete subject
 // @access  Private (Admin only)
 router.delete("/:id", auth, authorize("admin"), deleteSubject);
-
-// @route   GET /api/subjects/teacher/assigned
-// @desc    Get teacher's assigned subjects
-// @access  Private (Teacher only)
-router.get("/teacher/assigned", auth, getTeacherAssignedSubjects);
 
 // @route   PUT /api/subjects/:id/assign-teacher
 // @desc    Assign subject to teacher

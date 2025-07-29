@@ -12,6 +12,7 @@ const {
   assignClassTeacher,
   getAvailableTeachers,
   getTeacherAssignedClasses,
+  getTeacherTimetableClasses,
 } = require("../controllers/classController");
 
 // Configure multer for file uploads
@@ -89,6 +90,11 @@ router.put("/:id/assign-teacher", auth, adminOnly, assignClassTeacher);
 // @desc    Get classes assigned to current teacher
 // @access  Private (Teacher only)
 router.get("/teacher/assigned", auth, teacherOnly, getTeacherAssignedClasses);
+
+// @route   GET /api/classes/teacher/timetable
+// @desc    Get classes from teacher's timetable
+// @access  Private (Teacher only)
+router.get("/teacher/timetable", auth, teacherOnly, getTeacherTimetableClasses);
 
 // @route   GET /api/classes/:id/students
 // @desc    Get all students in a class

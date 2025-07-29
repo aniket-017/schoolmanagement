@@ -119,7 +119,7 @@ const HomeworkCard = ({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-      onClick={onViewDetails}
+      onClick={() => onViewDetails(homework)}
     >
       {/* Header */}
       <div className="p-4">
@@ -130,7 +130,7 @@ const HomeworkCard = ({
                 className="w-3 h-3 rounded-full"
                 style={{ backgroundColor: homework.color || '#3B82F6' }}
               />
-              <h3 className="font-semibold text-gray-900 text-lg">{homework.title}</h3>
+              <h3 className="font-semibold text-gray-900 text-base">{homework.title}</h3>
               {!isTeacher && (
                 <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${getStatusColor(studentProgress.status)}`}>
                   {getStatusIcon(studentProgress.status)}
@@ -142,61 +142,52 @@ const HomeworkCard = ({
             {isTeacher && (
               <div className="flex items-center space-x-2 mb-3">
                 <button
-                  onClick={() => onEdit(homework)}
-                  className="flex items-center px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-all duration-200 hover:scale-105 text-sm font-medium"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(homework);
+                  }}
+                  className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-all duration-200 hover:scale-105"
                   title="Edit Homework"
                 >
-                  <PencilIcon className="w-3 h-3 mr-1" />
-                  Edit
+                  <PencilIcon className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => onDelete(homework._id)}
-                  className="flex items-center px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-all duration-200 hover:scale-105 text-sm font-medium"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(homework._id);
+                  }}
+                  className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-all duration-200 hover:scale-105"
                   title="Delete Homework"
                 >
-                  <TrashIcon className="w-3 h-3 mr-1" />
-                  Delete
+                  <TrashIcon className="w-4 h-4" />
                 </button>
               </div>
             )}
             
-            <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
-              <div className="flex items-center space-x-1">
-                <BookOpenIcon className="w-4 h-4" />
-                <span>{homework.subjectId?.name || 'Subject'}</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <UserGroupIcon className="w-4 h-4" />
-                <span>{homework.classId?.name || 'Class'}</span>
-              </div>
-            </div>
+            {/* Subject and Class info removed - shown in detail modal */}
 
             {/* Description, Instructions, and Resources are only shown in detail modal */}
 
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4 text-sm">
-                <div className={`flex items-center space-x-1 ${dueStatus.color}`}>
-                  <DueIcon className="w-4 h-4" />
-                  <span>
-                    {dueStatus.status === 'overdue' && 'Overdue'}
-                    {dueStatus.status === 'due_today' && 'Due today'}
-                    {dueStatus.status === 'due_tomorrow' && 'Due tomorrow'}
-                    {dueStatus.status === 'due_soon' && `Due in ${Math.ceil((new Date(homework.dueDate) - new Date()) / (1000 * 60 * 60 * 24))} days`}
-                    {dueStatus.status === 'assigned' && `Due ${formatDate(homework.dueDate)}`}
-                  </span>
-                </div>
-                
-                <div className="flex items-center space-x-1 text-gray-500">
-                  <CalendarIcon className="w-4 h-4" />
-                  <span>{formatDate(homework.dueDate)} at {formatTime(homework.dueDate)}</span>
-                </div>
+              <div className={`flex items-center space-x-1 ${dueStatus.color}`}>
+                <DueIcon className="w-4 h-4" />
+                <span className="text-sm">
+                  {dueStatus.status === 'overdue' && 'Overdue'}
+                  {dueStatus.status === 'due_today' && 'Due today'}
+                  {dueStatus.status === 'due_tomorrow' && 'Due tomorrow'}
+                  {dueStatus.status === 'due_soon' && `Due in ${Math.ceil((new Date(homework.dueDate) - new Date()) / (1000 * 60 * 60 * 24))} days`}
+                  {dueStatus.status === 'assigned' && `Due ${formatDate(homework.dueDate)}`}
+                </span>
               </div>
 
               <div className="flex items-center space-x-3">
                 {!isTeacher && (
                   <div className="flex space-x-1">
                     <button
-                      onClick={() => handleProgressUpdate('reading')}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleProgressUpdate('reading');
+                      }}
                       disabled={updatingProgress || studentProgress.status === 'reading'}
                       className={`p-1 rounded ${
                         studentProgress.status === 'reading' 
@@ -207,7 +198,10 @@ const HomeworkCard = ({
                       <BookOpenIcon className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleProgressUpdate('completed')}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleProgressUpdate('completed');
+                      }}
                       disabled={updatingProgress || studentProgress.status === 'completed'}
                       className={`p-1 rounded ${
                         studentProgress.status === 'completed' 

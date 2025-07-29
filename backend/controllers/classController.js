@@ -447,6 +447,80 @@ const getTeacherAssignedClasses = async (req, res) => {
   }
 };
 
+// @desc    Get classes from teacher's timetable
+// @route   GET /api/classes/teacher/timetable
+// @access  Private (Teacher only)
+const getTeacherTimetableClasses = async (req, res) => {
+  try {
+    const Timetable = require("../models/Timetable");
+    
+    // Find all timetables where the current teacher is assigned to any period
+    const timetables = await Timetable.find({
+      "periods.teacher": req.user._id
+    }).populate("classId", "name grade division");
+
+    // Extract unique class IDs from the timetables
+    const classIds = [...new Set(timetables.map(t => t.classId._id.toString()))];
+    
+    // Get detailed class information for each unique class
+    const classesWithDetails = await Promise.all(
+      classIds.map(async (classId) => {
+        const classData = await Class.findById(classId)
+          .populate("students", "name studentId email")
+          .populate("subjects.subject", "name code")
+          .populate("subjects.teacher", "name email");
+
+        if (!classData) return null;
+
+        // Get student count
+        const studentCount = classData.students ? classData.students.length : 0;
+
+        // Get subjects count
+        const subjectsCount = classData.subjects ? classData.subjects.length : 0;
+
+        // Get recent assignments count (last 30 days)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        const Assignment = require("../models/Assignment");
+        const recentAssignments = await Assignment.countDocuments({
+          classId: classData._id,
+          assignedDate: { $gte: thirtyDaysAgo },
+          isActive: true,
+        });
+
+        return {
+          ...classData.toObject(),
+          studentCount,
+          subjectsCount,
+          recentAssignments,
+        };
+      })
+    );
+
+    // Filter out null values and return
+    const validClasses = classesWithDetails.filter(cls => cls !== null);
+
+    res.json({
+      success: true,
+      data: validClasses,
+      summary: {
+        totalClasses: validClasses.length,
+        totalStudents: validClasses.reduce((sum, cls) => sum + cls.studentCount, 0),
+        totalSubjects: validClasses.reduce((sum, cls) => sum + cls.subjectsCount, 0),
+        totalRecentAssignments: validClasses.reduce((sum, cls) => sum + cls.recentAssignments, 0),
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching teacher timetable classes:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching timetable classes",
+      error: error.message,
+    });
+  }
+};
+
 // Helper function for ordinal suffix
 const getOrdinalSuffix = (num) => {
   const j = num % 10;
@@ -472,4 +546,5 @@ module.exports = {
   assignClassTeacher,
   getAvailableTeachers,
   getTeacherAssignedClasses,
+  getTeacherTimetableClasses,
 };
