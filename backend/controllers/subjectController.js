@@ -178,6 +178,40 @@ const deleteSubject = async (req, res) => {
   }
 };
 
+// @desc    Get teacher's assigned subjects
+// @route   GET /api/subjects/teacher/assigned
+// @access  Private (Teacher only)
+const getTeacherAssignedSubjects = async (req, res) => {
+  try {
+    const teacherId = req.user.id;
+
+    const teacher = await User.findById(teacherId);
+    if (!teacher || teacher.role !== "teacher") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Teacher role required.",
+      });
+    }
+
+    // Get subjects assigned to the teacher
+    const assignedSubjects = await Subject.find({
+      _id: { $in: teacher.subjects || [] }
+    }).sort({ name: 1 });
+
+    res.json({
+      success: true,
+      count: assignedSubjects.length,
+      data: assignedSubjects,
+    });
+  } catch (error) {
+    console.error("Get teacher assigned subjects error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching teacher's assigned subjects",
+    });
+  }
+};
+
 // @desc    Assign subject to teacher
 // @route   PUT /api/subjects/:id/assign-teacher
 // @access  Private (Admin only)
@@ -226,6 +260,6 @@ module.exports = {
   createSubject,
   updateSubject,
   deleteSubject,
-
+  getTeacherAssignedSubjects,
   assignSubjectToTeacher,
 };

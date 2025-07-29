@@ -20,7 +20,7 @@ const auth = async (req, res, next) => {
     
     // Check if it's a student token or regular user token
     if (decoded.type === 'student') {
-      user = await Student.findById(decoded.id)
+      user = await Student.findById(decoded._id || decoded.id)
         .populate("class", "name grade section")
         .select("-loginPassword");
       if (user) {
@@ -28,7 +28,7 @@ const auth = async (req, res, next) => {
         user.role = 'student';
       }
     } else {
-      user = await User.findById(decoded.id).select("-password");
+      user = await User.findById(decoded._id || decoded.id).select("-password");
     }
 
     if (!user) {

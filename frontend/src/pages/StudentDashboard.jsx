@@ -18,10 +18,13 @@ import {
   BellIcon,
   ChartBarIcon,
   HomeIcon,
+  BookOpenIcon,
 } from "@heroicons/react/24/outline";
 import { useTeacherAuth } from "../context/TeacherAuthContext";
 import apiService from "../services/apiService";
 import logo from "../assets/logo.jpeg";
+import HomeworkCard from "../components/HomeworkCard";
+import HomeworkStats from "../components/HomeworkStats";
 
 // Skeleton loading component
 const SkeletonCard = () => (
@@ -60,6 +63,8 @@ const StudentDashboard = () => {
   const [timetableData, setTimetableData] = useState(null);
   const [todayAttendance, setTodayAttendance] = useState(null);
   const [announcements, setAnnouncements] = useState([]);
+  const [homework, setHomework] = useState([]);
+  const [homeworkStats, setHomeworkStats] = useState({});
   const [studentStats, setStudentStats] = useState({
     attendanceRate: "NaN%",
     presentDays: 0,
@@ -223,14 +228,36 @@ const StudentDashboard = () => {
         }));
       }
 
+      // Load homework for student
+      promises.push(
+        apiService.homework.getAll({ limit: 5 })
+          .then(response => response.success ? response.data || [] : [])
+          .catch(error => {
+            console.log("Homework not available:", error.message);
+            return [];
+          })
+      );
+
+      // Load homework stats for student
+      promises.push(
+        apiService.homework.getStats()
+          .then(response => response.success ? response.data || {} : {})
+          .catch(error => {
+            console.log("Homework stats not available:", error.message);
+            return {};
+          })
+      );
+
       // Wait for all promises to resolve
-      const [timetableData, todayAttendance, announcements, studentStats] = await Promise.all(promises);
+      const [timetableData, todayAttendance, announcements, studentStats, homework, homeworkStats] = await Promise.all(promises);
 
       // Set state with all data at once
       setTimetableData(timetableData);
       setTodayAttendance(todayAttendance);
       setAnnouncements(announcements);
       setStudentStats(studentStats);
+      setHomework(homework);
+      setHomeworkStats(homeworkStats);
 
     } catch (error) {
       console.error("Error loading dashboard data:", error);
@@ -349,8 +376,22 @@ const StudentDashboard = () => {
     setShowLogoutModal(false);
   };
 
+  // Homework progress update handler
+  const handleHomeworkProgressUpdate = (homeworkId, newStatus) => {
+    setHomework(prev => prev.map(hw => 
+      hw._id === homeworkId 
+        ? { ...hw, studentProgress: hw.studentProgress?.map(p => 
+            p.studentId === (user?._id || user?.id) 
+              ? { ...p, status: newStatus }
+              : p
+          ) || [{ studentId: user?._id || user?.id, status: newStatus }] }
+        : hw
+    ));
+  };
+
   const quickActions = [
     { title: "Attendance", icon: CalendarIcon, href: "/student/attendance", color: "bg-blue-500" },
+    { title: "Homework", icon: BookOpenIcon, href: "/student/homework", color: "bg-indigo-500" },
     { title: "Announcements", icon: MegaphoneIcon, href: "/student/announcements", color: "bg-green-500" },
     { title: "Timetable", icon: ClockIcon, href: "/student/timetable", color: "bg-orange-500" },
     { title: "Annual Calendar", icon: CalendarIcon, href: "/student/annual-calendar", color: "bg-purple-500" },
@@ -360,6 +401,7 @@ const StudentDashboard = () => {
   const bottomNavItems = [
     { title: 'Home', icon: HomeIcon, href: '/student/dashboard', active: true },
     { title: 'Attendance', icon: CalendarIcon, href: '/student/attendance' },
+    { title: 'Homework', icon: BookOpenIcon, href: '/student/homework' },
     { title: 'Timetable', icon: ClockIcon, href: '/student/timetable' },
     { title: 'Annual Calendar', icon: CalendarIcon, href: '/student/annual-calendar' }
   ];
@@ -547,6 +589,42 @@ const StudentDashboard = () => {
             )}
           </motion.div>
 
+          {/* Recent Homework */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Recent Homework</h3>
+              <button className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm flex items-center space-x-1" onClick={() => window.location.href = '/student/homework'}>
+                <BookOpenIcon className="w-4 h-4" />
+                <span>View All</span>
+              </button>
+            </div>
+
+            {homework.length === 0 ? (
+              <div className="text-center py-8">
+                <BookOpenIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-500 font-medium">No homework assigned</p>
+                <p className="text-gray-400 text-sm">Check back later for new assignments</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {homework.slice(0, 3).map((hw) => (
+                  <HomeworkCard
+                    key={hw._id}
+                    homework={hw}
+                    isTeacher={false}
+                    onProgressUpdate={handleHomeworkProgressUpdate}
+                    showDetails={false}
+                  />
+                ))}
+              </div>
+            )}
+          </motion.div>
+
           {/* Today's Attendance */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -678,6 +756,9 @@ const StudentDashboard = () => {
                   </Link>
                   <Link to="/student/attendance" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
                     Attendance
+                  </Link>
+                  <Link to="/student/homework" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
+                    Homework
                   </Link>
                   <Link to="/student/announcements" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
                     Announcements
@@ -911,6 +992,45 @@ const StudentDashboard = () => {
                   </div>
                 </div>
               ))
+            )}
+          </div>
+        </div>
+
+        {/* Homework Section */}
+        <div className="mt-8 bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-gray-900">Homework</h3>
+            <Link to="/student/homework" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+              View All
+            </Link>
+          </div>
+
+          {/* Homework Stats */}
+          <div className="mb-6">
+            <HomeworkStats stats={homeworkStats} isTeacher={false} />
+          </div>
+
+          {/* Recent Homework */}
+          <div className="space-y-4">
+            <h4 className="font-medium text-gray-900">Recent Homework</h4>
+            {homework.length === 0 ? (
+              <div className="text-center py-8">
+                <BookOpenIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500 mb-4">No homework assigned yet</p>
+                <p className="text-gray-400 text-sm">Check back later for new assignments</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {homework.slice(0, 4).map((hw) => (
+                  <HomeworkCard
+                    key={hw._id}
+                    homework={hw}
+                    isTeacher={false}
+                    onProgressUpdate={handleHomeworkProgressUpdate}
+                    showDetails={false}
+                  />
+                ))}
+              </div>
             )}
           </div>
         </div>

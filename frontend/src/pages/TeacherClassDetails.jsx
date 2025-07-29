@@ -52,7 +52,7 @@ const TeacherClassDetails = () => {
         });
         classResponse = await apiService.handleResponse(fetchResponse);
       } else {
-        classResponse = await apiService.classes.getClassById(classId);
+        classResponse = await apiService.classes.getById(classId);
       }
       console.log('Class Response:', classResponse);
       

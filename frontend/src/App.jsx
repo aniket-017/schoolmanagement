@@ -53,6 +53,8 @@ import TeacherAnnouncements from "./pages/TeacherAnnouncements";
 import StudentTimetable from "./pages/StudentTimetable";
 import StudentAnnouncements from "./pages/StudentAnnouncements";
 import StudentAnnualCalendar from "./pages/StudentAnnualCalendar";
+import StudentHomework from "./pages/StudentHomework";
+import TeacherHomework from "./pages/TeacherHomework";
 
 function AppContent() {
   const { requirePasswordChange } = useAuth();
@@ -205,6 +207,14 @@ function AppContent() {
             </TeacherProtectedRoute>
           }
         />
+        <Route
+          path="/student/homework"
+          element={
+            <TeacherProtectedRoute allowedRoles={["student"]}>
+              <StudentHomework />
+            </TeacherProtectedRoute>
+          }
+        />
 
         {/* Teacher Portal Routes */}
         <Route
@@ -268,6 +278,14 @@ function AppContent() {
           element={
             <TeacherProtectedRoute allowedRoles={["teacher"]}>
               <TeacherProfile />
+            </TeacherProtectedRoute>
+          }
+        />
+        <Route
+          path="/teacher/homework"
+          element={
+            <TeacherProtectedRoute allowedRoles={["teacher"]}>
+              <TeacherHomework />
             </TeacherProtectedRoute>
           }
         />

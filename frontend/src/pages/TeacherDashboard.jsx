@@ -18,10 +18,14 @@ import {
   BellIcon,
   HomeIcon,
   ExclamationTriangleIcon,
+  PlusIcon,
 } from '@heroicons/react/24/outline';
 import { useTeacherAuth } from '../context/TeacherAuthContext';
 import apiService from '../services/apiService';
 import logo from '../assets/logo.jpeg';
+import HomeworkModal from '../components/HomeworkModal';
+import HomeworkCard from '../components/HomeworkCard';
+import HomeworkStats from '../components/HomeworkStats';
 
 const TeacherDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -33,6 +37,10 @@ const TeacherDashboard = () => {
   // Data states
   const [timetableData, setTimetableData] = useState(null);
   const [announcements, setAnnouncements] = useState([]);
+  const [homework, setHomework] = useState([]);
+  const [homeworkStats, setHomeworkStats] = useState({});
+  const [showHomeworkModal, setShowHomeworkModal] = useState(false);
+  const [editingHomework, setEditingHomework] = useState(null);
   const [teacherStats, setTeacherStats] = useState({
     todayClasses: 0,
     totalStudents: 0,
@@ -90,12 +98,34 @@ const TeacherDashboard = () => {
           })
       );
 
+      // Load homework
+      promises.push(
+        apiService.homework.getAll({ limit: 5 })
+          .then(response => response.success ? response.data || [] : [])
+          .catch(error => {
+            console.log('Homework not available:', error.message);
+            return [];
+          })
+      );
+
+      // Load homework stats
+      promises.push(
+        apiService.homework.getStats()
+          .then(response => response.success ? response.data || {} : {})
+          .catch(error => {
+            console.log('Homework stats not available:', error.message);
+            return {};
+          })
+      );
+
       // Wait for all promises to resolve
-      const [timetableData, announcements] = await Promise.all(promises);
+      const [timetableData, announcements, homework, stats] = await Promise.all(promises);
 
       // Set state with all data at once
       setTimetableData(timetableData);
       setAnnouncements(announcements);
+      setHomework(homework);
+      setHomeworkStats(stats);
 
       // Calculate stats from available data
       const todaySchedule = getTodaySchedule();
@@ -160,6 +190,7 @@ const TeacherDashboard = () => {
   const quickActions = [
     { title: 'Take Attendance', icon: ClipboardDocumentListIcon, href: '/teacher/attendance', color: 'bg-blue-500' },
     { title: 'My Classes', icon: UserGroupIcon, href: '/teacher/classes', color: 'bg-green-500' },
+    { title: 'Homework', icon: BookOpenIcon, href: '/teacher/homework', color: 'bg-indigo-500' },
     { title: 'Annual Calendar', icon: CalendarIcon, href: '/teacher/annual-calendar', color: 'bg-purple-500' },
     { title: 'Timetable', icon: ClockIcon, href: '/teacher/timetable', color: 'bg-orange-500' }
   ];
@@ -182,6 +213,38 @@ const TeacherDashboard = () => {
 
   const cancelLogout = () => {
     setShowLogoutModal(false);
+  };
+
+  // Homework handlers
+  const handleCreateHomework = () => {
+    setEditingHomework(null);
+    setShowHomeworkModal(true);
+  };
+
+  const handleEditHomework = (homework) => {
+    setEditingHomework(homework);
+    setShowHomeworkModal(true);
+  };
+
+  const handleDeleteHomework = async (homeworkId) => {
+    if (window.confirm('Are you sure you want to delete this homework?')) {
+      try {
+        await apiService.homework.delete(homeworkId);
+        setHomework(prev => prev.filter(hw => hw._id !== homeworkId));
+      } catch (error) {
+        console.error('Error deleting homework:', error);
+      }
+    }
+  };
+
+  const handleHomeworkSuccess = (newHomework) => {
+    if (editingHomework) {
+      setHomework(prev => prev.map(hw => hw._id === newHomework._id ? newHomework : hw));
+    } else {
+      setHomework(prev => [newHomework, ...prev]);
+    }
+    setShowHomeworkModal(false);
+    setEditingHomework(null);
   };
 
   if (loading) {
@@ -328,6 +391,59 @@ const TeacherDashboard = () => {
             </div>
           </motion.div>
 
+          {/* Recent Homework */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="bg-white rounded-xl shadow-sm border border-gray-200 p-4"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Recent Homework</h3>
+              <div className="flex items-center space-x-3">
+                <Link 
+                  to="/teacher/homework"
+                  className="text-blue-600 text-sm font-medium hover:text-blue-700"
+                >
+                  View All
+                </Link>
+                <button 
+                  onClick={handleCreateHomework}
+                  className="flex items-center space-x-1 text-blue-600 text-sm font-medium"
+                >
+                  <PlusIcon className="w-4 h-4" />
+                  <span>Create</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {homework.length === 0 ? (
+                <div className="text-center py-6">
+                  <BookOpenIcon className="w-10 h-10 text-gray-400 mx-auto mb-2" />
+                  <p className="text-gray-500">No homework assigned</p>
+                  <button 
+                    onClick={handleCreateHomework}
+                    className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
+                  >
+                    Create First Homework
+                  </button>
+                </div>
+              ) : (
+                homework.slice(0, 3).map((hw) => (
+                  <HomeworkCard
+                    key={hw._id}
+                    homework={hw}
+                    isTeacher={true}
+                    onEdit={handleEditHomework}
+                    onDelete={handleDeleteHomework}
+                    showDetails={false}
+                  />
+                ))
+              )}
+            </div>
+          </motion.div>
+
           {/* Quick Actions Grid */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -410,6 +526,14 @@ const TeacherDashboard = () => {
             </div>
           </div>
         )}
+
+        {/* Homework Modal */}
+        <HomeworkModal
+          isOpen={showHomeworkModal}
+          onClose={() => setShowHomeworkModal(false)}
+          homework={editingHomework}
+          onSuccess={handleHomeworkSuccess}
+        />
 
         {/* Logout Confirmation Modal */}
         {showLogoutModal && (
@@ -591,6 +715,55 @@ const TeacherDashboard = () => {
           </div>
         </div>
 
+        {/* Homework Section */}
+        <div className="mt-8 bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-gray-900">Homework Management</h3>
+            <button 
+              onClick={handleCreateHomework}
+              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <PlusIcon className="w-4 h-4" />
+              <span>Create Homework</span>
+            </button>
+          </div>
+
+          {/* Homework Stats */}
+          <div className="mb-6">
+            <HomeworkStats stats={homeworkStats} isTeacher={true} />
+          </div>
+
+          {/* Recent Homework */}
+          <div className="space-y-4">
+            <h4 className="font-medium text-gray-900">Recent Homework</h4>
+            {homework.length === 0 ? (
+              <div className="text-center py-8">
+                <BookOpenIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500 mb-4">No homework assigned yet</p>
+                <button 
+                  onClick={handleCreateHomework}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Create First Homework
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {homework.slice(0, 4).map((hw) => (
+                  <HomeworkCard
+                    key={hw._id}
+                    homework={hw}
+                    isTeacher={true}
+                    onEdit={handleEditHomework}
+                    onDelete={handleDeleteHomework}
+                    showDetails={false}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Quick Actions for Desktop */}
         <div className="mt-8 bg-white rounded-xl shadow-sm p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-6">Quick Actions</h3>
@@ -619,6 +792,14 @@ const TeacherDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Homework Modal for Desktop */}
+      <HomeworkModal
+        isOpen={showHomeworkModal}
+        onClose={() => setShowHomeworkModal(false)}
+        homework={editingHomework}
+        onSuccess={handleHomeworkSuccess}
+      />
 
       {/* Logout Confirmation Modal for Desktop */}
       {showLogoutModal && (

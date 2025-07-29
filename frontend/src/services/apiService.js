@@ -214,9 +214,34 @@ class ApiService {
     },
   };
 
+  // Subjects APIs
+  subjects = {
+    getAll: async (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await fetch(`${this.baseURL}/subjects?${queryString}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getById: async (id) => {
+      const response = await fetch(`${this.baseURL}/subjects/${id}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getTeacherAssignedSubjects: async () => {
+      const response = await fetch(`${this.baseURL}/subjects/teacher/assigned`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+  };
+
   // Classes APIs
   classes = {
-    getAllClasses: async (params = {}) => {
+    getAll: async (params = {}) => {
       const queryString = new URLSearchParams(params).toString();
       const response = await fetch(`${this.baseURL}/classes?${queryString}`, {
         headers: this.getAuthHeaders(),
@@ -224,7 +249,7 @@ class ApiService {
       return this.handleResponse(response);
     },
 
-    getClassById: async (id) => {
+    getById: async (id) => {
       const response = await fetch(`${this.baseURL}/classes/${id}`, {
         headers: this.getAuthHeaders(),
       });
@@ -336,6 +361,75 @@ class ApiService {
     getStudentCalendar: async () => {
       const response = await fetch(`${this.baseURL}/annual-calendar`, {
         headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+  };
+
+  // Homework APIs
+  homework = {
+    getAll: async (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await fetch(`${this.baseURL}/homework?${queryString}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getById: async (id) => {
+      const response = await fetch(`${this.baseURL}/homework/${id}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    create: async (data) => {
+      const response = await fetch(`${this.baseURL}/homework`, {
+        method: "POST",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(data),
+      });
+      return this.handleResponse(response);
+    },
+
+    update: async (id, data) => {
+      const response = await fetch(`${this.baseURL}/homework/${id}`, {
+        method: "PUT",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(data),
+      });
+      return this.handleResponse(response);
+    },
+
+    delete: async (id) => {
+      const response = await fetch(`${this.baseURL}/homework/${id}`, {
+        method: "DELETE",
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getCalendar: async (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await fetch(`${this.baseURL}/homework/calendar?${queryString}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getStats: async (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await fetch(`${this.baseURL}/homework/stats?${queryString}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    updateProgress: async (id, data) => {
+      const response = await fetch(`${this.baseURL}/homework/${id}/progress`, {
+        method: "PUT",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(data),
       });
       return this.handleResponse(response);
     },
