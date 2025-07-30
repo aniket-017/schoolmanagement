@@ -6,7 +6,7 @@ const User = require("../models/User");
 // @access  Private
 const sendMessage = async (req, res) => {
   try {
-    const { receiverId, messageType, subject, message, attachments, priority, parentMessageId } = req.body;
+    const { receiverId, messageType, subject, message, attachments, priority, parentMessageId, feeAmount, feeType, dueDate, type } = req.body;
 
     // Check if receiver exists
     const receiver = await User.findById(receiverId);
@@ -36,6 +36,11 @@ const sendMessage = async (req, res) => {
       priority: priority || "medium",
       parentMessageId,
       threadId,
+      // Store fee information if provided
+      feeAmount: feeAmount || null,
+      feeType: feeType || null,
+      dueDate: dueDate ? new Date(dueDate) : null,
+      type: type || null,
     });
 
     await communication.populate([
@@ -54,6 +59,187 @@ const sendMessage = async (req, res) => {
       success: false,
       message: "Server error while sending message",
     });
+  }
+};
+
+// @desc    Send bulk message to multiple recipients
+// @route   POST /api/communications/bulk
+// @access  Private (Admin only)
+const sendBulkMessage = async (req, res) => {
+  try {
+    console.log("Bulk message request:", req.body);
+    const { recipients, subject, message, type = "fee_reminder", createFees = false, feeAmount = 0, feeType = "tuition", dueDate } = req.body;
+
+    if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Recipients array is required",
+      });
+    }
+
+    if (!subject || !message) {
+      return res.status(400).json({
+        success: false,
+        message: "Subject and message are required",
+      });
+    }
+
+    // Verify all recipients exist (can be Student IDs or User IDs)
+    const Student = require("../models/Student");
+    
+    // First try to find as User IDs
+    let recipientsData = await User.find({
+      _id: { $in: recipients },
+      role: "student",
+    });
+
+    // If not found as users, try as Student IDs
+    if (recipientsData.length === 0) {
+      recipientsData = await Student.find({
+        _id: { $in: recipients },
+      });
+      console.log("Found recipients as Student IDs:", recipientsData.length);
+    } else {
+      console.log("Found recipients as User IDs:", recipientsData.length);
+    }
+
+    if (recipientsData.length !== recipients.length) {
+      return res.status(400).json({
+        success: false,
+        message: `Some recipients not found. Expected ${recipients.length}, found ${recipientsData.length}`,
+      });
+    }
+
+    // Create communications for all recipients
+    const communications = [];
+    const createdFees = [];
+    
+    for (const recipientId of recipients) {
+      // Find the recipient (could be User or Student)
+      let recipient = await User.findById(recipientId);
+      let isStudentModel = false;
+      
+      if (!recipient) {
+        // Try to find as Student
+        recipient = await Student.findById(recipientId);
+        isStudentModel = true;
+      }
+      
+      if (!recipient) {
+        console.log("Recipient not found:", recipientId);
+        continue;
+      }
+      
+      console.log(`Processing recipient: ${recipient.name || recipient.firstName} (${recipient.email})`);
+      
+      // For Student model, we need to create a User record or use a different approach
+      let communicationReceiverId = recipientId;
+      
+      if (isStudentModel) {
+        // Create a User record for the student if it doesn't exist
+        let userRecord = await User.findOne({ studentId: recipient.studentId || recipient.rollNumber });
+        
+        if (!userRecord) {
+          // Check if a user with the student's email already exists
+          if (recipient.email) {
+            userRecord = await User.findOne({ email: recipient.email });
+          }
+          
+          if (!userRecord) {
+            // Create a basic User record for the student
+            try {
+              userRecord = await User.create({
+                name: recipient.name || `${recipient.firstName} ${recipient.lastName}`,
+                email: recipient.email || `student.${recipient.studentId || recipient.rollNumber}@school.com`,
+                password: "tempPassword123", // This should be changed by the student
+                role: "student",
+                class: recipient.class,
+                studentId: recipient.studentId || recipient.rollNumber,
+                phone: recipient.mobileNumber,
+              });
+            } catch (error) {
+              if (error.code === 11000 && error.keyPattern && error.keyPattern.email) {
+                // Email already exists, try to find the user with this email
+                userRecord = await User.findOne({ email: recipient.email || `student.${recipient.studentId || recipient.rollNumber}@school.com` });
+                if (!userRecord) {
+                  console.log("Failed to create user record for student:", recipientId);
+                  continue; // Skip this recipient
+                }
+              } else {
+                console.log("Error creating user record:", error);
+                continue; // Skip this recipient
+              }
+            }
+          }
+        }
+        
+        communicationReceiverId = userRecord._id;
+      }
+      
+      // Create communication
+      const communication = await Communication.create({
+        senderId: req.user.id,
+        receiverId: communicationReceiverId,
+        messageType: "bulk",
+        subject,
+        message,
+        priority: "medium",
+        type,
+        // Store fee information in the message
+        feeAmount: createFees ? feeAmount : null,
+        feeType: createFees ? feeType : null,
+        dueDate: createFees && dueDate ? new Date(dueDate) : null,
+      });
+      communications.push(communication);
+      
+      // Create fee record if requested
+      if (createFees && feeAmount > 0) {
+        const Fee = require("../models/Fee");
+        const fee = await Fee.create({
+          studentId: recipientId, // Use original Student ID for fee record
+          feeType,
+          amount: feeAmount,
+          dueDate: dueDate ? new Date(dueDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+          academicYear: new Date().getFullYear() + "-" + (new Date().getFullYear() + 1),
+          status: "pending",
+          processedBy: req.user.id,
+        });
+        createdFees.push(fee);
+      }
+    }
+
+    // Populate sender and receiver details
+    await Communication.populate(communications, [
+      { path: "senderId", select: "name email role" },
+      { path: "receiverId", select: "name email role" },
+    ]);
+
+    res.status(201).json({
+      success: true,
+      message: `Message sent successfully to ${recipients.length} recipients${createFees ? ` and created ${createdFees.length} fee records` : ""}`,
+      data: {
+        sentCount: communications.length,
+        communications,
+        createdFees: createdFees.length,
+      },
+    });
+  } catch (error) {
+    console.error("Send bulk message error:", error);
+    
+    // Provide more specific error messages
+    if (error.code === 11000) {
+      res.status(400).json({
+        success: false,
+        message: "Duplicate key error - a user with this email already exists",
+        error: error.message
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: "Server error while sending bulk message",
+        error: error.message
+      });
+    }
   }
 };
 
@@ -344,6 +530,7 @@ const searchMessages = async (req, res) => {
 
 module.exports = {
   sendMessage,
+  sendBulkMessage,
   getUserMessages,
   getMessageById,
   getConversationThread,

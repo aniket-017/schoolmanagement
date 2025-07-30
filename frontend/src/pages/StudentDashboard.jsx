@@ -19,6 +19,7 @@ import {
   ChartBarIcon,
   HomeIcon,
   BookOpenIcon,
+  CurrencyDollarIcon,
 } from "@heroicons/react/24/outline";
 import { useTeacherAuth } from "../context/TeacherAuthContext";
 import apiService from "../services/apiService";
@@ -63,6 +64,7 @@ const StudentDashboard = () => {
   const [timetableData, setTimetableData] = useState(null);
   const [todayAttendance, setTodayAttendance] = useState(null);
   const [announcements, setAnnouncements] = useState([]);
+  const [feeMessages, setFeeMessages] = useState([]);
   const [homework, setHomework] = useState([]);
   const [homeworkStats, setHomeworkStats] = useState({});
   const [studentStats, setStudentStats] = useState({
@@ -73,6 +75,7 @@ const StudentDashboard = () => {
     totalDays: 0,
   });
   const [recentAttendance, setRecentAttendance] = useState([]);
+  const [feesData, setFeesData] = useState(null);
 
   const { user, logout } = useTeacherAuth();
 
@@ -248,16 +251,46 @@ const StudentDashboard = () => {
           })
       );
 
+      // Load student fees data
+      if (user?._id || user?.id) {
+        promises.push(
+          apiService.fees.getStudentFees(user._id || user.id)
+            .then(response => response.success ? response.data : null)
+            .catch(error => {
+              console.log("Fees data not available:", error.message);
+              return null;
+            })
+        );
+      } else {
+        promises.push(Promise.resolve(null));
+      }
+
+      // Load fee messages
+      if (user?._id || user?.id) {
+        promises.push(
+          apiService.communications.getUserMessages({ type: "fee_reminder", limit: 3 })
+            .then(response => response.success ? response.data || [] : [])
+            .catch(error => {
+              console.log("Fee messages not available:", error.message);
+              return [];
+            })
+        );
+      } else {
+        promises.push(Promise.resolve([]));
+      }
+
       // Wait for all promises to resolve
-      const [timetableData, todayAttendance, announcements, studentStats, homework, homeworkStats] = await Promise.all(promises);
+      const [timetableData, todayAttendance, announcements, studentStats, homework, homeworkStats, feesData, feeMessages] = await Promise.all(promises);
 
       // Set state with all data at once
       setTimetableData(timetableData);
       setTodayAttendance(todayAttendance);
       setAnnouncements(announcements);
+      setFeeMessages(feeMessages);
       setStudentStats(studentStats);
       setHomework(homework);
       setHomeworkStats(homeworkStats);
+      setFeesData(feesData);
 
     } catch (error) {
       console.error("Error loading dashboard data:", error);
@@ -398,6 +431,7 @@ const StudentDashboard = () => {
     { title: "Attendance", icon: CalendarIcon, href: "/student/attendance", color: "bg-blue-500" },
     { title: "Homework", icon: BookOpenIcon, href: "/student/homework", color: "bg-indigo-500" },
     { title: "Announcements", icon: MegaphoneIcon, href: "/student/announcements", color: "bg-green-500" },
+    { title: "Fees", icon: CurrencyDollarIcon, href: "/student/fees", color: "bg-yellow-500" },
     { title: "Timetable", icon: ClockIcon, href: "/student/timetable", color: "bg-orange-500" },
     { title: "Annual Calendar", icon: CalendarIcon, href: "/student/annual-calendar", color: "bg-purple-500" },
     { title: "Profile", icon: UserIcon, href: "/student/profile", color: "bg-blue-600" },
@@ -407,7 +441,7 @@ const StudentDashboard = () => {
     { title: 'Home', icon: HomeIcon, href: '/student/dashboard', active: true },
     { title: 'Attendance', icon: CalendarIcon, href: '/student/attendance' },
     { title: 'Homework', icon: BookOpenIcon, href: '/student/homework' },
-    { title: 'Timetable', icon: ClockIcon, href: '/student/timetable' }
+    { title: 'Fees', icon: CurrencyDollarIcon, href: '/student/fees' }
   ];
 
 
@@ -593,6 +627,83 @@ const StudentDashboard = () => {
             )}
           </motion.div>
 
+          {/* Fees Information */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Fees Information</h3>
+              <button className="bg-yellow-500 text-white px-3 py-1 rounded-lg text-sm flex items-center space-x-1" onClick={() => window.location.href = '/student/fees'}>
+                <CurrencyDollarIcon className="w-4 h-4" />
+                <span>View Details</span>
+              </button>
+            </div>
+
+            {feeMessages.length > 0 ? (
+              <div className="space-y-4">
+                {feeMessages.map((message, index) => (
+                  <div key={message._id || index} className="flex items-start space-x-3 p-4 bg-yellow-50 rounded-lg">
+                    <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <CurrencyDollarIcon className="w-4 h-4 text-yellow-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-gray-900 text-sm line-clamp-1">
+                        {message.subject}
+                      </h4>
+                      <p className="text-gray-600 text-xs line-clamp-2 mt-1">
+                        {message.message}
+                      </p>
+                      <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                        <span>{message.senderId?.name || "School Administration"}</span>
+                        <span>{message.sentAt ? new Date(message.sentAt).toLocaleDateString() : ""}</span>
+                      </div>
+                      {/* Show fee info if available */}
+                      {message.feeAmount && (
+                        <div className="mt-2 p-2 bg-yellow-100 rounded border border-yellow-200">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-yellow-700">Amount: ₹{message.feeAmount?.toLocaleString()}</span>
+                            <span className="text-yellow-700">
+                              Due: {message.dueDate ? new Date(message.dueDate).toLocaleDateString() : "N/A"}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : feesData ? (
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3 p-4 bg-yellow-50 rounded-lg">
+                  <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <CurrencyDollarIcon className="w-4 h-4 text-yellow-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-gray-900 text-sm">
+                      Fee Status: {feesData.status || "Pending"}
+                    </h4>
+                    <p className="text-gray-600 text-xs mt-1">
+                      {feesData.message || "Please check your fee details for more information."}
+                    </p>
+                    <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                      <span>Due Date: {feesData.dueDate ? new Date(feesData.dueDate).toLocaleDateString() : "N/A"}</span>
+                      <span>Amount: ₹{feesData.amount || "0"}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <CurrencyDollarIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-500 font-medium">No fees information available</p>
+                <p className="text-gray-400 text-sm">Contact admin for fee details</p>
+              </div>
+            )}
+          </motion.div>
+
           {/* Recent Homework */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -767,6 +878,9 @@ const StudentDashboard = () => {
                   </Link>
                   <Link to="/student/announcements" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
                     Announcements
+                  </Link>
+                  <Link to="/student/fees" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
+                    Fees
                   </Link>
                   <Link to="/student/timetable" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
                     Timetable
@@ -997,6 +1111,71 @@ const StudentDashboard = () => {
                   </div>
                 </div>
               ))
+            )}
+          </div>
+        </div>
+
+        {/* Fees Information */}
+        <div className="mt-8 bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-gray-900">Fees Information</h3>
+            <Link to="/student/fees" className="text-yellow-600 hover:text-yellow-700 text-sm font-medium">
+              View Details
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {feeMessages.length > 0 ? (
+              feeMessages.map((message, index) => (
+                <div key={message._id || index} className="p-4 border border-yellow-200 rounded-lg bg-yellow-50 hover:shadow-sm transition-shadow">
+                  <div className="flex items-center space-x-3 mb-3">
+                    <CurrencyDollarIcon className="w-6 h-6 text-yellow-600" />
+                    <h4 className="font-medium text-gray-900">{message.subject}</h4>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-3">{message.message}</p>
+                  <div className="flex items-center text-xs text-gray-500">
+                    <span>By {message.senderId?.name || "School Administrator"}</span>
+                    <span className="mx-2">•</span>
+                    <span>
+                      {message.sentAt ? new Date(message.sentAt).toLocaleDateString() : ""}
+                    </span>
+                  </div>
+                  {/* Show fee info if available */}
+                  {message.feeAmount && (
+                    <div className="mt-3 p-2 bg-yellow-100 rounded border border-yellow-300">
+                      <div className="flex items-center justify-between text-xs text-yellow-800">
+                        <span>Amount: ₹{message.feeAmount?.toLocaleString()}</span>
+                        <span>
+                          Due: {message.dueDate ? new Date(message.dueDate).toLocaleDateString() : "N/A"}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : feesData ? (
+              <div className="p-4 border border-gray-200 rounded-lg bg-yellow-50 hover:shadow-sm transition-shadow">
+                <div className="flex items-center space-x-3 mb-3">
+                  <CurrencyDollarIcon className="w-6 h-6 text-yellow-600" />
+                  <h4 className="font-medium text-gray-900">Fee Status</h4>
+                </div>
+                <p className="text-sm text-gray-600 mb-3">{feesData.message || "Please check your fee details for more information."}</p>
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <span>Status: {feesData.status || "Pending"}</span>
+                  <span>Amount: ₹{feesData.amount || "0"}</span>
+                </div>
+                {feesData.dueDate && (
+                  <div className="mt-2 text-xs text-gray-500">
+                    Due Date: {new Date(feesData.dueDate).toLocaleDateString()}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="col-span-full text-center py-8">
+                <CurrencyDollarIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">No fees information available</p>
+                <p className="text-gray-400 text-sm">Contact admin for fee details</p>
+              </div>
             )}
           </div>
         </div>

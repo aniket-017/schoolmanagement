@@ -448,6 +448,65 @@ class ApiService {
       return this.handleResponse(response);
     },
   };
+
+  // Fees APIs
+  fees = {
+    getStudentFees: async (studentId) => {
+      const response = await fetch(`${this.baseURL}/fees/student/${studentId}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getAllFees: async (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await fetch(`${this.baseURL}/fees?${queryString}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getFeeStats: async (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await fetch(`${this.baseURL}/fees/stats?${queryString}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+  };
+
+  // Communications APIs
+  communications = {
+    getUserMessages: async (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await fetch(`${this.baseURL}/communications?${queryString}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getMessageById: async (id) => {
+      const response = await fetch(`${this.baseURL}/communications/${id}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    markAsRead: async (id) => {
+      const response = await fetch(`${this.baseURL}/communications/${id}/read`, {
+        method: "PUT",
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getUnreadCount: async () => {
+      const response = await fetch(`${this.baseURL}/communications/unread-count`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+  };
 }
 
 export default new ApiService();

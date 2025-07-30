@@ -853,7 +853,9 @@ exports.getAnnouncementsForStudent = async (req, res) => {
 
     // Use Student collection
     const Student = require("../models/Student");
-    const student = await Student.findById(studentId).populate("class");
+    const student = await Student.findById(studentId)
+      .populate("class")
+      .populate("feeSlabId", "slabName totalAmount installments");
     if (!student) {
       return res.status(404).json({
         success: false,
@@ -984,7 +986,8 @@ const sendAnnouncementNotifications = async (announcement) => {
     
     // Send to teachers/admins
     for (const user of targetUsers) {
-      console.log(`📱 Sending to ${user.name} (${user.email}) - ${user.role}`);
+      const userName = user.name || user.firstName || user.email?.split('@')[0] || 'Unknown User';
+      console.log(`📱 Sending to ${userName} (${user.email}) - ${user.role}`);
       
       // TODO: Integrate with actual notification services like:
       // - Firebase Cloud Messaging (FCM) for push notifications
@@ -1010,7 +1013,12 @@ const sendAnnouncementNotifications = async (announcement) => {
     
     // Send to students
     for (const student of targetStudents) {
-      console.log(`📱 Sending to student ${student.name} (${student.email})`);
+      const studentName = student.name || 
+                         (student.firstName && student.lastName ? `${student.firstName} ${student.lastName}`.trim() : null) ||
+                         student.firstName || 
+                         student.email?.split('@')[0] || 
+                         'Unknown Student';
+      console.log(`📱 Sending to student ${studentName} (${student.email})`);
       
       // TODO: Integrate with actual notification services for students
       // - Firebase Cloud Messaging (FCM) for push notifications

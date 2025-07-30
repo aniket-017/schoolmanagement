@@ -43,7 +43,7 @@ app.use("/api/classes", require("./routes/classes"));
 app.use("/api/assignments", require("./routes/assignments"));
 app.use("/api/homework", require("./routes/homework"));
 app.use("/api/attendance", require("./routes/attendance"));
-app.use("/api/fees", require("./routes/fees"));
+app.use("/api/fees", require("./routes/feesroutes"));
 
 // New comprehensive routes
 app.use("/api/subjects", require("./routes/subjects"));

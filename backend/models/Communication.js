@@ -16,7 +16,7 @@ const communicationSchema = new mongoose.Schema(
     // Message Details
     messageType: {
       type: String,
-      enum: ["direct", "announcement", "complaint", "inquiry", "notification", "reminder"],
+      enum: ["direct", "announcement", "complaint", "inquiry", "notification", "reminder", "bulk"],
       default: "direct",
     },
     subject: String,
@@ -63,6 +63,24 @@ const communicationSchema = new mongoose.Schema(
     isArchived: {
       type: Boolean,
       default: false,
+    },
+    
+    // Fee-related fields for fee reminder messages
+    feeAmount: {
+      type: Number,
+      default: null,
+    },
+    feeType: {
+      type: String,
+      default: null,
+    },
+    dueDate: {
+      type: Date,
+      default: null,
+    },
+    type: {
+      type: String,
+      default: null,
     },
   },
   {

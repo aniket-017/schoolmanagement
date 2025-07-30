@@ -10,6 +10,7 @@ router.get("/", auth, teacherOrAdmin, async (req, res) => {
     const Student = require("../models/Student");
     const students = await Student.find({ isActive: true })
       .populate("class", "name grade division")
+      .populate("feeSlabId", "slabName totalAmount installments")
       .sort({ createdAt: -1 });
 
     res.json({
@@ -34,6 +35,7 @@ router.get("/:id", auth, teacherOrAdmin, async (req, res) => {
     const Student = require("../models/Student");
     const student = await Student.findById(req.params.id)
       .populate("class", "name grade division")
+      .populate("feeSlabId", "slabName totalAmount installments")
       .populate("transportRoute", "routeName vehicleNumber");
 
     if (!student) {
@@ -86,6 +88,18 @@ router.put("/:id", auth, adminOnly, async (req, res) => {
       remarks,
       status,
       isActive,
+      // Fee Slab fields
+      feeSlabId,
+      feeStructure,
+      paymentStatus,
+      concessionAmount,
+      lateFees,
+      scholarshipDetails,
+      // Payment fields
+      paymentDate,
+      paymentMethod,
+      transactionId,
+      feesPaid,
     } = req.body;
 
     // Check if student exists
@@ -110,6 +124,8 @@ router.put("/:id", auth, adminOnly, async (req, res) => {
         });
       }
     }
+
+
 
     // Update student
     const updatedStudent = await Student.findByIdAndUpdate(
@@ -137,10 +153,23 @@ router.put("/:id", auth, adminOnly, async (req, res) => {
         remarks,
         status,
         isActive,
+        // Fee Slab fields
+        feeSlabId,
+        feeStructure,
+        paymentStatus,
+        concessionAmount,
+        lateFees,
+        scholarshipDetails,
+        // Payment fields
+        paymentDate,
+        paymentMethod,
+        transactionId,
+        feesPaid,
         updatedBy: req.user.id,
       },
       { new: true, runValidators: true }
-    ).populate("class", "name grade division");
+    ).populate("class", "name grade division")
+      .populate("feeSlabId", "slabName totalAmount installments");
 
     res.json({
       success: true,
@@ -173,6 +202,8 @@ router.delete("/:id", auth, adminOnly, async (req, res) => {
         message: "Student not found",
       });
     }
+
+
 
     // Remove student from class
     if (student.class) {
@@ -211,7 +242,8 @@ router.patch("/:id/status", auth, adminOnly, async (req, res) => {
       req.params.id,
       { status, isActive, updatedBy: req.user.id },
       { new: true, runValidators: true }
-    ).populate("class", "name grade division");
+    ).populate("class", "name grade division")
+      .populate("feeSlabId", "slabName totalAmount installments");
 
     if (!student) {
       return res.status(404).json({

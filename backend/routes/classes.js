@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const multer = require("multer");
 const xlsx = require("xlsx");
+const mongoose = require("mongoose");
 const { auth, teacherOrAdmin, adminOnly, teacherOnly } = require("../middleware/auth");
 const {
   getAllClasses,
@@ -101,12 +102,50 @@ router.get("/teacher/timetable", auth, teacherOnly, getTeacherTimetableClasses);
 // @access  Private (Teacher/Admin)
 router.get("/:id/students", auth, teacherOrAdmin, async (req, res) => {
   try {
+    console.log("Getting students for class:", req.params.id);
+    
+    // Validate class ID
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid class ID format",
+      });
+    }
+    
+    const User = require("../models/User");
     const Student = require("../models/Student");
-    const students = await Student.find({
+    const Class = require("../models/Class");
+    
+    // Check if class exists
+    const classData = await Class.findById(req.params.id);
+    if (!classData) {
+      return res.status(404).json({
+        success: false,
+        message: "Class not found",
+      });
+    }
+    
+    // First try to find students in User model
+    let students = await User.find({
       class: req.params.id,
-      isActive: true,
-    }).sort({ rollNumber: 1 });
+      role: "student",
+      isActive: { $ne: false },
+    }).sort({ studentId: 1 });
 
+    console.log("Found students in User model:", students.length);
+    
+    // If no students found in User model, try Student model
+    if (students.length === 0) {
+      students = await Student.find({
+        class: req.params.id,
+        isActive: { $ne: false },
+      })
+        .populate("feeSlabId", "slabName totalAmount installments")
+        .sort({ rollNumber: 1 });
+      console.log("Found students in Student model:", students.length);
+    }
+
+    console.log("Total students found:", students.length);
     res.json({
       success: true,
       data: students || [],

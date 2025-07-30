@@ -54,6 +54,7 @@ import StudentTimetable from "./pages/StudentTimetable";
 import StudentAnnouncements from "./pages/StudentAnnouncements";
 import StudentAnnualCalendar from "./pages/StudentAnnualCalendar";
 import StudentHomework from "./pages/StudentHomework";
+import StudentFees from "./pages/StudentFees";
 import TeacherHomework from "./pages/TeacherHomework";
 
 function AppContent() {
@@ -212,6 +213,14 @@ function AppContent() {
           element={
             <TeacherProtectedRoute allowedRoles={["student"]}>
               <StudentHomework />
+            </TeacherProtectedRoute>
+          }
+        />
+        <Route
+          path="/student/fees"
+          element={
+            <TeacherProtectedRoute allowedRoles={["student"]}>
+              <StudentFees />
             </TeacherProtectedRoute>
           }
         />

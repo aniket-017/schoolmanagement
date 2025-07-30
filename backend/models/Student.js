@@ -248,6 +248,28 @@ const studentSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    scholarshipDetails: {
+      type: String,
+      trim: true,
+    },
+    
+    // Payment Information
+    paymentDate: {
+      type: Date,
+    },
+    paymentMethod: {
+      type: String,
+      enum: ["cash", "card", "bank_transfer", "cheque", "online", "other"],
+    },
+    transactionId: {
+      type: String,
+      trim: true,
+    },
+    feesPaid: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
 
     // Attendance & Timetable
     attendancePercentage: {

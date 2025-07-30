@@ -13,6 +13,7 @@ import {
   FileText,
   X,
   Save,
+  DollarSign,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import appConfig from "../config/environment";
@@ -46,8 +47,23 @@ const StudentEditModal = ({
     pickupPoint: "",
     dropPoint: "",
     remarks: "",
+    
+    // Fee Slab fields
+    feeSlabId: "",
+    feeStructure: "",
+    paymentStatus: "pending",
+    concessionAmount: 0,
+    lateFees: 0,
+    scholarshipDetails: "",
+    // Payment fields
+    paymentDate: "",
+    paymentMethod: "",
+    transactionId: "",
+    feesPaid: 0,
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [feeSlabs, setFeeSlabs] = useState([]);
+  const [loadingFeeSlabs, setLoadingFeeSlabs] = useState(false);
 
   useEffect(() => {
     if (student) {
@@ -73,15 +89,76 @@ const StudentEditModal = ({
         pickupPoint: student.pickupPoint || "",
         dropPoint: student.dropPoint || "",
         remarks: student.remarks || "",
+        
+        // Fee Slab fields
+        feeSlabId: student.feeSlabId || "",
+        feeStructure: student.feeStructure || "",
+        paymentStatus: student.paymentStatus || "pending",
+        concessionAmount: student.concessionAmount || 0,
+        lateFees: student.lateFees || 0,
+        scholarshipDetails: student.scholarshipDetails || "",
+        // Payment fields
+        paymentDate: student.paymentDate ? new Date(student.paymentDate).toISOString().split('T')[0] : "",
+        paymentMethod: student.paymentMethod || "",
+        transactionId: student.transactionId || "",
+        feesPaid: student.feesPaid || 0,
       });
     }
   }, [student]);
+
+  // Fetch fee slabs
+  const fetchFeeSlabs = async () => {
+    setLoadingFeeSlabs(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${appConfig.API_BASE_URL}/fee-slabs`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setFeeSlabs(data.data.filter((slab) => slab.isActive));
+      }
+    } catch (error) {
+      console.error("Error fetching fee slabs:", error);
+    } finally {
+      setLoadingFeeSlabs(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFeeSlabs();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSaving(true);
 
     try {
+      // Prepare the data to send, handling optional fee fields
+      const dataToSend = {
+        ...formData,
+        // Handle payment fields - only include if they have valid values
+        ...(formData.paymentDate && { paymentDate: new Date(formData.paymentDate) }),
+        ...(formData.paymentMethod && formData.paymentMethod.trim() && { paymentMethod: formData.paymentMethod }),
+        ...(formData.transactionId && formData.transactionId.trim() && { transactionId: formData.transactionId }),
+        ...(formData.feesPaid && formData.feesPaid > 0 && { feesPaid: parseFloat(formData.feesPaid) }),
+        // Handle fee-related fields - only include if fee structure is selected
+        ...(formData.feeStructure && {
+          feeStructure: formData.feeStructure,
+          feeSlabId: formData.feeSlabId || undefined,
+          feeDiscount: formData.feeDiscount ? parseFloat(formData.feeDiscount) : undefined,
+          paymentStatus: formData.paymentStatus,
+          lateFees: formData.lateFees ? parseFloat(formData.lateFees) : undefined,
+          concessionAmount: formData.concessionAmount ? parseFloat(formData.concessionAmount) : undefined,
+          scholarshipDetails: formData.scholarshipDetails || undefined,
+        }),
+      };
+
+      // Remove undefined values
+      const cleanData = Object.fromEntries(
+        Object.entries(dataToSend).filter(([key, value]) => value !== undefined && value !== null && value !== "")
+      );
+
       const token = localStorage.getItem("token");
       const response = await fetch(`${appConfig.API_BASE_URL}/students/${student._id}`, {
         method: "PUT",
@@ -89,7 +166,7 @@ const StudentEditModal = ({
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(cleanData),
       });
 
       const data = await response.json();
@@ -381,6 +458,173 @@ const StudentEditModal = ({
                         value={formData.feeDiscount}
                         onChange={(e) => handleInputChange('feeDiscount', parseInt(e.target.value) || 0)}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Fee Slab Information */}
+              <div className="bg-gray-50 rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-green-600" />
+                  Fee Slab Information
+                </h3>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Fee Structure</label>
+                      <select
+                        value={formData.feeStructure}
+                        onChange={(e) => handleInputChange('feeStructure', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="">Select Fee Structure (Optional)</option>
+                        <option value="regular">Regular</option>
+                        <option value="scholarship">Scholarship</option>
+                        <option value="concession">Concession</option>
+                        <option value="free">Free</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Fee Slab {formData.feeStructure === "regular" ? "(Recommended)" : ""}
+                      </label>
+                      <select
+                        value={formData.feeSlabId}
+                        onChange={(e) => handleInputChange('feeSlabId', e.target.value)}
+                        disabled={loadingFeeSlabs || formData.feeStructure === "free" || !formData.feeStructure}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                      >
+                        <option value="">
+                          {loadingFeeSlabs ? "Loading slabs..." : !formData.feeStructure ? "Select fee structure first" : formData.feeStructure === "free" ? "Not applicable" : "Select Fee Slab (Optional)"}
+                        </option>
+                        {feeSlabs.map((slab) => (
+                          <option key={slab._id} value={slab._id}>
+                            {slab.slabName} - ₹{slab.totalAmount.toLocaleString()} ({slab.installments.length} installments)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Payment Status</label>
+                      <select
+                        value={formData.paymentStatus}
+                        onChange={(e) => handleInputChange('paymentStatus', e.target.value)}
+                        disabled={!formData.feeStructure}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                      >
+                        <option value="paid">Paid</option>
+                        <option value="pending">Pending</option>
+                        <option value="overdue">Overdue</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Concession Amount (₹)</label>
+                      <input
+                        type="number"
+                        value={formData.concessionAmount}
+                        onChange={(e) => handleInputChange('concessionAmount', parseFloat(e.target.value) || 0)}
+                        min="0"
+                        placeholder="0"
+                        disabled={formData.feeStructure === "free"}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Late Fees (₹)</label>
+                      <input
+                        type="number"
+                        value={formData.lateFees}
+                        onChange={(e) => handleInputChange('lateFees', parseFloat(e.target.value) || 0)}
+                        min="0"
+                        placeholder="0"
+                        disabled={!formData.feeStructure}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Scholarship Details</label>
+                    <textarea
+                      value={formData.scholarshipDetails}
+                      onChange={(e) => handleInputChange('scholarshipDetails', e.target.value)}
+                      rows={3}
+                      disabled={!formData.feeStructure}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                      placeholder="Details of any scholarships or financial aid received..."
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Payment Date</label>
+                      <input
+                        type="date"
+                        value={formData.paymentDate}
+                        onChange={(e) => handleInputChange('paymentDate', e.target.value)}
+                        disabled={!formData.feeStructure}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                      <select
+                        value={formData.paymentMethod}
+                        onChange={(e) => handleInputChange('paymentMethod', e.target.value)}
+                        disabled={!formData.feeStructure}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                      >
+                        <option value="">Select Payment Method</option>
+                        <option value="cash">Cash</option>
+                        <option value="card">Card</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                        <option value="cheque">Cheque</option>
+                        <option value="online">Online</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Transaction ID</label>
+                      <input
+                        type="text"
+                        value={formData.transactionId}
+                        onChange={(e) => handleInputChange('transactionId', e.target.value)}
+                        disabled={!formData.feeStructure}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                        placeholder="Transaction ID (optional)"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Fees Paid (₹)</label>
+                      <input
+                        type="number"
+                        value={formData.feesPaid}
+                        onChange={(e) => handleInputChange('feesPaid', parseFloat(e.target.value) || 0)}
+                        min="0"
+                        disabled={!formData.feeStructure}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Remaining Amount (₹)</label>
+                      <input
+                        type="text"
+                        value={((formData.feeSlabId?.totalAmount || 0) - (formData.feesPaid || 0)).toLocaleString()}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100"
+                        disabled
+                        readOnly
                       />
                     </div>
                   </div>

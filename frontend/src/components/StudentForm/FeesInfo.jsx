@@ -102,14 +102,14 @@ export default function FeesInfo({ form, handleChange }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium mb-1">Fee Structure *</label>
+          <label className="block text-sm font-medium mb-1">Fee Structure</label>
           <select
             name="feeStructure"
-            value={form.feeStructure || "regular"}
+            value={form.feeStructure || ""}
             onChange={handleChange}
-            required
             className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
+            <option value="">Select Fee Structure (Optional)</option>
             <option value="regular">Regular</option>
             <option value="scholarship">Scholarship</option>
             <option value="concession">Concession</option>
@@ -119,18 +119,17 @@ export default function FeesInfo({ form, handleChange }) {
 
         <div>
           <label className="block text-sm font-medium mb-1">
-            Fee Slab {form.feeStructure === "regular" ? "*" : ""}
+            Fee Slab {form.feeStructure === "regular" ? "(Recommended)" : ""}
           </label>
           <select
             name="feeSlabId"
             value={form.feeSlabId || ""}
             onChange={handleSlabChange}
-            required={form.feeStructure === "regular"}
-            disabled={loading || form.feeStructure === "free"}
+            disabled={loading || form.feeStructure === "free" || !form.feeStructure}
             className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
           >
             <option value="">
-              {loading ? "Loading slabs..." : form.feeStructure === "free" ? "Not applicable" : "Select Fee Slab"}
+              {loading ? "Loading slabs..." : !form.feeStructure ? "Select fee structure first" : form.feeStructure === "free" ? "Not applicable" : "Select Fee Slab (Optional)"}
             </option>
             {feeSlabs.map((slab) => (
               <option key={slab._id} value={slab._id}>
@@ -146,7 +145,8 @@ export default function FeesInfo({ form, handleChange }) {
             name="paymentStatus"
             value={form.paymentStatus || "pending"}
             onChange={handleChange}
-            className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            disabled={!form.feeStructure}
+            className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
           >
             <option value="paid">Paid</option>
             <option value="pending">Pending</option>
@@ -183,7 +183,8 @@ export default function FeesInfo({ form, handleChange }) {
             onChange={handleChange}
             min="0"
             placeholder="0"
-            className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            disabled={!form.feeStructure}
+            className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
           />
         </div>
 
@@ -195,7 +196,8 @@ export default function FeesInfo({ form, handleChange }) {
             onChange={handleChange}
             rows={2}
             placeholder="Details of any scholarships or financial aid received"
-            className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            disabled={!form.feeStructure}
+            className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
           />
         </div>
 
@@ -207,42 +209,44 @@ export default function FeesInfo({ form, handleChange }) {
             onChange={handleChange}
             rows={2}
             placeholder="Any notes about payment history or special arrangements"
-            className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            disabled={!form.feeStructure}
+            className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
           />
         </div>
       </div>
 
       {/* Fee Calculation Preview */}
-      <div className="bg-gray-50 p-4 rounded-lg">
-        <h4 className="text-md font-medium text-gray-800 mb-3">Fee Summary</h4>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-          <div className="bg-white p-3 rounded border">
-            <div className="text-gray-600">Fee Structure</div>
-            <div className="font-medium capitalize">{form.feeStructure || "Regular"}</div>
-          </div>
-          <div className="bg-white p-3 rounded border">
-            <div className="text-gray-600">Fee Slab</div>
-            <div className="font-medium">{selectedSlab ? selectedSlab.slabName : "Not selected"}</div>
-          </div>
-          <div className="bg-white p-3 rounded border">
-            <div className="text-gray-600">Total Amount</div>
-            <div className="font-medium">{selectedSlab ? `₹${selectedSlab.totalAmount.toLocaleString()}` : "N/A"}</div>
-          </div>
-          <div className="bg-white p-3 rounded border">
-            <div className="text-gray-600">Status</div>
-            <div
-              className={`font-medium capitalize ${
-                form.paymentStatus === "paid"
-                  ? "text-green-600"
-                  : form.paymentStatus === "overdue"
-                  ? "text-red-600"
-                  : "text-yellow-600"
-              }`}
-            >
-              {form.paymentStatus || "Pending"}
+      {form.feeStructure ? (
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h4 className="text-md font-medium text-gray-800 mb-3">Fee Summary</h4>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+            <div className="bg-white p-3 rounded border">
+              <div className="text-gray-600">Fee Structure</div>
+              <div className="font-medium capitalize">{form.feeStructure}</div>
+            </div>
+            <div className="bg-white p-3 rounded border">
+              <div className="text-gray-600">Fee Slab</div>
+              <div className="font-medium">{selectedSlab ? selectedSlab.slabName : "Not selected"}</div>
+            </div>
+            <div className="bg-white p-3 rounded border">
+              <div className="text-gray-600">Total Amount</div>
+              <div className="font-medium">{selectedSlab ? `₹${selectedSlab.totalAmount.toLocaleString()}` : "N/A"}</div>
+            </div>
+            <div className="bg-white p-3 rounded border">
+              <div className="text-gray-600">Status</div>
+              <div
+                className={`font-medium capitalize ${
+                  form.paymentStatus === "paid"
+                    ? "text-green-600"
+                    : form.paymentStatus === "overdue"
+                    ? "text-red-600"
+                    : "text-yellow-600"
+                }`}
+              >
+                {form.paymentStatus || "Pending"}
+              </div>
             </div>
           </div>
-        </div>
 
         {/* Concession Applied */}
         {form.concessionAmount > 0 && selectedSlab && (
@@ -296,7 +300,16 @@ export default function FeesInfo({ form, handleChange }) {
             </div>
           </div>
         )}
-      </div>
+        </div>
+      ) : (
+        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+          <h4 className="text-md font-medium text-blue-800 mb-2">Fee Information</h4>
+          <p className="text-sm text-blue-700">
+            Fee information is optional. You can select a fee structure above if you want to set up fees for this student, 
+            or leave it blank to add fee information later.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

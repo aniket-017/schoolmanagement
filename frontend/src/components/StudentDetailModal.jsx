@@ -16,6 +16,7 @@ import {
   Shield,
   Heart,
   FileText,
+  DollarSign,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import appConfig from "../config/environment";
@@ -272,6 +273,80 @@ const StudentDetailModal = ({
                     <div className="flex justify-between">
                       <span className="text-gray-600">Fee Discount:</span>
                       <span className="font-medium">{student.feeDiscount}%</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Fee Slab Information */}
+              <div className="bg-gray-50 rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-green-600" />
+                  Fee Slab Information
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Fee Structure:</span>
+                    <span className="font-medium capitalize">{student.feeStructure || 'regular'}</span>
+                  </div>
+                  {student.feeSlabId && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Fee Slab:</span>
+                      <span className="font-medium">{student.feeSlabId?.slabName || 'N/A'}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Payment Status:</span>
+                    <span className={`font-medium capitalize px-2 py-1 rounded-full text-xs ${
+                      student.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
+                      student.paymentStatus === 'overdue' ? 'bg-red-100 text-red-800' :
+                      'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {student.paymentStatus || 'pending'}
+                    </span>
+                  </div>
+                  {student.concessionAmount > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Concession Amount:</span>
+                      <span className="font-medium">₹{student.concessionAmount.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {student.lateFees > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Late Fees:</span>
+                      <span className="font-medium text-red-600">₹{student.lateFees.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {student.scholarshipDetails && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Scholarship Details:</span>
+                      <span className="font-medium text-right max-w-xs">{student.scholarshipDetails}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Fees Paid:</span>
+                    <span className="font-medium">₹{student.feesPaid?.toLocaleString() || "0"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Remaining Amount:</span>
+                    <span className="font-medium">₹{((student.feeSlabId?.totalAmount || 0) - (student.feesPaid || 0)).toLocaleString()}</span>
+                  </div>
+                  {student.paymentDate && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Payment Date:</span>
+                      <span className="font-medium">{new Date(student.paymentDate).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                  {student.paymentMethod && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Payment Method:</span>
+                      <span className="font-medium capitalize">{student.paymentMethod.replace('_', ' ')}</span>
+                    </div>
+                  )}
+                  {student.transactionId && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Transaction ID:</span>
+                      <span className="font-medium">{student.transactionId}</span>
                     </div>
                   )}
                 </div>

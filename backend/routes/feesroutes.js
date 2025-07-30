@@ -8,6 +8,9 @@ const {
   updateFee,
   deleteFee,
   getFeeStats,
+  getClassFeeStatus,
+  createClassFees,
+  updateFeeStatus,
 } = require("../controllers/feeController");
 const { auth, authorize } = require("../middleware/auth");
 
@@ -25,6 +28,11 @@ router.get("/", auth, authorize("admin"), getAllFees);
 // @desc    Get fee statistics
 // @access  Private (Admin only)
 router.get("/stats", auth, authorize("admin"), getFeeStats);
+
+// @route   GET /api/fees/class/:classId/status
+// @desc    Get class fee status
+// @access  Private (Admin only)
+router.get("/class/:classId/status", auth, authorize("admin"), getClassFeeStatus);
 
 // @route   GET /api/fees/student/:studentId
 // @desc    Get student fees
@@ -45,5 +53,15 @@ router.put("/:id", auth, authorize("admin"), updateFee);
 // @desc    Delete fee record
 // @access  Private (Admin only)
 router.delete("/:id", auth, authorize("admin"), deleteFee);
+
+// @route   POST /api/fees/class/:classId
+// @desc    Create fees for all students in a class
+// @access  Private (Admin only)
+router.post("/class/:classId", auth, authorize("admin"), createClassFees);
+
+// @route   PUT /api/fees/:feeId/status
+// @desc    Update fee status (mark as paid/remaining)
+// @access  Private (Admin only)
+router.put("/:feeId/status", auth, authorize("admin"), updateFeeStatus);
 
 module.exports = router;

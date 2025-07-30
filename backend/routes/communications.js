@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const {
   sendMessage,
+  sendBulkMessage,
   getUserMessages,
   getMessageById,
   getConversationThread,
@@ -16,6 +17,11 @@ const { auth } = require("../middleware/auth");
 // @desc    Send message
 // @access  Private
 router.post("/", auth, sendMessage);
+
+// @route   POST /api/communications/bulk
+// @desc    Send bulk message to multiple recipients
+// @access  Private (Admin only)
+router.post("/bulk", auth, sendBulkMessage);
 
 // @route   GET /api/communications
 // @desc    Get user messages

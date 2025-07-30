@@ -541,6 +541,10 @@ const getClassStudents = async (req, res) => {
     const classData = await Class.findById(classId)
       .populate({
         path: "students",
+        populate: {
+          path: "feeSlabId",
+          select: "slabName totalAmount installments"
+        }
         // Do not limit select, return all fields
       })
       .select("name grade division students");
