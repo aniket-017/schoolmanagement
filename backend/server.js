@@ -58,6 +58,7 @@ app.use("/api/salaries", require("./routes/salaries"));
 app.use("/api/libraries", require("./routes/libraries"));
 app.use("/api/transports", require("./routes/transports"));
 app.use("/api/communications", require("./routes/communications"));
+app.use("/api/messages", require("./routes/messages"));
 app.use("/api/assignments-detailed", require("./routes/assignmentsroutes"));
 app.use("/api/fees-detailed", require("./routes/feesroutes"));
 app.use("/api/fee-slabs", require("./routes/feeSlabs"));

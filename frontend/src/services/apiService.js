@@ -507,6 +507,49 @@ class ApiService {
       return this.handleResponse(response);
     },
   };
+
+  // Messages APIs (New Message System)
+  messages = {
+    sendFeeReminder: async (data) => {
+      const response = await fetch(`${this.baseURL}/messages/fee-reminder`, {
+        method: "POST",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(data),
+      });
+      return this.handleResponse(response);
+    },
+
+    getUserMessages: async (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await fetch(`${this.baseURL}/messages?${queryString}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    markAsRead: async (id) => {
+      const response = await fetch(`${this.baseURL}/messages/${id}/read`, {
+        method: "PUT",
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getUnreadCount: async () => {
+      const response = await fetch(`${this.baseURL}/messages/unread-count`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    deleteMessage: async (id) => {
+      const response = await fetch(`${this.baseURL}/messages/${id}`, {
+        method: "DELETE",
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+  };
 }
 
 export default new ApiService();

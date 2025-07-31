@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import toast, { Toaster } from "react-hot-toast";
 import {
@@ -42,6 +42,7 @@ import {
 import Layout from "../components/Layout";
 import { cn } from "../utils/cn";
 import { appConfig } from "../config/environment";
+import apiService from "../services/apiService";
 
 const FeeManagement = () => {
   const [activeTab, setActiveTab] = useState("slabs");
@@ -96,6 +97,48 @@ const FeeManagement = () => {
     remarks: "",
   });
 
+  // Fee Reminder Modal States
+  const [showFeeReminderModal, setShowFeeReminderModal] = useState(false);
+  const [selectedStudentForReminder, setSelectedStudentForReminder] = useState(null);
+  const [feeReminderData, setFeeReminderData] = useState({
+    subject: "",
+    message: "",
+    priority: "medium",
+  });
+  const [sendingReminder, setSendingReminder] = useState(false);
+
+  // Remove sortBy/sortOrder and add filter states
+  const [feeSlabFilter, setFeeSlabFilter] = useState("");
+  const [classFilter, setClassFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+
+  // Compute unique options for dropdowns
+  const feeSlabOptions = useMemo(() => {
+    const setVals = new Set(filteredStudents.map(s => s.feeSlabId?.slabName || s.feeStructure || "N/A"));
+    return Array.from(setVals);
+  }, [filteredStudents]);
+  const classOptions = useMemo(() => {
+    const setVals = new Set(filteredStudents.map(s => s.class?.name || s.class?.grade || "N/A"));
+    return Array.from(setVals);
+  }, [filteredStudents]);
+  const statusOptions = useMemo(() => {
+    const setVals = new Set(filteredStudents.map(s => s.paymentStatus || "pending"));
+    return Array.from(setVals);
+  }, [filteredStudents]);
+
+  // Filtering logic for students
+  const filteredAndSortedStudents = useMemo(() => {
+    return filteredStudents.filter(student => {
+      const feeSlab = student.feeSlabId?.slabName || student.feeStructure || "N/A";
+      const className = student.class?.name || student.class?.grade || "N/A";
+      const status = student.paymentStatus || "pending";
+      return (
+        (feeSlabFilter === "" || feeSlab === feeSlabFilter) &&
+        (classFilter === "" || className === classFilter) &&
+        (statusFilter === "" || status === statusFilter)
+      );
+    });
+  }, [filteredStudents, feeSlabFilter, classFilter, statusFilter]);
 
   // Sample data
   const feeStats = [
@@ -604,6 +647,55 @@ const FeeManagement = () => {
     }
   };
 
+  // Fee Reminder Functions
+  const handleSendFeeReminder = (student) => {
+    setSelectedStudentForReminder(student);
+    const remainingAmount = ((student.feeSlabId?.totalAmount || 0)) - (student.feesPaid || 0);
+    
+    setFeeReminderData({
+      subject: `Fee Reminder - ₹${remainingAmount.toLocaleString()} Remaining`,
+      message: `Dear ${student.name || `${student.firstName || ''} ${student.lastName || ''}`.trim()},\n\nThis is a reminder that you have ₹${remainingAmount.toLocaleString()} remaining in your fee payment.\n\nPlease ensure timely payment to avoid any inconvenience.\n\nBest regards,\nSchool Administration`,
+      priority: "medium",
+    });
+    setShowFeeReminderModal(true);
+  };
+
+  const handleSendFeeReminderSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedStudentForReminder) return;
+
+    try {
+      setSendingReminder(true);
+      const remainingAmount = ((selectedStudentForReminder.feeSlabId?.totalAmount || 0)) - (selectedStudentForReminder.feesPaid || 0);
+      
+      const messageData = {
+        studentId: selectedStudentForReminder._id,
+        subject: feeReminderData.subject,
+        message: feeReminderData.message,
+        feeAmount: selectedStudentForReminder.feeSlabId?.totalAmount || 0,
+        feeType: selectedStudentForReminder.feeSlabId?.slabName || "General",
+        remainingAmount: remainingAmount,
+        priority: feeReminderData.priority,
+      };
+
+      await apiService.messages.sendFeeReminder(messageData);
+      
+      toast.success("Fee reminder sent successfully!");
+      setShowFeeReminderModal(false);
+      setSelectedStudentForReminder(null);
+      setFeeReminderData({
+        subject: "",
+        message: "",
+        priority: "medium",
+      });
+    } catch (error) {
+      console.error("Error sending fee reminder:", error);
+      toast.error("Failed to send fee reminder");
+    } finally {
+      setSendingReminder(false);
+    }
+  };
+
   return (
     <Layout>
       <div className="min-h-screen bg-gray-50">
@@ -980,44 +1072,83 @@ const FeeManagement = () => {
                             onChange={(e) => handleSearch(e.target.value)}
                             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           />
+                        </div>
                       </div>
+                      {/* Separate Filter Dropdowns */}
+                      <div className="flex flex-col sm:flex-row gap-2 items-end sm:items-center">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Fee Slab</label>
+                          <select
+                            value={feeSlabFilter}
+                            onChange={e => setFeeSlabFilter(e.target.value)}
+                            className="border border-gray-300 rounded-lg px-2 py-1"
+                          >
+                            <option value="">All</option>
+                            {feeSlabOptions.map(opt => (
+                              <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Class</label>
+                          <select
+                            value={classFilter}
+                            onChange={e => setClassFilter(e.target.value)}
+                            className="border border-gray-300 rounded-lg px-2 py-1"
+                          >
+                            <option value="">All</option>
+                            {classOptions.map(opt => (
+                              <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                          <select
+                            value={statusFilter}
+                            onChange={e => setStatusFilter(e.target.value)}
+                            className="border border-gray-300 rounded-lg px-2 py-1"
+                          >
+                            <option value="">All</option>
+                            {statusOptions.map(opt => (
+                              <option key={opt} value={opt}>{opt.charAt(0).toUpperCase() + opt.slice(1)}</option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
-
                     </div>
                   </div>
-
                   {/* Students List */}
-                    <div className="bg-white rounded-lg border border-gray-200 p-6">
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-semibold text-gray-900">
-                        Students ({filteredStudents.length})
-                        </h3>
-                        <div className="flex space-x-2">
-                          <span className="text-sm text-gray-600">
-                            Individual messaging enabled
-                          </span>
-                        </div>
+                  <div className="bg-white rounded-lg border border-gray-200 p-6">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Students ({filteredAndSortedStudents.length})
+                      </h3>
+                      <div className="flex space-x-2">
+                        <span className="text-sm text-gray-600">
+                          Individual messaging enabled
+                        </span>
                       </div>
-
-                      {loadingStudents ? (
-                        <div className="flex items-center justify-center py-8">
-                          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                          <span className="ml-2 text-gray-600">Loading students...</span>
-                        </div>
-                      ) : (
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Student
-                                </th>
+                    </div>
+                    {loadingStudents ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                        <span className="ml-2 text-gray-600">Loading students...</span>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Student
+                              </th>
                               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Fee Type
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Amount
-                                </th>
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Amount
+                              </th>
                               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Fees Paid
                               </th>
@@ -1029,23 +1160,23 @@ const FeeManagement = () => {
                               </th>
                               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Status
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Actions
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                            {filteredStudents.map((student) => (
-                                <tr key={student._id} className="hover:bg-gray-50">
-                                  <td className="px-6 py-4 whitespace-nowrap">
-                                    <div>
-                                      <div className="text-sm font-medium text-gray-900">
-                                        {student.name || `${student.firstName || ''} ${student.middleName || ''} ${student.lastName || ''}`.trim()}
-                                      </div>
-                                    <div className="text-sm text-gray-500">{student.email}</div>
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Actions
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {filteredAndSortedStudents.map((student) => (
+                              <tr key={student._id} className="hover:bg-gray-50">
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div>
+                                    <div className="text-sm font-medium text-gray-900">
+                                      {student.name || `${student.firstName || ''} ${student.middleName || ''} ${student.lastName || ''}`.trim()}
                                     </div>
-                                  </td>
+                                    <div className="text-sm text-gray-500">{student.email}</div>
+                                  </div>
+                                </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                   {student.feeSlabId?.slabName || 
                                    student.feeStructure || "N/A"}
@@ -1096,6 +1227,13 @@ const FeeManagement = () => {
                                     >
                                       <Settings className="w-4 h-4" />
                                     </button>
+                                    <button 
+                                      onClick={() => handleSendFeeReminder(student)}
+                                      className="text-orange-600 hover:text-orange-900 mr-3"
+                                      title="Send Fee Reminder"
+                                    >
+                                      <Bell className="w-4 h-4" />
+                                    </button>
                                   </td>
                                 </tr>
                               ))}
@@ -1106,7 +1244,7 @@ const FeeManagement = () => {
                     </div>
 
                   {/* Quick Actions */}
-                  {filteredStudents.length > 0 && (
+                  {filteredAndSortedStudents.length > 0 && (
                     <div className="bg-white rounded-lg border border-gray-200 p-6">
                       <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1980,6 +2118,124 @@ const FeeManagement = () => {
                     className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
                   >
                     Update Status
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Fee Reminder Modal */}
+        {showFeeReminderModal && selectedStudentForReminder && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Send Fee Reminder</h3>
+                <button
+                  onClick={() => setShowFeeReminderModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                <h4 className="font-medium text-gray-900 mb-2">Student Information</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium">Name:</span> {selectedStudentForReminder.name || `${selectedStudentForReminder.firstName || ''} ${selectedStudentForReminder.lastName || ''}`.trim()}
+                  </div>
+                  <div>
+                    <span className="font-medium">Email:</span> {selectedStudentForReminder.email}
+                  </div>
+                  <div>
+                    <span className="font-medium">Total Amount:</span> ₹{(selectedStudentForReminder.feeSlabId?.totalAmount || 0).toLocaleString()}
+                  </div>
+                  <div>
+                    <span className="font-medium">Fees Paid:</span> ₹{(selectedStudentForReminder.feesPaid || 0).toLocaleString()}
+                  </div>
+                  <div>
+                    <span className="font-medium">Remaining Amount:</span> ₹{(((selectedStudentForReminder.feeSlabId?.totalAmount || 0)) - (selectedStudentForReminder.feesPaid || 0)).toLocaleString()}
+                  </div>
+                  <div>
+                    <span className="font-medium">Status:</span> 
+                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ml-2 ${
+                      selectedStudentForReminder.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
+                      selectedStudentForReminder.paymentStatus === 'overdue' ? 'bg-red-100 text-red-800' :
+                      'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {selectedStudentForReminder.paymentStatus || 'pending'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <form onSubmit={handleSendFeeReminderSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                  <input
+                    type="text"
+                    value={feeReminderData.subject}
+                    onChange={(e) => setFeeReminderData({ ...feeReminderData, subject: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter message subject..."
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                  <textarea
+                    value={feeReminderData.message}
+                    onChange={(e) => setFeeReminderData({ ...feeReminderData, message: e.target.value })}
+                    rows={8}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter your message..."
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                  <select
+                    value={feeReminderData.priority}
+                    onChange={(e) => setFeeReminderData({ ...feeReminderData, priority: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
+                </div>
+
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowFeeReminderModal(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                    disabled={sendingReminder}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={sendingReminder}
+                  >
+                    {sendingReminder ? (
+                      <div className="flex items-center">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                        Sending...
+                      </div>
+                    ) : (
+                      <div className="flex items-center">
+                        <Bell className="w-4 h-4 mr-2" />
+                        Send Reminder
+                      </div>
+                    )}
                   </button>
                 </div>
               </form>
