@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import toast, { Toaster } from "react-hot-toast";
 import {
-  DollarSign,
   CreditCard,
   Users,
   Calendar,
@@ -21,10 +20,8 @@ import {
   Copy,
   Settings,
   Percent,
-  MessageSquare,
   CheckSquare,
   Square,
-  Send,
   Bell,
 } from "lucide-react";
 import {
@@ -62,34 +59,29 @@ const FeeManagement = () => {
     slabName: "",
     totalAmount: 0,
     academicYear: "2024-25",
-    classGrades: [],
     installments: [{ amount: 0, dueDate: "", description: "" }],
   });
 
   // Students states
   const [allStudents, setAllStudents] = useState([]);
   const [filteredStudents, setFilteredStudents] = useState([]);
-  const [selectedStudents, setSelectedStudents] = useState([]);
-  const [showMessageModal, setShowMessageModal] = useState(false);
+
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [showStudentEditModal, setShowStudentEditModal] = useState(false);
   const [showStudentViewModal, setShowStudentViewModal] = useState(false);
+  const [showUpdateStatusModal, setShowUpdateStatusModal] = useState(false);
+  const [statusUpdateData, setStatusUpdateData] = useState({
+    paymentStatus: "pending",
+    remarks: "",
+  });
   const [feeEditData, setFeeEditData] = useState({
     paymentStatus: "pending",
     paymentDate: "",
     paymentMethod: "",
+    paymentType: "full",
     transactionId: "",
     feesPaid: 0,
     remarks: "",
-  });
-  const [messageData, setMessageData] = useState({
-    subject: "",
-    message: "",
-    selectedTemplate: "",
-    createFees: false,
-    feeAmount: 0,
-    feeType: "tuition",
-    dueDate: "",
   });
   const [loadingStudents, setLoadingStudents] = useState(false);
 
@@ -104,6 +96,7 @@ const FeeManagement = () => {
     remarks: "",
   });
 
+
   // Sample data
   const feeStats = [
     {
@@ -111,7 +104,7 @@ const FeeManagement = () => {
       value: "$124,850",
       change: "+12.5%",
       changeType: "increase",
-      icon: DollarSign,
+      icon: CreditCard,
       color: "success",
     },
     {
@@ -221,10 +214,7 @@ const FeeManagement = () => {
     }
   };
 
-  // Get fee slab for a specific class grade
-  const getFeeSlabForClass = (classGrade) => {
-    return feeSlabs.find(slab => slab.classGrade === classGrade);
-  };
+
 
   const handleCreateSlab = async (e) => {
     e.preventDefault();
@@ -320,7 +310,6 @@ const FeeManagement = () => {
       slabName: "",
       totalAmount: 0,
       academicYear: "2024-25",
-      classGrades: [],
       installments: [{ amount: 0, dueDate: "", description: "" }],
     });
     setEditingSlab(null);
@@ -332,7 +321,6 @@ const FeeManagement = () => {
       slabName: slab.slabName,
       totalAmount: slab.totalAmount,
       academicYear: slab.academicYear,
-      classGrades: slab.classGrades || [],
       installments: slab.installments.map((inst) => ({
         amount: inst.amount,
         dueDate: inst.dueDate.split("T")[0], // Format date for input
@@ -451,106 +439,9 @@ const FeeManagement = () => {
 
 
 
-  // Handle student selection
-  const handleStudentSelection = (studentId) => {
-    setSelectedStudents(prev => {
-      if (prev.includes(studentId)) {
-        return prev.filter(id => id !== studentId);
-      } else {
-        return [...prev, studentId];
-      }
-    });
-  };
 
-  // Handle select all students
-  const handleSelectAll = () => {
-    if (selectedStudents.length === filteredStudents.length) {
-      setSelectedStudents([]);
-    } else {
-      setSelectedStudents(filteredStudents.map(student => student._id));
-    }
-  };
 
-  // Send message to selected students
-  const handleSendMessage = async () => {
-    if (selectedStudents.length === 0) {
-      toast.error("Please select at least one student");
-      return;
-    }
 
-    if (!messageData.subject || !messageData.message) {
-      toast.error("Please fill in subject and message");
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`${appConfig.API_BASE_URL}/communications/bulk`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          recipients: selectedStudents,
-          subject: messageData.subject,
-          message: messageData.message,
-          type: "fee_reminder",
-          createFees: messageData.createFees,
-          feeAmount: messageData.feeAmount,
-          feeType: messageData.feeType,
-          dueDate: messageData.dueDate,
-        }),
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        toast.success("Message sent successfully");
-        setShowMessageModal(false);
-        setMessageData({ subject: "", message: "", selectedTemplate: "", createFees: false, feeAmount: 0, feeType: "tuition", dueDate: "" });
-      } else {
-        toast.error("Failed to send message");
-      }
-    } catch (error) {
-      console.error("Error sending message:", error);
-      toast.error("Error sending message");
-    }
-  };
-
-  // Message templates
-  const messageTemplates = [
-    {
-      id: "pending_fees",
-      subject: "Pending Fee Payment Reminder",
-      message: "Dear Parent/Guardian,\n\nThis is a reminder that your child's fee payment is pending. Please ensure timely payment to avoid any inconvenience.\n\nBest regards,\nSchool Administration",
-    },
-    {
-      id: "overdue_fees",
-      subject: "Urgent: Overdue Fee Payment",
-      message: "Dear Parent/Guardian,\n\nYour child's fee payment is overdue. Please make the payment immediately to avoid any penalties or restrictions.\n\nBest regards,\nSchool Administration",
-    },
-    {
-      id: "partial_payment",
-      subject: "Partial Payment Received",
-      message: "Dear Parent/Guardian,\n\nWe have received your partial payment. Please complete the remaining amount at your earliest convenience.\n\nBest regards,\nSchool Administration",
-    },
-  ];
-
-  // Handle template selection
-  const handleTemplateSelect = (templateId) => {
-    const template = messageTemplates.find(t => t.id === templateId);
-    if (template) {
-      setMessageData({
-        subject: template.subject,
-        message: template.message,
-        selectedTemplate: templateId,
-        createFees: messageData.createFees,
-        feeAmount: messageData.feeAmount,
-        feeType: messageData.feeType,
-        dueDate: messageData.dueDate,
-      });
-    }
-  };
 
 
 
@@ -613,6 +504,7 @@ const FeeManagement = () => {
       paymentStatus: student.paymentStatus || "pending",
       paymentDate: student.paymentDate ? new Date(student.paymentDate).toISOString().split('T')[0] : "",
       paymentMethod: student.paymentMethod || "",
+      paymentType: student.paymentType || "full",
       transactionId: student.transactionId || "",
       feesPaid: student.feesPaid || 0,
       remarks: student.remarks || "",
@@ -626,8 +518,18 @@ const FeeManagement = () => {
     setShowStudentViewModal(true);
   };
 
-  // Handle fee edit
-  const handleFeeEdit = async (e) => {
+  // Handle update status
+  const handleUpdateStatus = (student) => {
+    setSelectedStudent(student);
+    setStatusUpdateData({
+      paymentStatus: student.paymentStatus || "pending",
+      remarks: "",
+    });
+    setShowUpdateStatusModal(true);
+  };
+
+  // Handle update status submit
+  const handleUpdateStatusSubmit = async (e) => {
     e.preventDefault();
     try {
       const token = localStorage.getItem("token");
@@ -637,20 +539,68 @@ const FeeManagement = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(feeEditData),
+        body: JSON.stringify({
+          paymentStatus: statusUpdateData.paymentStatus,
+          remarks: statusUpdateData.remarks,
+        }),
       });
 
       const data = await response.json();
       if (data.success) {
-        toast.success("Fee information updated successfully");
+        toast.success("Payment status updated successfully");
+        setShowUpdateStatusModal(false);
+        fetchAllStudents(); // Refresh the student list
+      } else {
+        toast.error(data.message || "Error updating payment status");
+      }
+    } catch (error) {
+      console.error("Error updating payment status:", error);
+      toast.error("Error updating payment status");
+    }
+  };
+
+  // Handle mark all as paid - DISABLED (individual messaging only)
+  const handleMarkAllAsPaid = async () => {
+    toast.error("Bulk operations are disabled. Please use individual actions for each student.");
+  };
+
+
+
+
+
+  // Handle fee edit
+  const handleFeeEdit = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem("token");
+      
+      // Calculate the new total fees paid by adding current payment to existing fees paid
+      const newFeesPaid = (selectedStudent.feesPaid || 0) + (feeEditData.feesPaid || 0);
+      
+      const response = await fetch(`${appConfig.API_BASE_URL}/students/${selectedStudent._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ...feeEditData,
+          feesPaid: newFeesPaid, // Update the total fees paid
+          paymentDate: feeEditData.paymentDate || new Date().toISOString().split('T')[0]
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success("Fee payment updated successfully");
         setShowStudentEditModal(false);
         fetchAllStudents(); // Refresh the student list
       } else {
-        toast.error(data.message || "Error updating fee information");
+        toast.error(data.message || "Error updating fee payment");
       }
     } catch (error) {
-      console.error("Error updating fee information:", error);
-      toast.error("Error updating fee information");
+      console.error("Error updating fee payment:", error);
+      toast.error("Error updating fee payment");
     }
   };
 
@@ -1043,26 +993,9 @@ const FeeManagement = () => {
                         Students ({filteredStudents.length})
                         </h3>
                         <div className="flex space-x-2">
-                          <button
-                            onClick={handleSelectAll}
-                            className="flex items-center px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                          >
-                          {selectedStudents.length === filteredStudents.length ? (
-                              <CheckSquare className="w-4 h-4 mr-2" />
-                            ) : (
-                              <Square className="w-4 h-4 mr-2" />
-                            )}
-                          {selectedStudents.length === filteredStudents.length ? "Deselect All" : "Select All"}
-                          </button>
-                          {selectedStudents.length > 0 && (
-                            <button
-                              onClick={() => setShowMessageModal(true)}
-                              className="flex items-center px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                            >
-                              <MessageSquare className="w-4 h-4 mr-2" />
-                              Send Message ({selectedStudents.length})
-                            </button>
-                          )}
+                          <span className="text-sm text-gray-600">
+                            Individual messaging enabled
+                          </span>
                         </div>
                       </div>
 
@@ -1077,25 +1010,8 @@ const FeeManagement = () => {
                             <thead className="bg-gray-50">
                               <tr>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  <input
-                                    type="checkbox"
-                                  checked={selectedStudents.length === filteredStudents.length && filteredStudents.length > 0}
-                                    onChange={handleSelectAll}
-                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                  />
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                   Student
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Student ID
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Class
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Contact
-                              </th>
                               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Fee Type
                                 </th>
@@ -1112,9 +1028,6 @@ const FeeManagement = () => {
                                 Payment Date
                               </th>
                               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Method
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Status
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1126,14 +1039,6 @@ const FeeManagement = () => {
                             {filteredStudents.map((student) => (
                                 <tr key={student._id} className="hover:bg-gray-50">
                                   <td className="px-6 py-4 whitespace-nowrap">
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedStudents.includes(student._id)}
-                                      onChange={() => handleStudentSelection(student._id)}
-                                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                    />
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap">
                                     <div>
                                       <div className="text-sm font-medium text-gray-900">
                                         {student.name || `${student.firstName || ''} ${student.middleName || ''} ${student.lastName || ''}`.trim()}
@@ -1141,23 +1046,12 @@ const FeeManagement = () => {
                                     <div className="text-sm text-gray-500">{student.email}</div>
                                     </div>
                                   </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {student.studentId}
-                                  </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  {student.class?.name || student.class?.grade || "N/A"}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  {student.mobileNumber || student.phone || "N/A"}
-                                  </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                   {student.feeSlabId?.slabName || 
-                                   (student.class?.grade ? getFeeSlabForClass(student.class.grade)?.slabName : null) || 
                                    student.feeStructure || "N/A"}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                   ₹{(student.feeSlabId?.totalAmount || 
-                                     (student.class?.grade ? getFeeSlabForClass(student.class.grade)?.totalAmount : 0) || 
                                      0).toLocaleString()}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -1165,14 +1059,10 @@ const FeeManagement = () => {
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                   ₹{(((student.feeSlabId?.totalAmount || 
-                                       (student.class?.grade ? getFeeSlabForClass(student.class.grade)?.totalAmount : 0) || 
                                        0)) - (student.feesPaid || 0)).toLocaleString()}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                   {student.paymentDate ? new Date(student.paymentDate).toLocaleDateString() : "N/A"}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  {student.paymentMethod || "N/A"}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
@@ -1183,7 +1073,8 @@ const FeeManagement = () => {
                                     {student.paymentStatus || 'pending'}
                                   </span>
                                   </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+
                                   <button 
                                     onClick={() => handleStudentEdit(student)}
                                     className="text-blue-600 hover:text-blue-900 mr-3"
@@ -1199,11 +1090,11 @@ const FeeManagement = () => {
                                       <Eye className="w-4 h-4" />
                                     </button>
                                     <button 
-                                      onClick={() => handleMarkAsPaidClick(student)}
-                                    className="text-orange-600 hover:text-orange-900"
-                                    title="Mark as Paid"
+                                      onClick={() => handleUpdateStatus(student)}
+                                    className="text-purple-600 hover:text-purple-900 mr-3"
+                                    title="Update Status"
                                     >
-                                      <CheckCircle className="w-4 h-4" />
+                                      <Settings className="w-4 h-4" />
                                     </button>
                                   </td>
                                 </tr>
@@ -1219,20 +1110,18 @@ const FeeManagement = () => {
                     <div className="bg-white rounded-lg border border-gray-200 p-6">
                       <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                          <CheckCircle className="w-5 h-5 mr-3 text-green-600" />
+                        <button 
+                          onClick={handleMarkAllAsPaid}
+                          className="flex items-center p-4 border border-gray-200 rounded-lg bg-gray-100 cursor-not-allowed opacity-50"
+                          disabled
+                        >
+                          <CheckCircle className="w-5 h-5 mr-3 text-gray-400" />
                           <div className="text-left">
-                            <div className="font-medium text-gray-900">Mark All as Paid</div>
-                            <div className="text-sm text-gray-500">Mark all selected students as paid</div>
+                            <div className="font-medium text-gray-500">Mark All as Paid</div>
+                            <div className="text-sm text-gray-400">Bulk operations disabled</div>
                           </div>
                         </button>
-                        <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                          <MessageSquare className="w-5 h-5 mr-3 text-blue-600" />
-                          <div className="text-left">
-                            <div className="font-medium text-gray-900">Send Bulk Reminder</div>
-                            <div className="text-sm text-gray-500">Send reminder to all pending students</div>
-                          </div>
-                        </button>
+
                         <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                           <Download className="w-5 h-5 mr-3 text-purple-600" />
                           <div className="text-left">
@@ -1340,92 +1229,6 @@ const FeeManagement = () => {
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       required
                     />
-                  </div>
-                </div>
-
-                {/* Class Grades & Divisions */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Class Grades & Divisions *</label>
-                  <div className="space-y-3">
-                    {formData.classGrades.map((classGrade, index) => (
-                      <div key={index} className="flex items-center space-x-2 p-3 border border-gray-200 rounded-lg">
-                        <select
-                          value={classGrade.grade}
-                          onChange={(e) => {
-                            const newClassGrades = [...formData.classGrades];
-                            newClassGrades[index].grade = parseInt(e.target.value);
-                            setFormData({ ...formData, classGrades: newClassGrades });
-                          }}
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          required
-                        >
-                          <option value="">Select Grade</option>
-                          <option value="1">1st Class</option>
-                          <option value="2">2nd Class</option>
-                          <option value="3">3rd Class</option>
-                          <option value="4">4th Class</option>
-                          <option value="5">5th Class</option>
-                          <option value="6">6th Class</option>
-                          <option value="7">7th Class</option>
-                          <option value="8">8th Class</option>
-                          <option value="9">9th Class</option>
-                          <option value="10">10th Class</option>
-                          <option value="11">11th Class</option>
-                          <option value="12">12th Class</option>
-                        </select>
-                        
-                        <div className="flex-1">
-                          <label className="block text-xs text-gray-600 mb-1">Divisions</label>
-                          <div className="flex flex-wrap gap-1">
-                            {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'].map((division) => (
-                              <label key={division} className="flex items-center">
-                                <input
-                                  type="checkbox"
-                                  checked={classGrade.divisions.includes(division)}
-                                  onChange={(e) => {
-                                    const newClassGrades = [...formData.classGrades];
-                                    if (e.target.checked) {
-                                      newClassGrades[index].divisions.push(division);
-                                    } else {
-                                      newClassGrades[index].divisions = newClassGrades[index].divisions.filter(d => d !== division);
-                                    }
-                                    setFormData({ ...formData, classGrades: newClassGrades });
-                                  }}
-                                  className="mr-1"
-                                />
-                                <span className="text-sm">{division}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                        
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newClassGrades = formData.classGrades.filter((_, i) => i !== index);
-                            setFormData({ ...formData, classGrades: newClassGrades });
-                          }}
-                          className="text-red-600 hover:text-red-800 p-1"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    ))}
-                    
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormData({
-                          ...formData,
-                          classGrades: [...formData.classGrades, { grade: "", divisions: [] }]
-                        });
-                      }}
-                      className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-gray-400 hover:text-gray-700 transition-colors"
-                    >
-                      + Add Class Grade
-                    </button>
                   </div>
                 </div>
 
@@ -1584,92 +1387,6 @@ const FeeManagement = () => {
                   </div>
                 </div>
 
-                {/* Class Grades & Divisions */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Class Grades & Divisions *</label>
-                  <div className="space-y-3">
-                    {formData.classGrades.map((classGrade, index) => (
-                      <div key={index} className="flex items-center space-x-2 p-3 border border-gray-200 rounded-lg">
-                        <select
-                          value={classGrade.grade}
-                          onChange={(e) => {
-                            const newClassGrades = [...formData.classGrades];
-                            newClassGrades[index].grade = parseInt(e.target.value);
-                            setFormData({ ...formData, classGrades: newClassGrades });
-                          }}
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          required
-                        >
-                          <option value="">Select Grade</option>
-                          <option value="1">1st Class</option>
-                          <option value="2">2nd Class</option>
-                          <option value="3">3rd Class</option>
-                          <option value="4">4th Class</option>
-                          <option value="5">5th Class</option>
-                          <option value="6">6th Class</option>
-                          <option value="7">7th Class</option>
-                          <option value="8">8th Class</option>
-                          <option value="9">9th Class</option>
-                          <option value="10">10th Class</option>
-                          <option value="11">11th Class</option>
-                          <option value="12">12th Class</option>
-                        </select>
-                        
-                        <div className="flex-1">
-                          <label className="block text-xs text-gray-600 mb-1">Divisions</label>
-                          <div className="flex flex-wrap gap-1">
-                            {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'].map((division) => (
-                              <label key={division} className="flex items-center">
-                                <input
-                                  type="checkbox"
-                                  checked={classGrade.divisions.includes(division)}
-                                  onChange={(e) => {
-                                    const newClassGrades = [...formData.classGrades];
-                                    if (e.target.checked) {
-                                      newClassGrades[index].divisions.push(division);
-                                    } else {
-                                      newClassGrades[index].divisions = newClassGrades[index].divisions.filter(d => d !== division);
-                                    }
-                                    setFormData({ ...formData, classGrades: newClassGrades });
-                                  }}
-                                  className="mr-1"
-                                />
-                                <span className="text-sm">{division}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                        
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newClassGrades = formData.classGrades.filter((_, i) => i !== index);
-                            setFormData({ ...formData, classGrades: newClassGrades });
-                          }}
-                          className="text-red-600 hover:text-red-800 p-1"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18L6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    ))}
-                    
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormData({
-                          ...formData,
-                          classGrades: [...formData.classGrades, { grade: "", divisions: [] }]
-                        });
-                      }}
-                      className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-gray-400 hover:text-gray-700 transition-colors"
-                    >
-                      + Add Class Grade
-                    </button>
-                  </div>
-                </div>
-
                 {/* Installments (same as create modal) */}
                 <div>
                   <div className="flex justify-between items-center mb-4">
@@ -1762,166 +1479,7 @@ const FeeManagement = () => {
           </div>
         )}
 
-        {/* Send Message Modal */}
-        {showMessageModal && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
-            <div className="relative p-8 border w-4/5 max-w-2xl shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-2xl font-semibold text-gray-900">Send Message to Students</h3>
-                <button
-                  onClick={() => {
-                    setShowMessageModal(false);
-                    setMessageData({ subject: "", message: "", selectedTemplate: "", createFees: false, feeAmount: 0, feeType: "tuition", dueDate: "" });
-                  }}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
 
-              <div className="space-y-6">
-                {/* Template Selection */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Message Template</label>
-                  <select
-                    value={messageData.selectedTemplate}
-                    onChange={(e) => handleTemplateSelect(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Choose a template...</option>
-                    {messageTemplates.map((template) => (
-                      <option key={template.id} value={template.id}>
-                        {template.subject}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Subject */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Subject *</label>
-                  <input
-                    type="text"
-                    value={messageData.subject}
-                    onChange={(e) => setMessageData({ ...messageData, subject: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter message subject"
-                    required
-                  />
-                </div>
-
-                {/* Message */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Message *</label>
-                  <textarea
-                    value={messageData.message}
-                    onChange={(e) => setMessageData({ ...messageData, message: e.target.value })}
-                    rows={6}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter your message here..."
-                    required
-                  />
-                </div>
-
-                {/* Fee Creation Options */}
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center mb-4">
-                    <input
-                      type="checkbox"
-                      id="createFees"
-                      checked={messageData.createFees}
-                      onChange={(e) => setMessageData({ ...messageData, createFees: e.target.checked })}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
-                    />
-                    <label htmlFor="createFees" className="text-sm font-medium text-gray-700">
-                      Create fee records for selected students
-                    </label>
-                  </div>
-                  
-                  {messageData.createFees && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Fee Amount (₹)</label>
-                        <input
-                          type="number"
-                          value={messageData.feeAmount}
-                          onChange={(e) => setMessageData({ ...messageData, feeAmount: parseFloat(e.target.value) || 0 })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="2500"
-                          min="0"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Fee Type</label>
-                        <select
-                          value={messageData.feeType}
-                          onChange={(e) => setMessageData({ ...messageData, feeType: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="tuition">Tuition</option>
-                          <option value="library">Library</option>
-                          <option value="sports">Sports</option>
-                          <option value="transport">Transport</option>
-                          <option value="examination">Examination</option>
-                          <option value="miscellaneous">Miscellaneous</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
-                        <input
-                          type="date"
-                          value={messageData.dueDate}
-                          onChange={(e) => setMessageData({ ...messageData, dueDate: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Recipients Info */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center">
-                    <Users className="w-5 h-5 text-blue-600 mr-2" />
-                    <span className="text-sm font-medium text-blue-900">
-                      Sending to {selectedStudents.length} selected student(s)
-                    </span>
-                  </div>
-                </div>
-
-                {/* Submit Button */}
-                <div className="flex justify-end space-x-3 pt-6">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowMessageModal(false);
-                      setMessageData({ subject: "", message: "", selectedTemplate: "", createFees: false, feeAmount: 0, feeType: "tuition", dueDate: "" });
-                    }}
-                    className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSendMessage}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <Send className="w-4 h-4 mr-2 inline" />
-                    Send Message
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
 
 
@@ -2036,111 +1594,118 @@ const FeeManagement = () => {
                   </p>
                   <p className="text-sm text-gray-600">
                     <strong>Fee Slab:</strong> {selectedStudent.feeSlabId?.slabName || 
-                      (selectedStudent.class?.grade ? getFeeSlabForClass(selectedStudent.class.grade)?.slabName : null) || 
                       selectedStudent.feeStructure || "N/A"}
                   </p>
                   <p className="text-sm text-gray-600">
                     <strong>Total Amount:</strong> ₹{(selectedStudent.feeSlabId?.totalAmount || 
-                      (selectedStudent.class?.grade ? getFeeSlabForClass(selectedStudent.class.grade)?.totalAmount : 0) || 
                       0).toLocaleString()}
                   </p>
+                  <p className="text-sm text-gray-600">
+                    <strong>Remaining Fees:</strong> ₹{(((selectedStudent.feeSlabId?.totalAmount || 0)) - (selectedStudent.feesPaid || 0)).toLocaleString()}
+                  </p>
+                  {selectedStudent.feeSlabId?.installments && selectedStudent.feeSlabId.installments.length > 0 && (
+                    <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                      <h4 className="text-sm font-medium text-gray-900 mb-2">Installment Schedule</h4>
+                      <div className="space-y-2">
+                        {selectedStudent.feeSlabId.installments.map((installment, index) => (
+                          <div key={index} className="flex justify-between text-sm">
+                            <span className="text-gray-600">
+                              Installment {installment.installmentNumber}: ₹{installment.amount.toLocaleString()}
+                            </span>
+                            <span className="text-gray-500">
+                              Due: {new Date(installment.dueDate).toLocaleDateString()}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <form onSubmit={handleFeeEdit} className="space-y-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Payment Status</label>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Payment Type</label>
                     <select
-                      value={feeEditData.paymentStatus}
-                      onChange={(e) => setFeeEditData({ ...feeEditData, paymentStatus: e.target.value })}
+                      value={feeEditData.paymentType || "full"}
+                      onChange={(e) => setFeeEditData({ ...feeEditData, paymentType: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
-                      <option value="pending">Pending</option>
-                      <option value="paid">Paid</option>
-                      <option value="overdue">Overdue</option>
+                      <option value="full">Full Payment</option>
+                      <option value="installment">Installment Payment</option>
                     </select>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Payment Date</label>
-                  <input
+                    <input
                       type="date"
                       value={feeEditData.paymentDate}
                       onChange={(e) => setFeeEditData({ ...feeEditData, paymentDate: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
-                  <select
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                    <select
                       value={feeEditData.paymentMethod}
                       onChange={(e) => setFeeEditData({ ...feeEditData, paymentMethod: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
                       <option value="">Select Payment Method</option>
-                    <option value="cash">Cash</option>
-                    <option value="card">Card</option>
+                      <option value="cash">Cash</option>
+                      <option value="card">Card</option>
                       <option value="bank_transfer">Bank Transfer</option>
                       <option value="cheque">Cheque</option>
                       <option value="online">Online</option>
                       <option value="other">Other</option>
-                  </select>
-                </div>
+                    </select>
+                  </div>
 
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Transaction ID</label>
-                  <input
-                    type="text"
-                      value={feeEditData.transactionId}
-                      onChange={(e) => setFeeEditData({ ...feeEditData, transactionId: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Enter transaction ID (optional)"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Previously Paid Fees (₹)</label>
+                    <input
+                      type="number"
+                      value={selectedStudent.feesPaid || 0}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100"
+                      disabled
+                      readOnly
+                      placeholder="Previously paid amount"
+                    />
+                  </div>
 
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Fees Paid (₹)</label>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Current Payment (₹)</label>
                     <input
                       type="number"
                       value={feeEditData.feesPaid}
                       onChange={(e) => {
                         const value = parseFloat(e.target.value) || 0;
-                        const maxAmount = (selectedStudent.feeSlabId?.totalAmount || 
-                                          (selectedStudent.class?.grade ? getFeeSlabForClass(selectedStudent.class.grade)?.totalAmount : 0) || 
-                                          0);
+                        const maxAmount = ((selectedStudent.feeSlabId?.totalAmount || 0) - (selectedStudent.feesPaid || 0));
                         if (value <= maxAmount) {
                           setFeeEditData({ ...feeEditData, feesPaid: value });
                         }
                       }}
                       min="0"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Enter amount paid"
+                      placeholder="Enter current payment amount"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Remaining Amount (₹)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Remaining Fees (₹)</label>
                     <input
                       type="text"
-                      value={(((selectedStudent.feeSlabId?.totalAmount || 
-                                (selectedStudent.class?.grade ? getFeeSlabForClass(selectedStudent.class.grade)?.totalAmount : 0) || 
-                                0)) - (feeEditData.feesPaid || 0)).toLocaleString()}
+                      value={(
+                        (selectedStudent.feeSlabId?.totalAmount || 0)
+                        - (selectedStudent.feesPaid || 0)
+                        - (feeEditData.feesPaid || 0)
+                      ).toLocaleString()}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100"
                       disabled
                       readOnly
                     />
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
-                  <textarea
-                      value={feeEditData.remarks}
-                      onChange={(e) => setFeeEditData({ ...feeEditData, remarks: e.target.value })}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Additional notes..."
-                  />
-              </div>
 
               <div className="flex justify-end space-x-3 mt-6">
                 <button
@@ -2166,7 +1731,7 @@ const FeeManagement = () => {
         {/* Student Fee View Modal */}
         {showStudentViewModal && selectedStudent && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4">
+            <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Fee Information</h3>
                 <button
@@ -2216,13 +1781,11 @@ const FeeManagement = () => {
                     <div>
                       <span className="text-gray-600">Fee Slab:</span>
                       <span className="font-medium ml-2">{selectedStudent.feeSlabId?.slabName || 
-                        (selectedStudent.class?.grade ? getFeeSlabForClass(selectedStudent.class.grade)?.slabName : null) || 
                         selectedStudent.feeStructure || "N/A"}</span>
                     </div>
                     <div>
                       <span className="text-gray-600">Total Amount:</span>
                       <span className="font-medium ml-2">₹{(selectedStudent.feeSlabId?.totalAmount || 
-                        (selectedStudent.class?.grade ? getFeeSlabForClass(selectedStudent.class.grade)?.totalAmount : 0) || 
                         0).toLocaleString()}</span>
                     </div>
                     <div>
@@ -2232,7 +1795,6 @@ const FeeManagement = () => {
                     <div>
                       <span className="text-gray-600">Remaining Amount:</span>
                       <span className="font-medium ml-2">₹{(((selectedStudent.feeSlabId?.totalAmount || 
-                        (selectedStudent.class?.grade ? getFeeSlabForClass(selectedStudent.class.grade)?.totalAmount : 0) || 
                         0)) - (selectedStudent.feesPaid || 0)).toLocaleString()}</span>
                     </div>
                     <div>
@@ -2259,6 +1821,40 @@ const FeeManagement = () => {
                     )}
                   </div>
                 </div>
+
+                {/* Installment Information */}
+                {selectedStudent.feeSlabId?.installments && selectedStudent.feeSlabId.installments.length > 0 && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h4 className="font-semibold text-gray-900 mb-3">Installment Schedule</h4>
+                    <div className="space-y-3">
+                      {selectedStudent.feeSlabId.installments.map((installment, index) => (
+                        <div key={index} className="flex justify-between items-center p-3 bg-white rounded-lg border border-gray-200">
+                          <div className="flex-1">
+                            <div className="font-medium text-gray-900">
+                              Installment {installment.installmentNumber}
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              Due: {new Date(installment.dueDate).toLocaleDateString()}
+                            </div>
+                            {installment.description && (
+                              <div className="text-sm text-gray-500">
+                                {installment.description}
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <div className="font-semibold text-gray-900">
+                              ₹{installment.amount.toLocaleString()}
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              {installment.percentage}%
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Payment Information */}
                 <div className="bg-gray-50 rounded-lg p-4">
@@ -2303,6 +1899,95 @@ const FeeManagement = () => {
             </div>
           </div>
         )}
+
+        {/* Update Status Modal */}
+        {showUpdateStatusModal && selectedStudent && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Update Payment Status</h3>
+                <button
+                  onClick={() => setShowUpdateStatusModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-2">
+                  <strong>Student:</strong> {selectedStudent.name || `${selectedStudent.firstName || ''} ${selectedStudent.middleName || ''} ${selectedStudent.lastName || ''}`.trim()}
+                </p>
+                <p className="text-sm text-gray-600 mb-2">
+                  <strong>Total Amount:</strong> ₹{(selectedStudent.feeSlabId?.totalAmount || 0).toLocaleString()}
+                </p>
+                <p className="text-sm text-gray-600 mb-2">
+                  <strong>Fees Paid:</strong> ₹{(selectedStudent.feesPaid || 0).toLocaleString()}
+                </p>
+                <p className="text-sm text-gray-600 mb-2">
+                  <strong>Remaining Fees:</strong> ₹{(((selectedStudent.feeSlabId?.totalAmount || 0)) - (selectedStudent.feesPaid || 0)).toLocaleString()}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <strong>Current Status:</strong> 
+                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ml-2 ${
+                    selectedStudent.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
+                    selectedStudent.paymentStatus === 'overdue' ? 'bg-red-100 text-red-800' :
+                    'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {selectedStudent.paymentStatus || 'pending'}
+                  </span>
+                </p>
+              </div>
+
+              <form onSubmit={handleUpdateStatusSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">New Status</label>
+                  <select
+                    value={statusUpdateData.paymentStatus}
+                    onChange={(e) => setStatusUpdateData({ ...statusUpdateData, paymentStatus: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="paid">Paid</option>
+                    <option value="overdue">Overdue</option>
+                    <option value="partial">Partial</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
+                  <textarea
+                    value={statusUpdateData.remarks}
+                    onChange={(e) => setStatusUpdateData({ ...statusUpdateData, remarks: e.target.value })}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Add any remarks about the status change..."
+                  />
+                </div>
+
+                <div className="flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowUpdateStatusModal(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Update Status
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+
       </div>
     </Layout>
   );

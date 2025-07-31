@@ -8,6 +8,12 @@ const feeSchema = new mongoose.Schema(
       required: [true, "Student ID is required"],
     },
 
+    // Link to fee slab
+    feeSlabId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "FeeSlab",
+    },
+
     installmentNumber: {
       type: Number,
       min: 1,
@@ -93,12 +99,16 @@ const feeSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
-    remarks: String,
+    remarks: {
+      type: String,
+      trim: true,
+    },
 
-    // Processing
+    // Audit
     processedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+      required: true,
     },
   },
   {

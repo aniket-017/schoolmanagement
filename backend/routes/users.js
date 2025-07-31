@@ -47,14 +47,14 @@ router.get("/subjects", auth, adminOrPrincipal, async (req, res) => {
 });
 
 // @route   GET /api/users
-// @desc    Get all users with pagination and filtering
+// @desc    Get all teachers and staff with pagination and filtering (excludes students)
 // @access  Private (Admin/Principal only)
 router.get("/", auth, adminOrPrincipal, async (req, res) => {
   try {
     const { page = 1, limit = 10, role, status, search } = req.query;
 
-    // Build filter query
-    let filter = {};
+    // Build filter query - exclude students since they have their own table
+    let filter = { role: { $ne: "student" } };
     if (role) filter.role = role;
     if (status) filter.status = status;
     if (search) {
@@ -67,7 +67,6 @@ router.get("/", auth, adminOrPrincipal, async (req, res) => {
         { email: { $regex: search, $options: "i" } },
         { phone: { $regex: search, $options: "i" } },
         { employeeId: { $regex: search, $options: "i" } },
-        { studentId: { $regex: search, $options: "i" } },
       ];
     }
 
@@ -230,7 +229,7 @@ router.post("/teacher", auth, adminOrPrincipal, async (req, res) => {
 });
 
 // @route   GET /api/users/excel-template
-// @desc    Download Excel template for bulk teacher upload
+// @desc    Download Excel template for bulk teacher upload (teachers only)
 // @access  Private (Admin/Principal only)
 router.get("/excel-template", auth, adminOrPrincipal, (req, res) => {
   try {
@@ -381,7 +380,7 @@ router.get("/excel-template", auth, adminOrPrincipal, (req, res) => {
 });
 
 // @route   POST /api/users/bulk-upload
-// @desc    Bulk upload teachers from Excel file
+// @desc    Bulk upload teachers from Excel file (teachers only)
 // @access  Private (Admin/Principal only)
 router.post("/bulk-upload", auth, adminOrPrincipal, upload.single("excelFile"), async (req, res) => {
   try {

@@ -87,7 +87,95 @@ const getAllFees = async (req, res) => {
   }
 };
 
-// @desc    Get student fees
+// @desc    Create fees from fee slab for a student
+// @route   POST /api/fees/student/:studentId/from-slab
+// @access  Private (Admin only)
+const createFeesFromSlab = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const { feeSlabId, academicYear } = req.body;
+
+    // Check if student exists
+    const Student = require("../models/Student");
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found",
+      });
+    }
+
+    // Check if fee slab exists
+    const FeeSlab = require("../models/FeeSlab");
+    const feeSlab = await FeeSlab.findById(feeSlabId);
+    if (!feeSlab) {
+      return res.status(404).json({
+        success: false,
+        message: "Fee slab not found",
+      });
+    }
+
+    // Check if fees already exist for this student and fee slab
+    const existingFees = await Fee.find({
+      studentId,
+      feeSlabId: feeSlabId,
+      academicYear: academicYear || feeSlab.academicYear,
+    });
+
+    if (existingFees.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Fees already exist for this student and fee slab",
+      });
+    }
+
+    // Create fee records for each installment
+    const createdFees = [];
+    for (const installment of feeSlab.installments) {
+      const fee = await Fee.create({
+        studentId,
+        feeSlabId: feeSlab._id,
+        feeType: "tuition", // Default to tuition, can be customized
+        amount: installment.amount,
+        dueDate: installment.dueDate,
+        academicYear: academicYear || feeSlab.academicYear,
+        installmentNumber: installment.installmentNumber,
+        status: "pending",
+        remarks: installment.description || `Installment ${installment.installmentNumber}`,
+        processedBy: req.user.id,
+      });
+      createdFees.push(fee);
+    }
+
+    // Update student's fee slab assignment
+    await Student.findByIdAndUpdate(studentId, {
+      feeSlabId: feeSlab._id,
+      paymentStatus: "pending",
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `Fee records created successfully for ${createdFees.length} installments`,
+      data: {
+        createdCount: createdFees.length,
+        fees: createdFees,
+        feeSlab: {
+          _id: feeSlab._id,
+          slabName: feeSlab.slabName,
+          totalAmount: feeSlab.totalAmount,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Create fees from slab error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while creating fees from slab",
+    });
+  }
+};
+
+// @desc    Get student fees with fee slab information
 // @route   GET /api/fees/student/:studentId
 // @access  Private
 const getStudentFees = async (req, res) => {
@@ -110,16 +198,22 @@ const getStudentFees = async (req, res) => {
     const fees = await Fee.find(filter)
       .populate("studentId", "name studentId")
       .populate("processedBy", "name")
+      .populate("feeSlabId", "slabName totalAmount installments")
       .sort({ dueDate: -1 });
 
-    // Calculate fee statistics
-    const totalFees = fees.length;
-    const paidFees = fees.filter((f) => f.status === "paid").length;
-    const pendingFees = fees.filter((f) => f.status === "pending").length;
-    const overdueFees = fees.filter((f) => f.status === "overdue").length;
+    // Get student's fee slab information and admin-updated fee data
+    const Student = require("../models/Student");
+    const student = await Student.findById(studentId).populate("feeSlabId", "slabName totalAmount installments");
 
-    const totalAmount = fees.reduce((sum, fee) => sum + fee.amount, 0);
-    const paidAmount = fees.reduce((sum, fee) => sum + fee.paidAmount, 0);
+    // Use admin-updated fee data from Student model instead of calculating from individual fees
+    const totalFees = fees.length;
+    const paidFees = student.paymentStatus === "paid" ? totalFees : 0;
+    const pendingFees = student.paymentStatus === "pending" ? totalFees : 0;
+    const overdueFees = student.paymentStatus === "overdue" ? totalFees : 0;
+
+    // Use admin-updated amounts from Student model
+    const totalAmount = student.feeSlabId?.totalAmount || fees.reduce((sum, fee) => sum + fee.amount, 0);
+    const paidAmount = student.feesPaid || 0;
     const pendingAmount = totalAmount - paidAmount;
 
     res.json({
@@ -135,6 +229,7 @@ const getStudentFees = async (req, res) => {
           paidAmount,
           pendingAmount,
         },
+        feeSlab: student?.feeSlabId || null,
       },
     });
   } catch (error) {
@@ -194,6 +289,37 @@ const processFeePayment = async (req, res) => {
     await fee.save();
 
     await fee.populate("studentId", "name studentId");
+
+    // Update Student model with admin-updated fee data
+    const Student = require("../models/Student");
+    const student = await Student.findById(fee.studentId);
+    
+    if (student) {
+      // Get all fees for this student to calculate total paid amount
+      const allStudentFees = await Fee.find({ studentId: fee.studentId });
+      const totalPaidAmount = allStudentFees.reduce((sum, f) => sum + (f.paidAmount || 0), 0);
+      
+      // Determine overall payment status
+      let overallStatus = "pending";
+      if (totalPaidAmount >= (student.feeSlabId?.totalAmount || 0)) {
+        overallStatus = "paid";
+      } else if (totalPaidAmount > 0) {
+        overallStatus = "partial";
+      } else {
+        // Check if any fees are overdue
+        const hasOverdueFees = allStudentFees.some(f => f.status === "overdue");
+        overallStatus = hasOverdueFees ? "overdue" : "pending";
+      }
+      
+      // Update student's fee information
+      await Student.findByIdAndUpdate(fee.studentId, {
+        paymentStatus: overallStatus,
+        feesPaid: totalPaidAmount,
+        paymentDate: new Date(),
+        paymentMethod: paymentMethod || student.paymentMethod,
+        transactionId: transactionId || student.transactionId,
+      });
+    }
 
     res.json({
       success: true,
@@ -281,41 +407,56 @@ const getFeeStats = async (req, res) => {
   try {
     const { academicYear, month } = req.query;
 
-    let filter = {};
-    if (academicYear) filter.academicYear = academicYear;
-    if (month) filter.month = month;
+    // Get admin-updated fee data from Student model
+    const Student = require("../models/Student");
+    
+    let studentFilter = {};
+    if (academicYear) studentFilter.academicYear = academicYear;
+    
+    const students = await Student.find(studentFilter).populate("feeSlabId", "totalAmount");
 
-    const stats = await Fee.aggregate([
-      { $match: filter },
-      {
-        $group: {
-          _id: "$status",
-          count: { $sum: 1 },
-          totalAmount: { $sum: "$amount" },
-          paidAmount: { $sum: "$paidAmount" },
-        },
-      },
-    ]);
+    // Calculate statistics using admin-updated data
+    let totalFees = 0;
+    let totalAmount = 0;
+    let totalPaidAmount = 0;
+    let pendingCount = 0;
+    let paidCount = 0;
+    let overdueCount = 0;
 
-    const totalFees = await Fee.countDocuments(filter);
-    const totalAmount = await Fee.aggregate([
-      { $match: filter },
-      { $group: { _id: null, total: { $sum: "$amount" } } },
-    ]);
-
-    const totalPaidAmount = await Fee.aggregate([
-      { $match: filter },
-      { $group: { _id: null, total: { $sum: "$paidAmount" } } },
-    ]);
+    students.forEach(student => {
+      // Count fees based on fee slab installments
+      if (student.feeSlabId) {
+        const installmentCount = student.feeSlabId.installments?.length || 1;
+        totalFees += installmentCount;
+        totalAmount += student.feeSlabId.totalAmount || 0;
+      }
+      
+      totalPaidAmount += student.feesPaid || 0;
+      
+      // Count students by payment status
+      switch (student.paymentStatus) {
+        case "paid":
+          paidCount += 1;
+          break;
+        case "pending":
+          pendingCount += 1;
+          break;
+        case "overdue":
+          overdueCount += 1;
+          break;
+        default:
+          pendingCount += 1;
+      }
+    });
 
     const formattedStats = {
       totalFees,
-      totalAmount: totalAmount[0]?.total || 0,
-      totalPaidAmount: totalPaidAmount[0]?.total || 0,
-      pending: stats.find((s) => s._id === "pending")?.count || 0,
-      paid: stats.find((s) => s._id === "paid")?.count || 0,
-      overdue: stats.find((s) => s._id === "overdue")?.count || 0,
-      partial: stats.find((s) => s._id === "partial")?.count || 0,
+      totalAmount,
+      totalPaidAmount,
+      pending: pendingCount,
+      paid: paidCount,
+      overdue: overdueCount,
+      partial: 0, // Not used in admin-updated model
     };
 
     formattedStats.collectionPercentage =
@@ -388,7 +529,7 @@ const getClassFeeStatus = async (req, res) => {
       .populate("studentId", "name studentId rollNumber")
       .sort({ dueDate: 1 });
 
-    // Group fees by student
+    // Group fees by student and use admin-updated data
     const studentFeeStatus = {};
     students.forEach(student => {
       studentFeeStatus[student._id.toString()] = {
@@ -406,27 +547,32 @@ const getClassFeeStatus = async (req, res) => {
       };
     });
 
-    // Process fee data
+    // Process fee data and use admin-updated information
     fees.forEach(fee => {
       const studentId = fee.studentId._id.toString();
       if (studentFeeStatus[studentId]) {
         studentFeeStatus[studentId].fees.push(fee);
-        studentFeeStatus[studentId].totalAmount += fee.amount;
-        studentFeeStatus[studentId].paidAmount += fee.paidAmount || 0;
-        studentFeeStatus[studentId].pendingAmount = studentFeeStatus[studentId].totalAmount - studentFeeStatus[studentId].paidAmount;
-        
-        // Determine overall status
-        if (fee.status === "overdue") {
-          studentFeeStatus[studentId].status = "overdue";
-        } else if (fee.status === "pending" && studentFeeStatus[studentId].status !== "overdue") {
-          studentFeeStatus[studentId].status = "pending";
-        } else if (fee.status === "paid" && studentFeeStatus[studentId].status === "no_fees") {
-          studentFeeStatus[studentId].status = "paid";
-        } else if (fee.status === "partial" && studentFeeStatus[studentId].status === "no_fees") {
-          studentFeeStatus[studentId].status = "partial";
-        }
       }
     });
+
+    // Update with admin-updated data from Student model
+    for (const student of students) {
+      const studentId = student._id.toString();
+      if (studentFeeStatus[studentId]) {
+        // Use admin-updated payment status and amounts
+        studentFeeStatus[studentId].status = student.paymentStatus || "pending";
+        studentFeeStatus[studentId].paidAmount = student.feesPaid || 0;
+        
+        // Get total amount from fee slab or calculate from fees
+        if (student.feeSlabId) {
+          studentFeeStatus[studentId].totalAmount = student.feeSlabId.totalAmount || 0;
+        } else {
+          studentFeeStatus[studentId].totalAmount = studentFeeStatus[studentId].fees.reduce((sum, fee) => sum + fee.amount, 0);
+        }
+        
+        studentFeeStatus[studentId].pendingAmount = studentFeeStatus[studentId].totalAmount - studentFeeStatus[studentId].paidAmount;
+      }
+    }
 
     const result = Object.values(studentFeeStatus);
 
@@ -553,6 +699,37 @@ const updateFeeStatus = async (req, res) => {
     const updatedFee = await Fee.findByIdAndUpdate(feeId, updateData, { new: true })
       .populate("studentId", "name studentId");
 
+    // Update Student model with admin-updated fee data
+    const Student = require("../models/Student");
+    const student = await Student.findById(fee.studentId);
+    
+    if (student) {
+      // Get all fees for this student to calculate total paid amount
+      const allStudentFees = await Fee.find({ studentId: fee.studentId });
+      const totalPaidAmount = allStudentFees.reduce((sum, f) => sum + (f.paidAmount || 0), 0);
+      
+      // Determine overall payment status
+      let overallStatus = "pending";
+      if (totalPaidAmount >= (student.feeSlabId?.totalAmount || 0)) {
+        overallStatus = "paid";
+      } else if (totalPaidAmount > 0) {
+        overallStatus = "partial";
+      } else {
+        // Check if any fees are overdue
+        const hasOverdueFees = allStudentFees.some(f => f.status === "overdue");
+        overallStatus = hasOverdueFees ? "overdue" : "pending";
+      }
+      
+      // Update student's fee information
+      await Student.findByIdAndUpdate(fee.studentId, {
+        paymentStatus: overallStatus,
+        feesPaid: totalPaidAmount,
+        paymentDate: status === "paid" ? new Date() : student.paymentDate,
+        paymentMethod: paymentMethod || student.paymentMethod,
+        transactionId: transactionId || student.transactionId,
+      });
+    }
+
     res.json({
       success: true,
       message: "Fee status updated successfully",
@@ -563,6 +740,84 @@ const updateFeeStatus = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error while updating fee status",
+    });
+  }
+};
+
+// @desc    Generate fee records for student with fee slab but no fees
+// @route   POST /api/fees/student/:studentId/generate
+// @access  Private (Admin only)
+const generateFeesForStudent = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+
+    // Check if student exists
+    const Student = require("../models/Student");
+    const student = await Student.findById(studentId).populate("feeSlabId");
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found",
+      });
+    }
+
+    // Check if student has a fee slab assigned
+    if (!student.feeSlabId) {
+      return res.status(400).json({
+        success: false,
+        message: "Student does not have a fee slab assigned",
+      });
+    }
+
+    // Check if fees already exist for this student
+    const existingFees = await Fee.find({
+      studentId,
+      feeSlabId: student.feeSlabId._id,
+    });
+
+    if (existingFees.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Fee records already exist for this student",
+      });
+    }
+
+    // Create fee records for each installment
+    const createdFees = [];
+    for (const installment of student.feeSlabId.installments) {
+      const fee = await Fee.create({
+        studentId,
+        feeSlabId: student.feeSlabId._id,
+        feeType: "tuition", // Default to tuition, can be customized
+        amount: installment.amount,
+        dueDate: installment.dueDate,
+        academicYear: student.feeSlabId.academicYear,
+        installmentNumber: installment.installmentNumber,
+        status: "pending",
+        remarks: installment.description || `Installment ${installment.installmentNumber}`,
+        processedBy: req.user.id,
+      });
+      createdFees.push(fee);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: `Fee records generated successfully for ${createdFees.length} installments`,
+      data: {
+        createdCount: createdFees.length,
+        fees: createdFees,
+        feeSlab: {
+          _id: student.feeSlabId._id,
+          slabName: student.feeSlabId.slabName,
+          totalAmount: student.feeSlabId.totalAmount,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Generate fees for student error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while generating fees",
     });
   }
 };
@@ -578,4 +833,6 @@ module.exports = {
   getClassFeeStatus,
   createClassFees,
   updateFeeStatus,
+  createFeesFromSlab,
+  generateFeesForStudent,
 };

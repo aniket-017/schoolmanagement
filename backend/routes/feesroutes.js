@@ -11,6 +11,8 @@ const {
   getClassFeeStatus,
   createClassFees,
   updateFeeStatus,
+  createFeesFromSlab,
+  generateFeesForStudent,
 } = require("../controllers/feeController");
 const { auth, authorize } = require("../middleware/auth");
 
@@ -38,6 +40,16 @@ router.get("/class/:classId/status", auth, authorize("admin"), getClassFeeStatus
 // @desc    Get student fees
 // @access  Private
 router.get("/student/:studentId", auth, getStudentFees);
+
+// @route   POST /api/fees/student/:studentId/from-slab
+// @desc    Create fees from fee slab for a student
+// @access  Private (Admin only)
+router.post("/student/:studentId/from-slab", auth, authorize("admin"), createFeesFromSlab);
+
+// @route   POST /api/fees/student/:studentId/generate
+// @desc    Generate fee records for student with fee slab but no fees
+// @access  Private (Admin only)
+router.post("/student/:studentId/generate", auth, authorize("admin"), generateFeesForStudent);
 
 // @route   PUT /api/fees/:id/pay
 // @desc    Process fee payment

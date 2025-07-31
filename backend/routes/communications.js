@@ -10,6 +10,7 @@ const {
   deleteMessage,
   getUnreadMessageCount,
   searchMessages,
+  debugStudentUsers,
 } = require("../controllers/communicationController");
 const { auth } = require("../middleware/auth");
 
@@ -57,5 +58,10 @@ router.put("/:id/read", auth, markMessageAsRead);
 // @desc    Delete message
 // @access  Private
 router.delete("/:id", auth, deleteMessage);
+
+// @route   GET /api/communications/debug/students
+// @desc    Debug student user records
+// @access  Private (Admin only)
+router.get("/debug/students", auth, debugStudentUsers);
 
 module.exports = router; 

@@ -64,7 +64,6 @@ const StudentDashboard = () => {
   const [timetableData, setTimetableData] = useState(null);
   const [todayAttendance, setTodayAttendance] = useState(null);
   const [announcements, setAnnouncements] = useState([]);
-  const [feeMessages, setFeeMessages] = useState([]);
   const [homework, setHomework] = useState([]);
   const [homeworkStats, setHomeworkStats] = useState({});
   const [studentStats, setStudentStats] = useState({
@@ -265,28 +264,13 @@ const StudentDashboard = () => {
         promises.push(Promise.resolve(null));
       }
 
-      // Load fee messages
-      if (user?._id || user?.id) {
-        promises.push(
-          apiService.communications.getUserMessages({ type: "fee_reminder", limit: 3 })
-            .then(response => response.success ? response.data || [] : [])
-            .catch(error => {
-              console.log("Fee messages not available:", error.message);
-              return [];
-            })
-        );
-      } else {
-        promises.push(Promise.resolve([]));
-      }
-
       // Wait for all promises to resolve
-      const [timetableData, todayAttendance, announcements, studentStats, homework, homeworkStats, feesData, feeMessages] = await Promise.all(promises);
+      const [timetableData, todayAttendance, announcements, studentStats, homework, homeworkStats, feesData] = await Promise.all(promises);
 
       // Set state with all data at once
       setTimetableData(timetableData);
       setTodayAttendance(todayAttendance);
       setAnnouncements(announcements);
-      setFeeMessages(feeMessages);
       setStudentStats(studentStats);
       setHomework(homework);
       setHomeworkStats(homeworkStats);
@@ -642,40 +626,7 @@ const StudentDashboard = () => {
               </button>
             </div>
 
-            {feeMessages.length > 0 ? (
-              <div className="space-y-4">
-                {feeMessages.map((message, index) => (
-                  <div key={message._id || index} className="flex items-start space-x-3 p-4 bg-yellow-50 rounded-lg">
-                    <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <CurrencyDollarIcon className="w-4 h-4 text-yellow-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-gray-900 text-sm line-clamp-1">
-                        {message.subject}
-                      </h4>
-                      <p className="text-gray-600 text-xs line-clamp-2 mt-1">
-                        {message.message}
-                      </p>
-                      <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
-                        <span>{message.senderId?.name || "School Administration"}</span>
-                        <span>{message.sentAt ? new Date(message.sentAt).toLocaleDateString() : ""}</span>
-                      </div>
-                      {/* Show fee info if available */}
-                      {message.feeAmount && (
-                        <div className="mt-2 p-2 bg-yellow-100 rounded border border-yellow-200">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-yellow-700">Amount: ₹{message.feeAmount?.toLocaleString()}</span>
-                            <span className="text-yellow-700">
-                              Due: {message.dueDate ? new Date(message.dueDate).toLocaleDateString() : "N/A"}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : feesData ? (
+            {feesData ? (
               <div className="space-y-4">
                 <div className="flex items-center space-x-3 p-4 bg-yellow-50 rounded-lg">
                   <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -683,14 +634,16 @@ const StudentDashboard = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <h4 className="font-medium text-gray-900 text-sm">
-                      Fee Status: {feesData.status || "Pending"}
+                      Fee Overview
                     </h4>
                     <p className="text-gray-600 text-xs mt-1">
-                      {feesData.message || "Please check your fee details for more information."}
+                      Total: ₹{feesData.statistics?.totalAmount?.toLocaleString() || "0"} | 
+                      Paid: ₹{feesData.statistics?.paidAmount?.toLocaleString() || "0"} | 
+                      Remaining: ₹{feesData.statistics?.pendingAmount?.toLocaleString() || "0"}
                     </p>
                     <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
-                      <span>Due Date: {feesData.dueDate ? new Date(feesData.dueDate).toLocaleDateString() : "N/A"}</span>
-                      <span>Amount: ₹{feesData.amount || "0"}</span>
+                      <span>Total Fees: {feesData.statistics?.totalFees || "0"}</span>
+                      <span>Pending: {feesData.statistics?.pendingFees || "0"}</span>
                     </div>
                   </div>
                 </div>
@@ -1125,48 +1078,23 @@ const StudentDashboard = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {feeMessages.length > 0 ? (
-              feeMessages.map((message, index) => (
-                <div key={message._id || index} className="p-4 border border-yellow-200 rounded-lg bg-yellow-50 hover:shadow-sm transition-shadow">
-                  <div className="flex items-center space-x-3 mb-3">
-                    <CurrencyDollarIcon className="w-6 h-6 text-yellow-600" />
-                    <h4 className="font-medium text-gray-900">{message.subject}</h4>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-3">{message.message}</p>
-                  <div className="flex items-center text-xs text-gray-500">
-                    <span>By {message.senderId?.name || "School Administrator"}</span>
-                    <span className="mx-2">•</span>
-                    <span>
-                      {message.sentAt ? new Date(message.sentAt).toLocaleDateString() : ""}
-                    </span>
-                  </div>
-                  {/* Show fee info if available */}
-                  {message.feeAmount && (
-                    <div className="mt-3 p-2 bg-yellow-100 rounded border border-yellow-300">
-                      <div className="flex items-center justify-between text-xs text-yellow-800">
-                        <span>Amount: ₹{message.feeAmount?.toLocaleString()}</span>
-                        <span>
-                          Due: {message.dueDate ? new Date(message.dueDate).toLocaleDateString() : "N/A"}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))
-            ) : feesData ? (
+            {feesData ? (
               <div className="p-4 border border-gray-200 rounded-lg bg-yellow-50 hover:shadow-sm transition-shadow">
                 <div className="flex items-center space-x-3 mb-3">
                   <CurrencyDollarIcon className="w-6 h-6 text-yellow-600" />
-                  <h4 className="font-medium text-gray-900">Fee Status</h4>
+                  <h4 className="font-medium text-gray-900">Fee Overview</h4>
                 </div>
-                <p className="text-sm text-gray-600 mb-3">{feesData.message || "Please check your fee details for more information."}</p>
+                <p className="text-sm text-gray-600 mb-3">
+                  Total Amount: ₹{feesData.statistics?.totalAmount?.toLocaleString() || "0"} | 
+                  Paid: ₹{feesData.statistics?.paidAmount?.toLocaleString() || "0"}
+                </p>
                 <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>Status: {feesData.status || "Pending"}</span>
-                  <span>Amount: ₹{feesData.amount || "0"}</span>
+                  <span>Remaining: ₹{feesData.statistics?.pendingAmount?.toLocaleString() || "0"}</span>
+                  <span>Total Fees: {feesData.statistics?.totalFees || "0"}</span>
                 </div>
-                {feesData.dueDate && (
-                  <div className="mt-2 text-xs text-gray-500">
-                    Due Date: {new Date(feesData.dueDate).toLocaleDateString()}
+                {feesData.statistics?.overdueFees > 0 && (
+                  <div className="mt-2 text-xs text-red-600">
+                    Overdue Fees: {feesData.statistics.overdueFees}
                   </div>
                 )}
               </div>

@@ -6,15 +6,25 @@ const User = require("../models/User");
 // @access  Private
 const sendMessage = async (req, res) => {
   try {
+    console.log("Individual message request:", req.body);
     const { receiverId, messageType, subject, message, attachments, priority, parentMessageId, feeAmount, feeType, dueDate, type } = req.body;
 
-    // Check if receiver exists
-    const receiver = await User.findById(receiverId);
+    // Check if receiver exists (can be User ID or Student ID)
+    let receiver = await User.findById(receiverId);
+    let isStudentModel = false;
+    
     if (!receiver) {
-      return res.status(404).json({
-        success: false,
-        message: "Receiver not found",
-      });
+      // Try to find as Student
+      const Student = require("../models/Student");
+      receiver = await Student.findById(receiverId);
+      isStudentModel = true;
+      
+      if (!receiver) {
+        return res.status(404).json({
+          success: false,
+          message: "Receiver not found",
+        });
+      }
     }
 
     // Create thread ID if it's a reply
@@ -26,9 +36,66 @@ const sendMessage = async (req, res) => {
       }
     }
 
+    // For Student model, we need to create a User record or use a different approach
+    let communicationReceiverId = receiverId;
+    
+    if (isStudentModel) {
+      console.log(`Processing student: ${receiver.name || receiver.firstName} (Student ID: ${receiver._id})`);
+      
+      // Create a User record for the student if it doesn't exist
+      let userRecord = await User.findOne({ studentId: receiver.studentId || receiver.rollNumber });
+      
+      if (!userRecord) {
+        // Check if a user with the student's email already exists
+        if (receiver.email) {
+          userRecord = await User.findOne({ email: receiver.email });
+        }
+        
+        if (!userRecord) {
+          // Create a basic User record for the student
+          try {
+            userRecord = await User.create({
+              name: receiver.name || `${receiver.firstName} ${receiver.lastName}`,
+              email: receiver.email || `student.${receiver.studentId || receiver.rollNumber}@school.com`,
+              password: "tempPassword123", // This should be changed by the student
+              role: "student",
+              class: receiver.class,
+              studentId: receiver.studentId || receiver.rollNumber,
+              phone: receiver.mobileNumber,
+            });
+            console.log(`Created new User record for student: ${receiver.name || receiver.firstName} (User ID: ${userRecord._id})`);
+          } catch (error) {
+            if (error.code === 11000 && error.keyPattern && error.keyPattern.email) {
+              // Email already exists, try to find the user with this email
+              userRecord = await User.findOne({ email: receiver.email || `student.${receiver.studentId || receiver.rollNumber}@school.com` });
+              if (!userRecord) {
+                return res.status(400).json({
+                  success: false,
+                  message: "Failed to create user record for student",
+                });
+              }
+              console.log(`Found existing User record for student: ${receiver.name || receiver.firstName} (User ID: ${userRecord._id})`);
+            } else {
+              return res.status(500).json({
+                success: false,
+                message: "Error creating user record for student",
+              });
+            }
+          }
+        } else {
+          console.log(`Found existing User record by studentId: ${receiver.name || receiver.firstName} (User ID: ${userRecord._id})`);
+        }
+      } else {
+        console.log(`Found existing User record by studentId: ${receiver.name || receiver.firstName} (User ID: ${userRecord._id})`);
+      }
+      
+      communicationReceiverId = userRecord._id;
+      console.log(`Using User ID for communication: ${communicationReceiverId}`);
+    }
+
     const communication = await Communication.create({
       senderId: req.user.id,
-      receiverId,
+      receiverId: communicationReceiverId,
       messageType: messageType || "direct",
       subject,
       message,
@@ -47,6 +114,29 @@ const sendMessage = async (req, res) => {
       { path: "senderId", select: "name email role" },
       { path: "receiverId", select: "name email role" },
     ]);
+
+    console.log("Message sent successfully to:", {
+      receiverId: communicationReceiverId,
+      receiverName: communication.receiverId?.name || communication.receiverId?.firstName,
+      messageType: communication.messageType,
+      messageId: communication._id,
+      senderId: req.user.id,
+      senderName: req.user.name
+    });
+
+    // Check if there are any other User records with the same studentId (debugging)
+    if (isStudentModel) {
+      const duplicateUsers = await User.find({ 
+        studentId: receiver.studentId || receiver.rollNumber,
+        _id: { $ne: communicationReceiverId }
+      });
+      if (duplicateUsers.length > 0) {
+        console.log(`⚠️ WARNING: Found ${duplicateUsers.length} duplicate User records for student ${receiver.name || receiver.firstName}`);
+        duplicateUsers.forEach(user => {
+          console.log(`  - User ID: ${user._id}, Email: ${user.email}`);
+        });
+      }
+    }
 
     res.status(201).json({
       success: true,
@@ -68,7 +158,7 @@ const sendMessage = async (req, res) => {
 const sendBulkMessage = async (req, res) => {
   try {
     console.log("Bulk message request:", req.body);
-    const { recipients, subject, message, type = "fee_reminder", createFees = false, feeAmount = 0, feeType = "tuition", dueDate } = req.body;
+    const { recipients, subject, message, type = "fee_reminder" } = req.body;
 
     if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
       return res.status(400).json({
@@ -112,7 +202,6 @@ const sendBulkMessage = async (req, res) => {
 
     // Create communications for all recipients
     const communications = [];
-    const createdFees = [];
     
     for (const recipientId of recipients) {
       // Find the recipient (could be User or Student)
@@ -185,27 +274,8 @@ const sendBulkMessage = async (req, res) => {
         message,
         priority: "medium",
         type,
-        // Store fee information in the message
-        feeAmount: createFees ? feeAmount : null,
-        feeType: createFees ? feeType : null,
-        dueDate: createFees && dueDate ? new Date(dueDate) : null,
       });
       communications.push(communication);
-      
-      // Create fee record if requested
-      if (createFees && feeAmount > 0) {
-        const Fee = require("../models/Fee");
-        const fee = await Fee.create({
-          studentId: recipientId, // Use original Student ID for fee record
-          feeType,
-          amount: feeAmount,
-          dueDate: dueDate ? new Date(dueDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-          academicYear: new Date().getFullYear() + "-" + (new Date().getFullYear() + 1),
-          status: "pending",
-          processedBy: req.user.id,
-        });
-        createdFees.push(fee);
-      }
     }
 
     // Populate sender and receiver details
@@ -216,11 +286,10 @@ const sendBulkMessage = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: `Message sent successfully to ${recipients.length} recipients${createFees ? ` and created ${createdFees.length} fee records` : ""}`,
+      message: `Message sent successfully to ${recipients.length} recipients`,
       data: {
         sentCount: communications.length,
         communications,
-        createdFees: createdFees.length,
       },
     });
   } catch (error) {
@@ -253,7 +322,7 @@ const getUserMessages = async (req, res) => {
     let filter = {};
     if (type === "received") {
       filter.receiverId = req.user.id;
-    } else if (type === "sent") {
+        } else if (type === "sent") {
       filter.senderId = req.user.id;
     }
 
@@ -528,6 +597,52 @@ const searchMessages = async (req, res) => {
   }
 };
 
+// @desc    Debug endpoint to check user records for students
+// @route   GET /api/communications/debug/students
+// @access  Private (Admin only)
+const debugStudentUsers = async (req, res) => {
+  try {
+    const Student = require("../models/Student");
+    
+    // Get all students
+    const students = await Student.find({}).limit(10);
+    
+    const debugData = [];
+    
+    for (const student of students) {
+      // Find User records for this student
+      const userRecords = await User.find({
+        $or: [
+          { studentId: student.studentId || student.rollNumber },
+          { email: student.email }
+        ]
+      });
+      
+      debugData.push({
+        studentId: student._id,
+        studentName: student.name || `${student.firstName} ${student.lastName}`,
+        studentEmail: student.email,
+        userRecords: userRecords.map(user => ({
+          userId: user._id,
+          userEmail: user.email,
+          userStudentId: user.studentId
+        }))
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: debugData
+    });
+  } catch (error) {
+    console.error("Debug student users error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while debugging student users",
+    });
+  }
+};
+
 module.exports = {
   sendMessage,
   sendBulkMessage,
@@ -538,4 +653,5 @@ module.exports = {
   deleteMessage,
   getUnreadMessageCount,
   searchMessages,
+  debugStudentUsers,
 };

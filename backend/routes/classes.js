@@ -125,25 +125,40 @@ router.get("/:id/students", auth, teacherOrAdmin, async (req, res) => {
       });
     }
     
-    // First try to find students in User model
-    let students = await User.find({
-      class: req.params.id,
-      role: "student",
-      isActive: { $ne: false },
-    }).sort({ studentId: 1 });
+    // Get the class with populated students
+    const classWithStudents = await Class.findById(req.params.id)
+      .populate({
+        path: "students",
+        populate: {
+          path: "feeSlabId",
+          select: "slabName totalAmount installments"
+        }
+      });
 
-    console.log("Found students in User model:", students.length);
-    
-    // If no students found in User model, try Student model
-    if (students.length === 0) {
-      students = await Student.find({
-        class: req.params.id,
-        isActive: { $ne: false },
-      })
-        .populate("feeSlabId", "slabName totalAmount installments")
-        .sort({ rollNumber: 1 });
-      console.log("Found students in Student model:", students.length);
+    if (!classWithStudents) {
+      return res.status(404).json({
+        success: false,
+        message: "Class not found",
+      });
     }
+
+    console.log("Class students array length:", classWithStudents.students.length);
+    console.log("Class currentStrength:", classWithStudents.currentStrength);
+
+    // Use the students from the class's students array
+    let students = classWithStudents.students || [];
+
+    // Debug: Check if students are properly associated with the class
+    console.log("Class ID:", req.params.id);
+    console.log("Total students found:", students.length);
+    students.forEach((student, index) => {
+      console.log(`Student ${index + 1}:`, {
+        id: student._id,
+        name: student.name || `${student.firstName || ''} ${student.lastName || ''}`.trim(),
+        class: student.class,
+        isActive: student.isActive
+      });
+    });
 
     console.log("Total students found:", students.length);
     res.json({
