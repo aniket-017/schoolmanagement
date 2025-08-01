@@ -142,6 +142,9 @@ export default function ClassDetails({ navigation, route }) {
                 <Text style={styles.sectionTitle}>Basic Information</Text>
                 <View style={styles.detailRow}><Text style={styles.detailLabel}>Student ID:</Text><Text style={styles.detailValue}>{selectedStudent.studentId || "N/A"}</Text></View>
                 <View style={styles.detailRow}><Text style={styles.detailLabel}>Admission No:</Text><Text style={styles.detailValue}>{selectedStudent.admissionNumber || "N/A"}</Text></View>
+                <View style={styles.detailRow}><Text style={styles.detailLabel}>Registration No:</Text><Text style={styles.detailValue}>{selectedStudent.registrationNumber || "N/A"}</Text></View>
+                <View style={styles.detailRow}><Text style={styles.detailLabel}>Category:</Text><Text style={styles.detailValue}>{selectedStudent.category || "N/A"}</Text></View>
+                <View style={styles.detailRow}><Text style={styles.detailLabel}>Admission Date:</Text><Text style={styles.detailValue}>{selectedStudent.admissionDate ? new Date(selectedStudent.admissionDate).toLocaleDateString() : "N/A"}</Text></View>
                 <View style={styles.detailRow}><Text style={styles.detailLabel}>Roll Number:</Text><Text style={styles.detailValue}>{selectedStudent.rollNumber || "N/A"}</Text></View>
                 <View style={styles.detailRow}><Text style={styles.detailLabel}>Full Name:</Text><Text style={styles.detailValue}>{selectedStudent.name || `${selectedStudent.firstName || ""} ${selectedStudent.middleName || ""} ${selectedStudent.lastName || ""}`.trim()}</Text></View>
                 <View style={styles.detailRow}><Text style={styles.detailLabel}>Email:</Text><Text style={styles.detailValue}>{selectedStudent.email}</Text></View>

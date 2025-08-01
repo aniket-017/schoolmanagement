@@ -121,6 +121,7 @@ const studentSchema = new mongoose.Schema(
       },
       email: {
         type: String,
+        unique: false,
         lowercase: true,
         match: [/^\S+@\S+\.\S+$/, "Please enter a valid email"],
       },
@@ -146,6 +147,20 @@ const studentSchema = new mongoose.Schema(
     },
 
     // Academic Information
+    category: {
+      type: String,
+      enum: ['Open', 'NT', 'VJ', "OBC", "SC", "ST", "EWS", "PWD", "Other"],
+      trim: true,
+      required: false, // Make it optional
+      default: undefined, // Allow null/undefined values
+    },
+    registrationNumber: {
+      type: String,
+      trim: true,
+    },
+    admissionDate: {
+      type: Date,
+    },
     admissionNumber: {
       type: String,
       unique: true,

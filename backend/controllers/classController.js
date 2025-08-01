@@ -90,7 +90,7 @@ const createClass = async (req, res) => {
       grade,
       division,
       academicYear,
-      maxStudents: maxStudents || 40,
+      maxStudents: maxStudents || 70,
       classroom,
       currentStrength: 0,
     });

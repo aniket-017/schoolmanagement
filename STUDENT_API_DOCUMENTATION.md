@@ -120,9 +120,9 @@ Content-Type: multipart/form-data
 - `file` (form data): Excel file (.xlsx or .xls)
 
 **Excel Template Format**:
-| Name | Email | Phone | DateOfBirth | ParentName | ParentPhone | Address | City | State | ZipCode | Country | RollNumber |
-|------|-------|-------|-------------|------------|-------------|---------|------|-------|---------|---------|------------|
-| John Doe | john.doe@school.com | +1234567890 | 2010-05-15 | Mike Doe | +1234567891 | 123 Main St | Anytown | State | 12345 | Country | STU001 |
+| Name | Email | Phone | DateOfBirth | ParentName | ParentPhone | Address | City | State | ZipCode | Country | RollNumber | Category | RegistrationNumber | AdmissionDate |
+|------|-------|-------|-------------|------------|-------------|---------|------|-------|---------|---------|------------|----------|------------------|---------------|
+| John Doe | john.doe@school.com | +1234567890 | 2010-05-15 | Mike Doe | +1234567891 | 123 Main St | Anytown | State | 12345 | Country | STU001 | General | REG2024001 | 2024-06-01 |
 
 **Response**:
 ```json

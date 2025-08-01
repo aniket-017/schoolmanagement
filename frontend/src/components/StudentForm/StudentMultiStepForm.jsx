@@ -49,6 +49,9 @@ const initialForm = {
 
   // Academic Information
   rollNumber: "",
+  registrationNumber: "",
+  category: "",
+  admissionDate: "",
   admissionNumber: "",
   section: "",
   academicYear: "",
@@ -230,6 +233,9 @@ export default function StudentMultiStepForm({ onSubmit, onCancel, isSubmitting:
           : undefined,
 
         // Academic Information
+        registrationNumber: form.registrationNumber,
+        category: form.category,
+        admissionDate: form.admissionDate ? new Date(form.admissionDate) : undefined,
         admissionNumber: form.admissionNumber,
         section: form.section,
         academicYear: form.academicYear,
