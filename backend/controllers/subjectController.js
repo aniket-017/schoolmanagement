@@ -183,7 +183,7 @@ const deleteSubject = async (req, res) => {
 // @access  Private (Teacher only)
 const getTeacherAssignedSubjects = async (req, res) => {
   try {
-    const teacherId = req.user.id;
+    const teacherId = req.user._id;
 
     const teacher = await User.findById(teacherId);
     if (!teacher || teacher.role !== "teacher") {
@@ -208,6 +208,44 @@ const getTeacherAssignedSubjects = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error while fetching teacher's assigned subjects",
+    });
+  }
+};
+
+// @desc    Get teacher's timetable subjects
+// @route   GET /api/subjects/teacher/timetable
+// @access  Private (Teacher only)
+const getTeacherTimetableSubjects = async (req, res) => {
+  try {
+    const Timetable = require("../models/Timetable");
+    
+    // Get all timetables where the current teacher teaches
+    const timetables = await Timetable.find({
+      "periods.teacher": req.user._id,
+      isActive: true,
+    }).populate("periods.subject", "name code");
+
+    // Extract unique subjects from timetables
+    const subjectIds = [...new Set(
+      timetables.flatMap(t => t.periods.map(p => p.subject._id.toString()))
+    )];
+    
+    // Get subject details for these subjects
+    const subjects = await Subject.find({
+      _id: { $in: subjectIds },
+      isActive: true,
+    }).sort({ name: 1 });
+
+    res.json({
+      success: true,
+      count: subjects.length,
+      data: subjects,
+    });
+  } catch (error) {
+    console.error("Get teacher timetable subjects error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching teacher's timetable subjects",
     });
   }
 };
@@ -261,5 +299,6 @@ module.exports = {
   updateSubject,
   deleteSubject,
   getTeacherAssignedSubjects,
+  getTeacherTimetableSubjects,
   assignSubjectToTeacher,
 };

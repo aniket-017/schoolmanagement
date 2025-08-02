@@ -121,6 +121,7 @@ const studentSchema = new mongoose.Schema(
       },
       email: {
         type: String,
+        unique: false,
         lowercase: true,
         match: [/^\S+@\S+\.\S+$/, "Please enter a valid email"],
       },
@@ -146,6 +147,20 @@ const studentSchema = new mongoose.Schema(
     },
 
     // Academic Information
+    category: {
+      type: String,
+      enum: ['Open', 'NT', 'VJ', "OBC", "SC", "ST", "EWS", "PWD", "Other"],
+      trim: true,
+      required: false, // Make it optional
+      default: undefined, // Allow null/undefined values
+    },
+    registrationNumber: {
+      type: String,
+      trim: true,
+    },
+    admissionDate: {
+      type: Date,
+    },
     admissionNumber: {
       type: String,
       unique: true,
@@ -244,6 +259,28 @@ const studentSchema = new mongoose.Schema(
       default: "pending",
     },
     lateFees: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    scholarshipDetails: {
+      type: String,
+      trim: true,
+    },
+    
+    // Payment Information
+    paymentDate: {
+      type: Date,
+    },
+    paymentMethod: {
+      type: String,
+      enum: ["cash", "card", "bank_transfer", "cheque", "online", "other"],
+    },
+    transactionId: {
+      type: String,
+      trim: true,
+    },
+    feesPaid: {
       type: Number,
       default: 0,
       min: 0,

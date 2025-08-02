@@ -54,6 +54,8 @@ import HomeworkDetailModal from '../components/HomeworkDetailModal';
     filterAndSortHomework();
   }, [homework, filter, searchTerm, sortBy, sortOrder]);
 
+
+
   const loadHomework = async () => {
     try {
       setLoading(true);
@@ -428,7 +430,10 @@ import HomeworkDetailModal from '../components/HomeworkDetailModal';
           </div>
         ) : (
           <div className="bg-white rounded-xl shadow-sm border p-4 sm:p-6">
-            <HomeworkCalendar homework={filteredHomework} />
+            <HomeworkCalendar 
+              homework={filteredHomework} 
+              onViewDetails={handleViewHomeworkDetails}
+            />
           </div>
         )}
       </div>

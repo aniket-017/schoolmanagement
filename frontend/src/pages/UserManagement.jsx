@@ -666,7 +666,7 @@ const UserManagement = () => {
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Teacher Management</h1>
-            <p className="text-gray-600">Manage teachers efficiently</p>
+            <p className="text-gray-600">Manage teachers and administrative staff. Students are managed separately in the Student Management section.</p>
           </div>
 
           {/* Tab Navigation */}
@@ -712,11 +712,11 @@ const UserManagement = () => {
                       <input
                         type="text"
                         name="search"
-                        placeholder="Search users by name, email, phone, or ID..."
+                        placeholder="Search teachers by name, email, phone, or employee ID..."
                         value={filters.search}
                         onChange={handleFilterChange}
                         className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                        title="Search across: First Name, Middle Name, Last Name, Email, Phone Number, Employee ID, Student ID"
+                        title="Search across: First Name, Middle Name, Last Name, Email, Phone Number, Employee ID"
                       />
                     </div>
 
@@ -726,10 +726,10 @@ const UserManagement = () => {
                       onChange={handleFilterChange}
                       className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     >
-                      <option value="">All Roles</option>
+                      <option value="">All Teacher Roles</option>
                       <option value="teacher">Teacher</option>
                       <option value="admin">Admin</option>
-                      <option value="student">Student</option>
+                      <option value="principal">Principal</option>
                     </select>
 
                     <select
@@ -788,7 +788,7 @@ const UserManagement = () => {
                       <thead className="bg-gray-50">
                         <tr>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            User
+                            Teacher/Staff
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Role

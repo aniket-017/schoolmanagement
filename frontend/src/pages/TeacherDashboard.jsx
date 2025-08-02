@@ -247,6 +247,11 @@ const TeacherDashboard = () => {
     setEditingHomework(null);
   };
 
+  const handleViewHomeworkDetails = (homework) => {
+    // Navigate to homework page with the specific homework
+    window.location.href = `/teacher/homework`;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -437,6 +442,7 @@ const TeacherDashboard = () => {
                     isTeacher={true}
                     onEdit={handleEditHomework}
                     onDelete={handleDeleteHomework}
+                    onViewDetails={handleViewHomeworkDetails}
                     showDetails={false}
                   />
                 ))
@@ -756,6 +762,7 @@ const TeacherDashboard = () => {
                     isTeacher={true}
                     onEdit={handleEditHomework}
                     onDelete={handleDeleteHomework}
+                    onViewDetails={handleViewHomeworkDetails}
                     showDetails={false}
                   />
                 ))}

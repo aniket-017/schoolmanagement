@@ -19,6 +19,7 @@ import {
   ChartBarIcon,
   HomeIcon,
   BookOpenIcon,
+  CurrencyDollarIcon,
 } from "@heroicons/react/24/outline";
 import { useTeacherAuth } from "../context/TeacherAuthContext";
 import apiService from "../services/apiService";
@@ -73,6 +74,7 @@ const StudentDashboard = () => {
     totalDays: 0,
   });
   const [recentAttendance, setRecentAttendance] = useState([]);
+  const [feesData, setFeesData] = useState(null);
 
   const { user, logout } = useTeacherAuth();
 
@@ -248,8 +250,22 @@ const StudentDashboard = () => {
           })
       );
 
+      // Load student fees data
+      if (user?._id || user?.id) {
+        promises.push(
+          apiService.fees.getStudentFees(user._id || user.id)
+            .then(response => response.success ? response.data : null)
+            .catch(error => {
+              console.log("Fees data not available:", error.message);
+              return null;
+            })
+        );
+      } else {
+        promises.push(Promise.resolve(null));
+      }
+
       // Wait for all promises to resolve
-      const [timetableData, todayAttendance, announcements, studentStats, homework, homeworkStats] = await Promise.all(promises);
+      const [timetableData, todayAttendance, announcements, studentStats, homework, homeworkStats, feesData] = await Promise.all(promises);
 
       // Set state with all data at once
       setTimetableData(timetableData);
@@ -258,6 +274,7 @@ const StudentDashboard = () => {
       setStudentStats(studentStats);
       setHomework(homework);
       setHomeworkStats(homeworkStats);
+      setFeesData(feesData);
 
     } catch (error) {
       console.error("Error loading dashboard data:", error);
@@ -389,10 +406,16 @@ const StudentDashboard = () => {
     ));
   };
 
+  const handleViewHomeworkDetails = (homework) => {
+    // Navigate to homework page with the specific homework
+    window.location.href = `/student/homework`;
+  };
+
   const quickActions = [
     { title: "Attendance", icon: CalendarIcon, href: "/student/attendance", color: "bg-blue-500" },
     { title: "Homework", icon: BookOpenIcon, href: "/student/homework", color: "bg-indigo-500" },
     { title: "Announcements", icon: MegaphoneIcon, href: "/student/announcements", color: "bg-green-500" },
+    { title: "Fees", icon: CurrencyDollarIcon, href: "/student/fees", color: "bg-yellow-500" },
     { title: "Timetable", icon: ClockIcon, href: "/student/timetable", color: "bg-orange-500" },
     { title: "Annual Calendar", icon: CalendarIcon, href: "/student/annual-calendar", color: "bg-purple-500" },
     { title: "Profile", icon: UserIcon, href: "/student/profile", color: "bg-blue-600" },
@@ -402,8 +425,7 @@ const StudentDashboard = () => {
     { title: 'Home', icon: HomeIcon, href: '/student/dashboard', active: true },
     { title: 'Attendance', icon: CalendarIcon, href: '/student/attendance' },
     { title: 'Homework', icon: BookOpenIcon, href: '/student/homework' },
-    { title: 'Timetable', icon: ClockIcon, href: '/student/timetable' },
-    { title: 'Annual Calendar', icon: CalendarIcon, href: '/student/annual-calendar' }
+    { title: 'Fees', icon: CurrencyDollarIcon, href: '/student/fees' }
   ];
 
 
@@ -589,6 +611,52 @@ const StudentDashboard = () => {
             )}
           </motion.div>
 
+          {/* Fees Information */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Fees Information</h3>
+              <button className="bg-yellow-500 text-white px-3 py-1 rounded-lg text-sm flex items-center space-x-1" onClick={() => window.location.href = '/student/fees'}>
+                <CurrencyDollarIcon className="w-4 h-4" />
+                <span>View Details</span>
+              </button>
+            </div>
+
+            {feesData ? (
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3 p-4 bg-yellow-50 rounded-lg">
+                  <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <CurrencyDollarIcon className="w-4 h-4 text-yellow-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-gray-900 text-sm">
+                      Fee Overview
+                    </h4>
+                    <p className="text-gray-600 text-xs mt-1">
+                      Total: ₹{feesData.statistics?.totalAmount?.toLocaleString() || "0"} | 
+                      Paid: ₹{feesData.statistics?.paidAmount?.toLocaleString() || "0"} | 
+                      Remaining: ₹{feesData.statistics?.pendingAmount?.toLocaleString() || "0"}
+                    </p>
+                    <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                      <span>Total Fees: {feesData.statistics?.totalFees || "0"}</span>
+                      <span>Pending: {feesData.statistics?.pendingFees || "0"}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <CurrencyDollarIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-500 font-medium">No fees information available</p>
+                <p className="text-gray-400 text-sm">Contact admin for fee details</p>
+              </div>
+            )}
+          </motion.div>
+
           {/* Recent Homework */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -618,6 +686,7 @@ const StudentDashboard = () => {
                     homework={hw}
                     isTeacher={false}
                     onProgressUpdate={handleHomeworkProgressUpdate}
+                    onViewDetails={handleViewHomeworkDetails}
                     showDetails={false}
                   />
                 ))}
@@ -762,6 +831,9 @@ const StudentDashboard = () => {
                   </Link>
                   <Link to="/student/announcements" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
                     Announcements
+                  </Link>
+                  <Link to="/student/fees" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
+                    Fees
                   </Link>
                   <Link to="/student/timetable" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
                     Timetable
@@ -996,6 +1068,46 @@ const StudentDashboard = () => {
           </div>
         </div>
 
+        {/* Fees Information */}
+        <div className="mt-8 bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-gray-900">Fees Information</h3>
+            <Link to="/student/fees" className="text-yellow-600 hover:text-yellow-700 text-sm font-medium">
+              View Details
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {feesData ? (
+              <div className="p-4 border border-gray-200 rounded-lg bg-yellow-50 hover:shadow-sm transition-shadow">
+                <div className="flex items-center space-x-3 mb-3">
+                  <CurrencyDollarIcon className="w-6 h-6 text-yellow-600" />
+                  <h4 className="font-medium text-gray-900">Fee Overview</h4>
+                </div>
+                <p className="text-sm text-gray-600 mb-3">
+                  Total Amount: ₹{feesData.statistics?.totalAmount?.toLocaleString() || "0"} | 
+                  Paid: ₹{feesData.statistics?.paidAmount?.toLocaleString() || "0"}
+                </p>
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <span>Remaining: ₹{feesData.statistics?.pendingAmount?.toLocaleString() || "0"}</span>
+                  <span>Total Fees: {feesData.statistics?.totalFees || "0"}</span>
+                </div>
+                {feesData.statistics?.overdueFees > 0 && (
+                  <div className="mt-2 text-xs text-red-600">
+                    Overdue Fees: {feesData.statistics.overdueFees}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="col-span-full text-center py-8">
+                <CurrencyDollarIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">No fees information available</p>
+                <p className="text-gray-400 text-sm">Contact admin for fee details</p>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Homework Section */}
         <div className="mt-8 bg-white rounded-xl shadow-sm p-6">
           <div className="flex items-center justify-between mb-6">
@@ -1027,6 +1139,7 @@ const StudentDashboard = () => {
                     homework={hw}
                     isTeacher={false}
                     onProgressUpdate={handleHomeworkProgressUpdate}
+                    onViewDetails={handleViewHomeworkDetails}
                     showDetails={false}
                   />
                 ))}

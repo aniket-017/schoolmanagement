@@ -237,6 +237,13 @@ class ApiService {
       });
       return this.handleResponse(response);
     },
+
+    getTeacherTimetableSubjects: async () => {
+      const response = await fetch(`${this.baseURL}/subjects/teacher/timetable`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
   };
 
   // Classes APIs
@@ -258,6 +265,13 @@ class ApiService {
 
     getTeacherAssignedClasses: async () => {
       const response = await fetch(`${this.baseURL}/classes/teacher/assigned`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getTeacherTimetableClasses: async () => {
+      const response = await fetch(`${this.baseURL}/classes/teacher/timetable`, {
         headers: this.getAuthHeaders(),
       });
       return this.handleResponse(response);
@@ -430,6 +444,124 @@ class ApiService {
         method: "PUT",
         headers: this.getAuthHeaders(),
         body: JSON.stringify(data),
+      });
+      return this.handleResponse(response);
+    },
+  };
+
+  // Fees APIs
+  fees = {
+    getStudentFees: async (studentId) => {
+      const response = await fetch(`${this.baseURL}/fees/student/${studentId}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getAllFees: async (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await fetch(`${this.baseURL}/fees?${queryString}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getFeeStats: async (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await fetch(`${this.baseURL}/fees/stats?${queryString}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getFeeOverview: async (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await fetch(`${this.baseURL}/fees/overview?${queryString}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getClassFeeStatus: async (classId, params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await fetch(`${this.baseURL}/fees/class/${classId}/status?${queryString}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+  };
+
+  // Communications APIs
+  communications = {
+    getUserMessages: async (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await fetch(`${this.baseURL}/communications?${queryString}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getMessageById: async (id) => {
+      const response = await fetch(`${this.baseURL}/communications/${id}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    markAsRead: async (id) => {
+      const response = await fetch(`${this.baseURL}/communications/${id}/read`, {
+        method: "PUT",
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getUnreadCount: async () => {
+      const response = await fetch(`${this.baseURL}/communications/unread-count`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+  };
+
+  // Messages APIs (New Message System)
+  messages = {
+    sendFeeReminder: async (data) => {
+      const response = await fetch(`${this.baseURL}/messages/fee-reminder`, {
+        method: "POST",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(data),
+      });
+      return this.handleResponse(response);
+    },
+
+    getUserMessages: async (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await fetch(`${this.baseURL}/messages?${queryString}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    markAsRead: async (id) => {
+      const response = await fetch(`${this.baseURL}/messages/${id}/read`, {
+        method: "PUT",
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getUnreadCount: async () => {
+      const response = await fetch(`${this.baseURL}/messages/unread-count`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    deleteMessage: async (id) => {
+      const response = await fetch(`${this.baseURL}/messages/${id}`, {
+        method: "DELETE",
+        headers: this.getAuthHeaders(),
       });
       return this.handleResponse(response);
     },

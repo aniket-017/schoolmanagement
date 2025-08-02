@@ -49,6 +49,9 @@ const initialForm = {
 
   // Academic Information
   rollNumber: "",
+  registrationNumber: "",
+  category: "",
+  admissionDate: "",
   admissionNumber: "",
   section: "",
   academicYear: "",
@@ -60,12 +63,16 @@ const initialForm = {
   academicAchievements: "",
 
   // Fees & Finance
-  feeStructure: "regular",
+  feeStructure: "",
   feeDiscount: "",
   paymentStatus: "pending",
   lateFees: "",
   scholarshipDetails: "",
   paymentHistoryNotes: "",
+  paymentDate: "",
+  paymentMethod: "",
+  transactionId: "",
+  feesPaid: "",
 
   // Physical & Health Metrics
   height: "",
@@ -226,6 +233,9 @@ export default function StudentMultiStepForm({ onSubmit, onCancel, isSubmitting:
           : undefined,
 
         // Academic Information
+        registrationNumber: form.registrationNumber,
+        category: form.category,
+        admissionDate: form.admissionDate ? new Date(form.admissionDate) : undefined,
         admissionNumber: form.admissionNumber,
         section: form.section,
         academicYear: form.academicYear,
@@ -250,11 +260,21 @@ export default function StudentMultiStepForm({ onSubmit, onCancel, isSubmitting:
         // Remove any undefined values to avoid validation issues
         ...Object.fromEntries(
           Object.entries({
-            // Fees & Finance
-            feeStructure: form.feeStructure,
-            feeDiscount: form.feeDiscount ? parseFloat(form.feeDiscount) : 0,
-            paymentStatus: form.paymentStatus,
-            lateFees: form.lateFees ? parseFloat(form.lateFees) : 0,
+            // Fees & Finance (only include if fee structure is selected)
+            ...(form.feeStructure && {
+              feeStructure: form.feeStructure,
+              feeSlabId: form.feeSlabId || undefined,
+              feeDiscount: form.feeDiscount ? parseFloat(form.feeDiscount) : undefined,
+              paymentStatus: form.paymentStatus,
+              lateFees: form.lateFees ? parseFloat(form.lateFees) : undefined,
+              concessionAmount: form.concessionAmount ? parseFloat(form.concessionAmount) : undefined,
+              scholarshipDetails: form.scholarshipDetails || undefined,
+              // Payment fields - only include if they have valid values
+              ...(form.paymentDate && { paymentDate: new Date(form.paymentDate) }),
+              ...(form.paymentMethod && form.paymentMethod.trim() && { paymentMethod: form.paymentMethod }),
+              ...(form.transactionId && form.transactionId.trim() && { transactionId: form.transactionId }),
+              ...(form.feesPaid && form.feesPaid > 0 && { feesPaid: parseFloat(form.feesPaid) }),
+            }),
             scholarships: form.scholarshipDetails
               ? [
                   {

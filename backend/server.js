@@ -43,7 +43,7 @@ app.use("/api/classes", require("./routes/classes"));
 app.use("/api/assignments", require("./routes/assignments"));
 app.use("/api/homework", require("./routes/homework"));
 app.use("/api/attendance", require("./routes/attendance"));
-app.use("/api/fees", require("./routes/fees"));
+app.use("/api/fees", require("./routes/feesroutes"));
 
 // New comprehensive routes
 app.use("/api/subjects", require("./routes/subjects"));
@@ -58,6 +58,7 @@ app.use("/api/salaries", require("./routes/salaries"));
 app.use("/api/libraries", require("./routes/libraries"));
 app.use("/api/transports", require("./routes/transports"));
 app.use("/api/communications", require("./routes/communications"));
+app.use("/api/messages", require("./routes/messages"));
 app.use("/api/assignments-detailed", require("./routes/assignmentsroutes"));
 app.use("/api/fees-detailed", require("./routes/feesroutes"));
 app.use("/api/fee-slabs", require("./routes/feeSlabs"));

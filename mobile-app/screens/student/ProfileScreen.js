@@ -154,6 +154,20 @@ export default function ProfileScreen({ navigation }) {
           <Text style={styles.detailText}>{user?.admissionNumber || "Not provided"}</Text>
         </View>
         <View style={styles.detailRow}>
+          <Ionicons name="card-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>{user?.registrationNumber || "Not provided"}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="people-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>{user?.category || "Not provided"}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="calendar-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={styles.detailText}>
+            {user?.admissionDate ? new Date(user.admissionDate).toLocaleDateString() : "Not provided"}
+          </Text>
+        </View>
+        <View style={styles.detailRow}>
           <Ionicons name="school-outline" size={20} color={theme.colors.textSecondary} />
           <Text style={styles.detailText}>
             {user?.class ? `${user.class.name} - ${user.class.section}` : "No Class Assigned"}

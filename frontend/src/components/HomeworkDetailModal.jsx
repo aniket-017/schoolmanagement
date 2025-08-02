@@ -72,7 +72,11 @@ const HomeworkDetailModal = ({
   const DueIcon = dueStatus.icon;
 
   const formatDate = (dateString) => {
+    if (!dateString) return 'Invalid Date';
+    
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Invalid Date';
+    
     return date.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
@@ -82,7 +86,11 @@ const HomeworkDetailModal = ({
   };
 
   const formatTime = (dateString) => {
+    if (!dateString) return 'Invalid Time';
+    
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Invalid Time';
+    
     return date.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit'
@@ -90,8 +98,15 @@ const HomeworkDetailModal = ({
   };
 
   const formatDateTime = (dateString) => {
+    if (!dateString) return 'Invalid Date at Invalid Time';
+    
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Invalid Date at Invalid Time';
+    
     return `${formatDate(dateString)} at ${formatTime(dateString)}`;
   };
+
+
 
   const studentProgress = homework.studentProgress?.find(p => p.studentId === localStorage.getItem('userId')) || 
     { status: 'assigned' };
@@ -215,7 +230,15 @@ const HomeworkDetailModal = ({
                       <UserIcon className="w-5 h-5 text-gray-500" />
                       <div>
                         <p className="text-sm text-gray-600">Assigned by</p>
-                        <p className="font-medium text-gray-900">{homework.teacherId?.name || 'Teacher'}</p>
+                        <p className="font-medium text-gray-900">
+                          {homework.teacherId?.name || 
+                           (homework.teacherId?.firstName && homework.teacherId?.lastName ? 
+                             `${homework.teacherId.firstName} ${homework.teacherId.lastName}` : 
+                             homework.teacherId?.firstName || 
+                             homework.teacherId?.lastName || 
+                             'Teacher'
+                           )}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center space-x-3">
@@ -236,7 +259,12 @@ const HomeworkDetailModal = ({
                       <UserGroupIcon className="w-5 h-5 text-gray-500" />
                       <div>
                         <p className="text-sm text-gray-600">Class</p>
-                        <p className="font-medium text-gray-900">{homework.classId?.name}</p>
+                                                        <p className="font-medium text-gray-900">
+                                  {homework.classId?.name}
+                                  {homework.classId?.grade && homework.classId?.division && 
+                                    ` - Grade ${homework.classId.grade} ${homework.classId.division}`
+                                  }
+                                </p>
                       </div>
                     </div>
                   </div>

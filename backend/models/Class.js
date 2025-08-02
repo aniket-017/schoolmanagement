@@ -34,7 +34,7 @@ const classSchema = new mongoose.Schema(
     ],
     maxStudents: {
       type: Number,
-      default: 40,
+      default: 70,
     },
     currentStrength: {
       type: Number,

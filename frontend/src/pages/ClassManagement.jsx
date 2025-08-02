@@ -152,7 +152,7 @@ const ClassManagement = () => {
           grade: "",
           division: "",
           academicYear: new Date().getFullYear().toString(),
-          maxStudents: 40,
+          maxStudents: 70,
           classroom: "",
         });
         fetchClasses();
@@ -249,7 +249,7 @@ const ClassManagement = () => {
         setShowEditModal(false);
         setSelectedClass(null);
         setEditFormData({
-          maxStudents: 40,
+          maxStudents: 70,
           classroom: "",
           isActive: true,
         });
@@ -265,7 +265,7 @@ const ClassManagement = () => {
   const openEditModal = (classItem) => {
     setSelectedClass(classItem);
     setEditFormData({
-      maxStudents: classItem.maxStudents || 40,
+      maxStudents: classItem.maxStudents || 70,
       classroom: classItem.classroom || "",
       isActive: classItem.isActive !== false,
     });

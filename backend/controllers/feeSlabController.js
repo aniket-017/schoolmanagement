@@ -152,30 +152,28 @@ const updateFeeSlab = async (req, res) => {
       if (processedInstallments.length > 0) {
         const totalPercentage = processedInstallments.reduce((sum, installment) => sum + installment.percentage, 0);
         const difference = 100 - totalPercentage;
-        
+
         if (Math.abs(difference) > 0.01) {
-          // Add the difference to the last installment
           processedInstallments[processedInstallments.length - 1].percentage += difference;
         }
       }
     }
 
+    // Update the fee slab
     const updatedFeeSlab = await FeeSlab.findByIdAndUpdate(
       req.params.id,
       {
-        slabName: slabName || feeSlab.slabName,
-        totalAmount: totalAmount || feeSlab.totalAmount,
-        academicYear: academicYear || feeSlab.academicYear,
+        slabName,
+        totalAmount,
+        academicYear,
         installments: processedInstallments,
-        isActive: isActive !== undefined ? isActive : feeSlab.isActive,
+        isActive,
         lastModifiedBy: req.user.id,
       },
       { new: true, runValidators: true }
-    )
-      .populate("createdBy", "name email")
-      .populate("lastModifiedBy", "name email");
+    ).populate("createdBy", "name email");
 
-    res.status(200).json({
+    res.json({
       success: true,
       message: "Fee slab updated successfully",
       data: updatedFeeSlab,

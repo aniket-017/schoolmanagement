@@ -18,6 +18,45 @@ export default function AcademicInfo({ form, handleChange }) {
           />
         </div>
         <div>
+          <label className="block text-sm font-medium mb-1">Registration Number</label>
+          <input
+            type="text"
+            name="registrationNumber"
+            value={form.registrationNumber || ""}
+            onChange={handleChange}
+            placeholder="e.g., REG2024001"
+            className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Category</label>
+          <select
+            name="category"
+            value={form.category || ""}
+            onChange={handleChange}
+            className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="">Select Category</option>
+            <option value="General">General</option>
+            <option value="OBC">OBC</option>
+            <option value="SC">SC</option>
+            <option value="ST">ST</option>
+            <option value="EWS">EWS</option>
+            <option value="PWD">PWD</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Admission Date</label>
+          <input
+            type="date"
+            name="admissionDate"
+            value={form.admissionDate || ""}
+            onChange={handleChange}
+            className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+        <div>
           <label className="block text-sm font-medium mb-1">Admission Number</label>
           <input
             type="text"

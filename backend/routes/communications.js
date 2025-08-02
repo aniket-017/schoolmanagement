@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const {
   sendMessage,
+  sendBulkMessage,
   getUserMessages,
   getMessageById,
   getConversationThread,
@@ -9,6 +10,7 @@ const {
   deleteMessage,
   getUnreadMessageCount,
   searchMessages,
+  debugStudentUsers,
 } = require("../controllers/communicationController");
 const { auth } = require("../middleware/auth");
 
@@ -16,6 +18,11 @@ const { auth } = require("../middleware/auth");
 // @desc    Send message
 // @access  Private
 router.post("/", auth, sendMessage);
+
+// @route   POST /api/communications/bulk
+// @desc    Send bulk message to multiple recipients
+// @access  Private (Admin only)
+router.post("/bulk", auth, sendBulkMessage);
 
 // @route   GET /api/communications
 // @desc    Get user messages
@@ -51,5 +58,10 @@ router.put("/:id/read", auth, markMessageAsRead);
 // @desc    Delete message
 // @access  Private
 router.delete("/:id", auth, deleteMessage);
+
+// @route   GET /api/communications/debug/students
+// @desc    Debug student user records
+// @access  Private (Admin only)
+router.get("/debug/students", auth, debugStudentUsers);
 
 module.exports = router; 

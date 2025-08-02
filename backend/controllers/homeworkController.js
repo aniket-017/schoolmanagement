@@ -43,7 +43,7 @@ const createHomework = async (req, res) => {
     await homework.populate([
       { path: "subjectId", select: "name code" },
       { path: "classId", select: "name grade section" },
-      { path: "teacherId", select: "name email" },
+      { path: "teacherId", select: "name firstName middleName lastName email" },
     ]);
 
     res.status(201).json({
@@ -101,7 +101,7 @@ const getAllHomework = async (req, res) => {
     const homework = await Homework.find(filter)
       .populate("subjectId", "name code")
       .populate("classId", "name grade section")
-      .populate("teacherId", "name email")
+      .populate("teacherId", "name firstName middleName lastName email")
       .sort({ dueDate: 1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -133,7 +133,7 @@ const getHomeworkById = async (req, res) => {
     const homework = await Homework.findById(req.params.id)
       .populate("subjectId", "name code")
       .populate("classId", "name grade section")
-      .populate("teacherId", "name email")
+      .populate("teacherId", "name firstName middleName lastName email")
       .populate("studentProgress.studentId", "name studentId");
 
     if (!homework) {

@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const multer = require("multer");
 const xlsx = require("xlsx");
+const mongoose = require("mongoose");
 const { auth, teacherOrAdmin, adminOnly, teacherOnly } = require("../middleware/auth");
 const {
   getAllClasses,
@@ -12,6 +13,7 @@ const {
   assignClassTeacher,
   getAvailableTeachers,
   getTeacherAssignedClasses,
+  getTeacherTimetableClasses,
 } = require("../controllers/classController");
 
 // Configure multer for file uploads
@@ -90,17 +92,75 @@ router.put("/:id/assign-teacher", auth, adminOnly, assignClassTeacher);
 // @access  Private (Teacher only)
 router.get("/teacher/assigned", auth, teacherOnly, getTeacherAssignedClasses);
 
+// @route   GET /api/classes/teacher/timetable
+// @desc    Get classes from teacher's timetable
+// @access  Private (Teacher only)
+router.get("/teacher/timetable", auth, teacherOnly, getTeacherTimetableClasses);
+
 // @route   GET /api/classes/:id/students
 // @desc    Get all students in a class
 // @access  Private (Teacher/Admin)
 router.get("/:id/students", auth, teacherOrAdmin, async (req, res) => {
   try {
+    console.log("Getting students for class:", req.params.id);
+    
+    // Validate class ID
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid class ID format",
+      });
+    }
+    
+    const User = require("../models/User");
     const Student = require("../models/Student");
-    const students = await Student.find({
-      class: req.params.id,
-      isActive: true,
-    }).sort({ rollNumber: 1 });
+    const Class = require("../models/Class");
+    
+    // Check if class exists
+    const classData = await Class.findById(req.params.id);
+    if (!classData) {
+      return res.status(404).json({
+        success: false,
+        message: "Class not found",
+      });
+    }
+    
+    // Get the class with populated students
+    const classWithStudents = await Class.findById(req.params.id)
+      .populate({
+        path: "students",
+        populate: {
+          path: "feeSlabId",
+          select: "slabName totalAmount installments"
+        }
+      });
 
+    if (!classWithStudents) {
+      return res.status(404).json({
+        success: false,
+        message: "Class not found",
+      });
+    }
+
+    console.log("Class students array length:", classWithStudents.students.length);
+    console.log("Class currentStrength:", classWithStudents.currentStrength);
+
+    // Use the students from the class's students array
+    let students = classWithStudents.students || [];
+
+    // Debug: Check if students are properly associated with the class
+    console.log("Class ID:", req.params.id);
+    console.log("Total students found:", students.length);
+    students.forEach((student, index) => {
+      console.log(`Student ${index + 1}:`, {
+        id: student._id,
+        name: student.name || `${student.firstName || ''} ${student.lastName || ''}`.trim(),
+        class: student.class,
+        isActive: student.isActive
+      });
+    });
+
+    console.log("Total students found:", students.length);
     res.json({
       success: true,
       data: students || [],
@@ -174,6 +234,16 @@ router.post("/:id/students", auth, adminOnly, async (req, res) => {
       });
     }
     const studentId = generateStudentId();
+    // Clean otherFields to handle optional category
+    const cleanedOtherFields = { ...otherFields };
+    
+    // Handle category field - only set if it's not empty
+    if (cleanedOtherFields.category !== undefined) {
+      if (!cleanedOtherFields.category || String(cleanedOtherFields.category).trim() === '') {
+        delete cleanedOtherFields.category; // Don't set empty category
+      }
+    }
+    
     // Compose the student data
     const studentData = {
       firstName,
@@ -187,7 +257,7 @@ router.post("/:id/students", auth, adminOnly, async (req, res) => {
       class: req.params.id,
       academicYear: classData.academicYear,
       currentGrade: grade || `${classData.grade}${classData.getOrdinalSuffix(classData.grade)}`,
-      ...otherFields,
+      ...cleanedOtherFields,
       createdBy: req.user.id,
     };
     const student = await Student.create(studentData);
@@ -282,6 +352,9 @@ router.get("/:id/students/excel-template", auth, adminOnly, async (req, res) => 
         GuardianEmail: "",
 
         // Academic Information
+        Category: "General",
+        RegistrationNumber: "REG2024001",
+        AdmissionDate: "2024-06-01",
         AdmissionNumber: "ADM2024001",
         Section: "A",
         PreviousSchool: "Previous School Name",
@@ -393,6 +466,9 @@ router.get("/:id/students/excel-template", auth, adminOnly, async (req, res) => 
       { wch: 25 }, // GuardianEmail
 
       // Academic Information
+      { wch: 12 }, // Category
+      { wch: 18 }, // RegistrationNumber
+      { wch: 12 }, // AdmissionDate
       { wch: 15 }, // AdmissionNumber
       { wch: 10 }, // Section
       { wch: 25 }, // PreviousSchool
@@ -487,6 +563,7 @@ router.post("/:id/students/bulk", auth, adminOnly, upload.single("file"), async 
   try {
     const Class = require("../models/Class");
     const Student = require("../models/Student");
+    const { validateAndCleanStudentData } = require("../utils/studentDataValidator");
 
     if (!req.file) {
       return res.status(400).json({
@@ -530,52 +607,6 @@ router.post("/:id/students/bulk", auth, adminOnly, upload.single("file"), async 
       const rowNumber = i + 2; // Excel rows start from 2 (1 is header)
 
       try {
-        // Validate required fields
-        if (!row.FirstName || !row.LastName || !row.MobileNumber || !row.RollNumber) {
-          results.failed.push({
-            row: rowNumber,
-            error: "FirstName, LastName, MobileNumber, and RollNumber are required",
-          });
-          continue;
-        }
-
-        // Validate mobile number format (10 digits, no leading zero)
-        const mobileRegex = /^[1-9]\d{9}$/;
-        if (!mobileRegex.test(row.MobileNumber)) {
-          results.failed.push({
-            row: rowNumber,
-            error: "Mobile number must be exactly 10 digits and cannot start with 0",
-          });
-          continue;
-        }
-
-        // Check if student already exists with same email (only if email is provided)
-        if (row.Email) {
-          const existingStudent = await Student.findOne({ email: row.Email });
-          if (existingStudent) {
-            results.duplicates.push({
-              row: rowNumber,
-              data: row,
-              error: "Email already exists",
-            });
-            continue;
-          }
-        }
-
-        // Check if roll number already exists in the class
-        const existingRollNumber = await Student.findOne({
-          class: req.params.id,
-          rollNumber: row.RollNumber,
-        });
-        if (existingRollNumber) {
-          results.duplicates.push({
-            row: rowNumber,
-            data: row,
-            error: "Roll number already exists in this class",
-          });
-          continue;
-        }
-
         // Check if class is full
         if (classData.currentStrength >= classData.maxStudents) {
           results.failed.push({
@@ -585,208 +616,28 @@ router.post("/:id/students/bulk", auth, adminOnly, upload.single("file"), async 
           continue;
         }
 
+        // Validate and clean student data
+        const validationResult = await validateAndCleanStudentData(row, req.params.id);
+        
+        if (!validationResult.isValid) {
+          results.failed.push({
+            row: rowNumber,
+            error: validationResult.errors.join(", "),
+          });
+          continue;
+        }
+
         // Generate student ID
         const studentId = generateStudentId();
 
-        // Create student
+        // Create student data with cleaned and validated data
         const studentData = {
-          firstName: row.FirstName,
-          middleName: row.MiddleName || "",
-          lastName: row.LastName,
-          mobileNumber: row.MobileNumber || row.Phone || "",
-          rollNumber: row.RollNumber,
-          dateOfBirth: row.DateOfBirth || null,
-          gender: row.Gender || "other",
-          currentAddress: row.CurrentAddress || row.Address || "",
+          ...validationResult.cleanedData,
           grade: `${classData.grade}${classData.getOrdinalSuffix(classData.grade)}`,
           class: req.params.id,
           academicYear: classData.academicYear,
           currentGrade: `${classData.grade}${classData.getOrdinalSuffix(classData.grade)}`,
           createdBy: req.user.id,
-        };
-
-        // Add email only if provided
-        if (row.Email) {
-          studentData.email = row.Email;
-        }
-
-        // Add optional mobile number if provided
-        if (row.OptionalMobileNumber) {
-          studentData.optionalMobileNumber = row.OptionalMobileNumber;
-        }
-
-        // Personal Information
-        if (row.Nationality) studentData.nationality = row.Nationality;
-        if (row.Religion) studentData.religion = row.Religion;
-        if (row.Caste) studentData.caste = row.Caste;
-        if (row.MotherTongue) studentData.motherTongue = row.MotherTongue;
-        if (row.BloodGroup) studentData.bloodGroup = row.BloodGroup;
-        if (row.Photo) studentData.photo = row.Photo;
-
-        // Contact & Address Details
-        if (row.PermanentAddress) studentData.permanentAddress = row.PermanentAddress;
-        if (row.City) studentData.city = row.City;
-        if (row.State) studentData.state = row.State;
-        if (row.PinCode) studentData.pinCode = row.PinCode;
-
-        // Parent/Guardian Information
-        if (row.FatherName || row.FatherOccupation || row.FatherEmail || row.FatherIncome) {
-          studentData.father = {
-            name: row.FatherName || "",
-            occupation: row.FatherOccupation || "",
-            email: row.FatherEmail || "",
-            annualIncome: row.FatherIncome ? parseFloat(row.FatherIncome) : undefined,
-          };
-        }
-
-        if (row.MothersName || row.MotherOccupation || row.MotherEmail || row.MotherIncome) {
-          studentData.mother = {
-            name: row.MothersName || row.ParentName || "",
-            occupation: row.MotherOccupation || "",
-            email: row.MotherEmail || "",
-            annualIncome: row.MotherIncome ? parseFloat(row.MotherIncome) : undefined,
-          };
-        }
-
-        if (row.GuardianName || row.GuardianRelation || row.GuardianEmail) {
-          studentData.guardian = {
-            name: row.GuardianName || "",
-            relation: row.GuardianRelation || "",
-            email: row.GuardianEmail || "",
-          };
-        }
-
-        // Academic Information
-        if (row.AdmissionNumber) studentData.admissionNumber = row.AdmissionNumber;
-        if (row.Section) studentData.section = row.Section;
-        if (row.PreviousSchool) studentData.previousSchool = row.PreviousSchool;
-        if (row.TransferCertificateNumber) studentData.transferCertificateNumber = row.TransferCertificateNumber;
-        if (row.SpecialNeeds) studentData.specialNeeds = row.SpecialNeeds;
-
-        // Fees & Finance
-        if (row.FeeStructure) studentData.feeStructure = row.FeeStructure;
-        if (row.FeeDiscount) studentData.feeDiscount = parseFloat(row.FeeDiscount);
-        if (row.PaymentStatus) studentData.paymentStatus = row.PaymentStatus;
-        if (row.LateFees) studentData.lateFees = parseFloat(row.LateFees);
-
-        // Physical & Health Metrics
-        if (row.Height || row.Weight || row.VisionTest || row.HearingTest || row.FitnessScore) {
-          studentData.physicalMetrics = {
-            height: row.Height ? parseFloat(row.Height) : undefined,
-            weight: row.Weight ? parseFloat(row.Weight) : undefined,
-            visionTest: row.VisionTest
-              ? {
-                  leftEye: row.VisionTestLeftEye || "",
-                  rightEye: row.VisionTestRightEye || "",
-                  date: row.VisionTestDate ? new Date(row.VisionTestDate) : undefined,
-                }
-              : undefined,
-            hearingTest: row.HearingTest
-              ? {
-                  leftEar: row.HearingTestLeftEar || "",
-                  rightEar: row.HearingTestRightEar || "",
-                  date: row.HearingTestDate ? new Date(row.HearingTestDate) : undefined,
-                }
-              : undefined,
-            fitnessScore: row.FitnessScore ? parseFloat(row.FitnessScore) : undefined,
-          };
-        }
-
-        // Medical Information
-        if (
-          row.Allergies ||
-          row.MedicalConditions ||
-          row.Medications ||
-          row.EmergencyInstructions ||
-          row.VaccinationStatus
-        ) {
-          studentData.medicalHistory = {
-            allergies: row.Allergies ? row.Allergies.split(",").map((a) => a.trim()) : [],
-            medicalConditions: row.MedicalConditions ? row.MedicalConditions.split(",").map((c) => c.trim()) : [],
-            medications: row.Medications ? row.Medications.split(",").map((m) => m.trim()) : [],
-            emergencyInstructions: row.EmergencyInstructions || "",
-            vaccinationStatus: row.VaccinationStatus || "complete",
-          };
-        }
-
-        // Emergency Contact
-        if (
-          row.EmergencyContactName ||
-          row.EmergencyContactRelation ||
-          row.EmergencyContactPhone ||
-          row.EmergencyContactEmail
-        ) {
-          studentData.emergencyContact = {
-            name: row.EmergencyContactName || "",
-            relation: row.EmergencyContactRelation || "",
-            phone: row.EmergencyContactPhone || "",
-            email: row.EmergencyContactEmail || "",
-          };
-        }
-
-        // System & Access Information
-        if (row.RFIDCardNumber) studentData.rfidCardNumber = row.RFIDCardNumber;
-        if (row.LibraryCardNumber) studentData.libraryCardNumber = row.LibraryCardNumber;
-        if (row.HostelRoomNumber || row.HostelWardenName || row.HostelWardenPhone) {
-          studentData.hostelInformation = {
-            roomNumber: row.HostelRoomNumber || "",
-            wardenName: row.HostelWardenName || "",
-            wardenPhone: row.HostelWardenPhone || "",
-          };
-        }
-
-        // Transport Details
-        if (
-          row.TransportRequired ||
-          row.PickupPoint ||
-          row.DropPoint ||
-          row.BusNumber ||
-          row.DriverName ||
-          row.DriverPhone
-        ) {
-          studentData.transportDetails = {
-            required: row.TransportRequired === "true" || row.TransportRequired === true,
-            pickupPoint: row.PickupPoint || "",
-            dropPoint: row.DropPoint || "",
-            busNumber: row.BusNumber || "",
-            driverName: row.DriverName || "",
-            driverPhone: row.DriverPhone || "",
-          };
-        }
-
-        // Documents
-        if (
-          row.BirthCertificate ||
-          row.TransferCertificate ||
-          row.CharacterCertificate ||
-          row.MedicalCertificate ||
-          row.AadharCard ||
-          row.CasteCertificate ||
-          row.IncomeCertificate ||
-          row.Passport
-        ) {
-          studentData.documents = {
-            birthCertificate: row.BirthCertificate || "",
-            transferCertificate: row.TransferCertificate || "",
-            characterCertificate: row.CharacterCertificate || "",
-            medicalCertificate: row.MedicalCertificate || "",
-            photograph: row.Photo || "",
-            aadharCard: row.AadharCard || "",
-            casteCertificate: row.CasteCertificate || "",
-            incomeCertificate: row.IncomeCertificate || "",
-            passport: row.Passport || "",
-          };
-        }
-
-        // Legacy fields for backward compatibility
-        studentData.mothersName = row.MothersName || row.ParentName || "";
-        studentData.parentsMobileNumber = row.ParentsMobileNumber || row.ParentPhone || "";
-        studentData.address = {
-          street: row.CurrentAddress || row.Address || "",
-          city: row.City || "",
-          state: row.State || "",
-          zipCode: row.ZipCode || "",
-          country: row.Country || "India",
         };
 
         const student = await Student.create(studentData);

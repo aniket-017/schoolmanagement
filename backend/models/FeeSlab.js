@@ -27,6 +27,20 @@ const installmentSchema = new mongoose.Schema({
   },
 });
 
+const classGradeSchema = new mongoose.Schema({
+  grade: {
+    type: Number,
+    required: true,
+    min: 1,
+    max: 12,
+  },
+  divisions: [{
+    type: String,
+    enum: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'],
+    required: true
+  }]
+});
+
 const feeSlabSchema = new mongoose.Schema(
   {
     slabName: {
@@ -43,6 +57,8 @@ const feeSlabSchema = new mongoose.Schema(
       type: String,
       required: [true, "Academic year is required"],
     },
+    // Replace single classGrade with multiple grades and divisions
+    classGrades: [classGradeSchema],
 
     // Installments
     installments: [installmentSchema],
