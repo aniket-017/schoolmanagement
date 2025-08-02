@@ -13,6 +13,7 @@ const {
   updateFeeStatus,
   createFeesFromSlab,
   generateFeesForStudent,
+  getFeeOverview,
 } = require("../controllers/feeController");
 const { auth, authorize } = require("../middleware/auth");
 
@@ -75,5 +76,10 @@ router.post("/class/:classId", auth, authorize("admin"), createClassFees);
 // @desc    Update fee status (mark as paid/remaining)
 // @access  Private (Admin only)
 router.put("/:feeId/status", auth, authorize("admin"), updateFeeStatus);
+
+// @route   GET /api/fees/overview
+// @desc    Get comprehensive fee overview statistics
+// @access  Private (Admin only)
+router.get("/overview", auth, authorize("admin"), getFeeOverview);
 
 module.exports = router;

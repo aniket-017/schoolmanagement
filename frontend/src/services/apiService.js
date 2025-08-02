@@ -473,6 +473,14 @@ class ApiService {
       });
       return this.handleResponse(response);
     },
+
+    getFeeOverview: async (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await fetch(`${this.baseURL}/fees/overview?${queryString}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
   };
 
   // Communications APIs

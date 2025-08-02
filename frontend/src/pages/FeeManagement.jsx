@@ -45,8 +45,21 @@ import { appConfig } from "../config/environment";
 import apiService from "../services/apiService";
 
 const FeeManagement = () => {
-  const [activeTab, setActiveTab] = useState("slabs");
+  const [activeTab, setActiveTab] = useState("overview");
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Fee Overview states
+  const [overviewData, setOverviewData] = useState({
+    summaryCards: {
+      totalCollection: { value: "₹0", change: "0%", changeType: "increase" },
+      pendingFees: { value: "₹0", change: "0%", changeType: "decrease" },
+      studentsPaid: { value: "0", change: "0", changeType: "increase" },
+      overduePayments: { value: "0", change: "0", changeType: "decrease" }
+    },
+    monthlyData: [],
+    paymentMethods: []
+  });
+  const [overviewLoading, setOverviewLoading] = useState(false);
 
   // Fee Slab Management
   const [feeSlabs, setFeeSlabs] = useState([]);
@@ -144,53 +157,41 @@ const FeeManagement = () => {
   const feeStats = [
     {
       name: "Total Collection",
-      value: "$124,850",
-      change: "+12.5%",
-      changeType: "increase",
+      value: overviewData.summaryCards.totalCollection.value,
+      change: overviewData.summaryCards.totalCollection.change,
+      changeType: overviewData.summaryCards.totalCollection.changeType,
       icon: CreditCard,
       color: "success",
     },
     {
       name: "Pending Fees",
-      value: "$28,450",
-      change: "-8.2%",
-      changeType: "decrease",
+      value: overviewData.summaryCards.pendingFees.value,
+      change: overviewData.summaryCards.pendingFees.change,
+      changeType: overviewData.summaryCards.pendingFees.changeType,
       icon: Clock,
       color: "warning",
     },
     {
       name: "Students Paid",
-      value: "1,156",
-      change: "+95",
-      changeType: "increase",
+      value: overviewData.summaryCards.studentsPaid.value,
+      change: overviewData.summaryCards.studentsPaid.change,
+      changeType: overviewData.summaryCards.studentsPaid.changeType,
       icon: CheckCircle,
       color: "primary",
     },
     {
       name: "Overdue Payments",
-      value: "89",
-      change: "-12",
-      changeType: "decrease",
+      value: overviewData.summaryCards.overduePayments.value,
+      change: overviewData.summaryCards.overduePayments.change,
+      changeType: overviewData.summaryCards.overduePayments.changeType,
       icon: XCircle,
       color: "error",
     },
   ];
 
-  const monthlyData = [
-    { month: "Jan", collected: 45000, pending: 12000, overdue: 5000 },
-    { month: "Feb", collected: 52000, pending: 15000, overdue: 3000 },
-    { month: "Mar", collected: 48000, pending: 18000, overdue: 7000 },
-    { month: "Apr", collected: 61000, pending: 22000, overdue: 4000 },
-    { month: "May", collected: 55000, pending: 25000, overdue: 6000 },
-    { month: "Jun", collected: 67000, pending: 28000, overdue: 2000 },
-  ];
+  const monthlyData = overviewData.monthlyData;
 
-  const paymentMethods = [
-    { name: "Online", value: 45, color: "#3B82F6" },
-    { name: "Cash", value: 30, color: "#10B981" },
-    { name: "Card", value: 15, color: "#F59E0B" },
-    { name: "Cheque", value: 10, color: "#EF4444" },
-  ];
+  const paymentMethods = overviewData.paymentMethods;
 
   const recentPayments = [
     {
@@ -257,7 +258,23 @@ const FeeManagement = () => {
     }
   };
 
-
+  const fetchFeeOverview = async () => {
+    setOverviewLoading(true);
+    try {
+      const response = await apiService.fees.getFeeOverview();
+      if (response.success) {
+        console.log('Frontend received overview data:', response.data);
+        setOverviewData(response.data);
+      } else {
+        toast.error("Failed to fetch fee overview data");
+      }
+    } catch (error) {
+      console.error("Error fetching fee overview:", error);
+      toast.error("Error fetching fee overview data");
+    } finally {
+      setOverviewLoading(false);
+    }
+  };
 
   const handleCreateSlab = async (e) => {
     e.preventDefault();
@@ -430,6 +447,9 @@ const FeeManagement = () => {
     }
     if (activeTab === "students") {
       fetchAllStudents();
+    }
+    if (activeTab === "overview") {
+      fetchFeeOverview();
     }
   }, [activeTab]);
 
@@ -861,91 +881,102 @@ const FeeManagement = () => {
               )}
 
               {activeTab === "overview" && (
-                <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
-                  {/* Stats Cards */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {feeStats.map((stat, index) => (
-                      <motion.div
-                        key={stat.name}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                        className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-gray-600">{stat.name}</p>
-                            <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
-                            <div className="flex items-center mt-2">
-                              <span
+                <>
+                  {overviewLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                        <p className="text-gray-600">Loading fee overview data...</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
+                      {/* Stats Cards */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {feeStats.map((stat, index) => (
+                          <motion.div
+                            key={stat.name}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.1 }}
+                            className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-gray-600">{stat.name}</p>
+                                <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
+                                <div className="flex items-center mt-2">
+                                  <span
+                                    className={cn(
+                                      "text-sm font-medium",
+                                      stat.changeType === "increase" ? "text-green-600" : "text-red-600"
+                                    )}
+                                  >
+                                    {stat.change}
+                                  </span>
+                                  <span className="text-sm text-gray-500 ml-1">from last month</span>
+                                </div>
+                              </div>
+                              <div
                                 className={cn(
-                                  "text-sm font-medium",
-                                  stat.changeType === "increase" ? "text-green-600" : "text-red-600"
+                                  "p-3 rounded-full",
+                                  stat.color === "success" && "bg-green-100 text-green-600",
+                                  stat.color === "warning" && "bg-yellow-100 text-yellow-600",
+                                  stat.color === "primary" && "bg-blue-100 text-blue-600",
+                                  stat.color === "error" && "bg-red-100 text-red-600"
                                 )}
                               >
-                                {stat.change}
-                              </span>
-                              <span className="text-sm text-gray-500 ml-1">from last month</span>
+                                <stat.icon className="w-6 h-6" />
+                              </div>
                             </div>
-                          </div>
-                          <div
-                            className={cn(
-                              "p-3 rounded-full",
-                              stat.color === "success" && "bg-green-100 text-green-600",
-                              stat.color === "warning" && "bg-yellow-100 text-yellow-600",
-                              stat.color === "primary" && "bg-blue-100 text-blue-600",
-                              stat.color === "error" && "bg-red-100 text-red-600"
-                            )}
-                          >
-                            <stat.icon className="w-6 h-6" />
-                          </div>
+                          </motion.div>
+                        ))}
+                      </div>
+
+                      {/* Charts */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Monthly Collection Chart */}
+                        <div className="bg-white rounded-lg border border-gray-200 p-6">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Collection</h3>
+                          <ResponsiveContainer width="100%" height={300}>
+                            <LineChart data={monthlyData}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="month" />
+                              <YAxis />
+                              <Tooltip />
+                              <Legend />
+                              <Line type="monotone" dataKey="collected" stroke="#3B82F6" strokeWidth={2} name="Collected" />
+                              <Line type="monotone" dataKey="pending" stroke="#F59E0B" strokeWidth={2} name="Pending" />
+                              <Line type="monotone" dataKey="overdue" stroke="#EF4444" strokeWidth={2} name="Overdue" />
+                            </LineChart>
+                          </ResponsiveContainer>
                         </div>
-                      </motion.div>
-                    ))}
-                  </div>
 
-                  {/* Charts */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Monthly Collection Chart */}
-                    <div className="bg-white rounded-lg border border-gray-200 p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Collection</h3>
-                      <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={monthlyData}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="month" />
-                          <YAxis />
-                          <Tooltip />
-                          <Legend />
-                          <Line type="monotone" dataKey="collected" stroke="#3B82F6" strokeWidth={2} name="Collected" />
-                          <Line type="monotone" dataKey="pending" stroke="#F59E0B" strokeWidth={2} name="Pending" />
-                          <Line type="monotone" dataKey="overdue" stroke="#EF4444" strokeWidth={2} name="Overdue" />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-
-                    {/* Payment Methods Chart */}
-                    <div className="bg-white rounded-lg border border-gray-200 p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Methods</h3>
-                      <ResponsiveContainer width="100%" height={300}>
-                        <PieChart>
-                          <Pie
-                            data={paymentMethods}
-                            cx="50%"
-                            cy="50%"
-                            outerRadius={80}
-                            dataKey="value"
-                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                          >
-                            {paymentMethods.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                </motion.div>
+                        {/* Payment Methods Chart */}
+                        <div className="bg-white rounded-lg border border-gray-200 p-6">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Methods</h3>
+                          <ResponsiveContainer width="100%" height={300}>
+                            <PieChart>
+                              <Pie
+                                data={paymentMethods}
+                                cx="50%"
+                                cy="50%"
+                                outerRadius={80}
+                                dataKey="value"
+                                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                              >
+                                {paymentMethods.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                              </Pie>
+                              <Tooltip />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </>
               )}
 
               {activeTab === "payments" && (
