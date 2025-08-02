@@ -43,6 +43,8 @@ import Layout from "../components/Layout";
 import { cn } from "../utils/cn";
 import { appConfig } from "../config/environment";
 import apiService from "../services/apiService";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 const FeeManagement = () => {
   const [activeTab, setActiveTab] = useState("overview");
@@ -60,6 +62,13 @@ const FeeManagement = () => {
     paymentMethods: []
   });
   const [overviewLoading, setOverviewLoading] = useState(false);
+
+  // Report Generation States
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportData, setReportData] = useState(null);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportType, setReportType] = useState("");
+  const [pdfExporting, setPdfExporting] = useState(false);
 
   // Fee Slab Management
   const [feeSlabs, setFeeSlabs] = useState([]);
@@ -192,6 +201,25 @@ const FeeManagement = () => {
   const monthlyData = overviewData.monthlyData;
 
   const paymentMethods = overviewData.paymentMethods;
+  
+  // If no payment methods data, use sample data for testing
+  const samplePaymentMethods = [
+    { name: "Cash", value: 40, color: "#10B981" },
+    { name: "Online", value: 35, color: "#3B82F6" },
+    { name: "Card", value: 25, color: "#F59E0B" }
+  ];
+  
+  // Check if payment methods data is valid (not just "No Payments")
+  const hasValidPaymentMethods = paymentMethods && 
+    paymentMethods.length > 0 && 
+    !(paymentMethods.length === 1 && paymentMethods[0].name === "No Payments");
+  
+  const displayPaymentMethods = hasValidPaymentMethods ? paymentMethods : samplePaymentMethods;
+  
+  // Debug logging for payment methods
+  console.log('Payment Methods Data:', paymentMethods);
+  console.log('Has Valid Payment Methods:', hasValidPaymentMethods);
+  console.log('Display Payment Methods:', displayPaymentMethods);
 
   const recentPayments = [
     {
@@ -264,6 +292,8 @@ const FeeManagement = () => {
       const response = await apiService.fees.getFeeOverview();
       if (response.success) {
         console.log('Frontend received overview data:', response.data);
+        console.log('Monthly data:', response.data.monthlyData);
+        console.log('Payment methods:', response.data.paymentMethods);
         setOverviewData(response.data);
       } else {
         toast.error("Failed to fetch fee overview data");
@@ -273,6 +303,560 @@ const FeeManagement = () => {
       toast.error("Error fetching fee overview data");
     } finally {
       setOverviewLoading(false);
+    }
+  };
+
+  // Report Generation Functions
+  const generateMonthlyReport = async () => {
+    setReportLoading(true);
+    setReportType("monthly");
+    try {
+      const response = await apiService.fees.getFeeOverview();
+      if (response.success) {
+        const monthlyData = response.data.monthlyData;
+        const summaryCards = response.data.summaryCards;
+        
+        const reportData = {
+          type: "Monthly Fee Collection Report",
+          generatedDate: new Date().toLocaleDateString(),
+          summary: {
+            totalCollection: summaryCards.totalCollection.value,
+            pendingFees: summaryCards.pendingFees.value,
+            studentsPaid: summaryCards.studentsPaid.value,
+            overduePayments: summaryCards.overduePayments.value
+          },
+          monthlyBreakdown: monthlyData,
+          charts: {
+            monthlyCollection: monthlyData,
+            paymentMethods: response.data.paymentMethods
+          }
+        };
+        
+        setReportData(reportData);
+        setShowReportModal(true);
+      } else {
+        toast.error("Failed to generate monthly report");
+      }
+    } catch (error) {
+      console.error("Error generating monthly report:", error);
+      toast.error("Error generating monthly report");
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  const generateClassWiseReport = async () => {
+    setReportLoading(true);
+    setReportType("classwise");
+    try {
+      // Ensure students are loaded
+      if (allStudents.length === 0) {
+        await fetchAllStudents();
+      }
+      
+      const response = await apiService.fees.getFeeOverview();
+      if (response.success) {
+        console.log('All Students Data:', allStudents);
+        console.log('Number of students:', allStudents.length);
+        
+        // Group students by class for class-wise report
+        const classWiseData = {};
+        
+        // Process students with async support
+        for (const student of allStudents) {
+          console.log('Processing student:', {
+            name: `${student.firstName} ${student.lastName}`,
+            class: student.class,
+            className: student.class?.name,
+            classGrade: student.class?.grade,
+            feeSlab: student.feeSlabId,
+            feesPaid: student.feesPaid
+          });
+          
+          // Try different ways to get class name
+          let className = "Unknown Class";
+          if (student.class?.name) {
+            className = student.class.name;
+          } else if (student.class?.grade) {
+            className = student.class.grade;
+          } else if (student.class) {
+            className = typeof student.class === 'string' ? student.class : 'Unknown Class';
+          }
+          
+          console.log('Final className:', className);
+          
+          if (!classWiseData[className]) {
+            classWiseData[className] = {
+              className,
+              totalStudents: 0,
+              paidStudents: 0,
+              pendingStudents: 0,
+              overdueStudents: 0,
+              totalAmount: 0,
+              collectedAmount: 0,
+              pendingAmount: 0
+            };
+          }
+          
+          classWiseData[className].totalStudents++;
+          classWiseData[className].totalAmount += student.feeSlabId?.totalAmount || 0;
+          classWiseData[className].collectedAmount += student.feesPaid || 0;
+          
+          // Use simple status calculation for frontend
+          const studentTotalAmount = student.feeSlabId?.totalAmount || 0;
+          const studentPaidAmount = student.feesPaid || 0;
+          const balance = studentTotalAmount - studentPaidAmount;
+          
+          let status = "pending";
+          if (balance <= 0 && studentPaidAmount > 0) {
+            status = "paid";
+          } else if (studentPaidAmount === 0) {
+            status = "pending";
+          } else if (studentPaidAmount > 0 && balance > 0) {
+            // Check if overdue based on payment date
+            const lastPaymentDate = student.paymentDate || new Date();
+            const daysSinceLastPayment = Math.floor((new Date() - new Date(lastPaymentDate)) / (1000 * 60 * 60 * 24));
+            if (daysSinceLastPayment > 30) {
+              status = "overdue";
+            }
+          }
+          
+          console.log('Student status:', {
+            name: `${student.firstName} ${student.lastName}`,
+            totalAmount: studentTotalAmount,
+            paidAmount: studentPaidAmount,
+            balance,
+            status
+          });
+          
+          if (status === "paid") {
+            classWiseData[className].paidStudents++;
+          } else if (status === "pending") {
+            classWiseData[className].pendingStudents++;
+            classWiseData[className].pendingAmount += balance;
+          } else if (status === "overdue") {
+            classWiseData[className].overdueStudents++;
+            classWiseData[className].pendingAmount += balance;
+          }
+        }
+        
+        console.log('Class-wise data:', classWiseData);
+        
+        const reportData = {
+          type: "Class-wise Fee Collection Report",
+          generatedDate: new Date().toLocaleDateString(),
+          classData: Object.values(classWiseData),
+          summary: {
+            totalClasses: Object.keys(classWiseData).length,
+            totalStudents: allStudents.length,
+            totalCollection: response.data.summaryCards.totalCollection.value,
+            totalPending: response.data.summaryCards.pendingFees.value
+          }
+        };
+        
+        console.log('Final report data:', reportData);
+        
+        setReportData(reportData);
+        setShowReportModal(true);
+      } else {
+        toast.error("Failed to generate class-wise report");
+      }
+    } catch (error) {
+      console.error("Error generating class-wise report:", error);
+      toast.error("Error generating class-wise report");
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  const generateYearlyReport = async () => {
+    setReportLoading(true);
+    setReportType("yearly");
+    try {
+      // Ensure students are loaded
+      if (allStudents.length === 0) {
+        await fetchAllStudents();
+      }
+      
+      const response = await apiService.fees.getFeeOverview();
+      if (response.success) {
+        // Calculate yearly totals
+        const currentYear = new Date().getFullYear();
+        const yearlyData = {
+          totalStudents: allStudents.length,
+          totalCollection: 0,
+          totalPending: 0,
+          totalOverdue: 0,
+          monthlyBreakdown: [],
+          classBreakdown: {},
+          paymentMethods: {}
+        };
+        
+        // Process students for yearly data
+        for (const student of allStudents) {
+          const studentTotalAmount = student.feeSlabId?.totalAmount || 0;
+          const studentPaidAmount = student.feesPaid || 0;
+          const balance = studentTotalAmount - studentPaidAmount;
+          
+          yearlyData.totalCollection += studentPaidAmount;
+          yearlyData.totalPending += balance;
+          
+          // Class breakdown
+          const className = student.class?.name || student.class?.grade || "Unknown Class";
+          if (!yearlyData.classBreakdown[className]) {
+            yearlyData.classBreakdown[className] = {
+              className,
+              totalStudents: 0,
+              totalCollection: 0,
+              totalPending: 0
+            };
+          }
+          yearlyData.classBreakdown[className].totalStudents++;
+          yearlyData.classBreakdown[className].totalCollection += studentPaidAmount;
+          yearlyData.classBreakdown[className].totalPending += balance;
+          
+          // Payment method breakdown
+          if (student.paymentMethod) {
+            yearlyData.paymentMethods[student.paymentMethod] = (yearlyData.paymentMethods[student.paymentMethod] || 0) + 1;
+          }
+        }
+        
+        // Calculate overdue based on payment dates
+        for (const student of allStudents) {
+          const studentTotalAmount = student.feeSlabId?.totalAmount || 0;
+          const studentPaidAmount = student.feesPaid || 0;
+          const balance = studentTotalAmount - studentPaidAmount;
+          
+          if (studentPaidAmount > 0 && balance > 0) {
+            const lastPaymentDate = student.paymentDate || new Date();
+            const daysSinceLastPayment = Math.floor((new Date() - new Date(lastPaymentDate)) / (1000 * 60 * 60 * 24));
+            if (daysSinceLastPayment > 30) {
+              yearlyData.totalOverdue += balance;
+            }
+          }
+        }
+        
+        // Generate monthly breakdown for the year
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        for (let i = 0; i < 12; i++) {
+          const monthName = months[i];
+          const monthDate = new Date(currentYear, i, 1);
+          const nextMonthDate = new Date(currentYear, i + 1, 1);
+          
+          // Calculate monthly collection (simplified)
+          let monthlyCollected = 0;
+          for (const student of allStudents) {
+            if (student.paymentDate) {
+              const paymentDate = new Date(student.paymentDate);
+              if (paymentDate >= monthDate && paymentDate < nextMonthDate) {
+                monthlyCollected += student.feesPaid || 0;
+              }
+            }
+          }
+          
+          yearlyData.monthlyBreakdown.push({
+            month: monthName,
+            collected: monthlyCollected,
+            pending: yearlyData.totalPending / 12, // Distribute pending across months
+            overdue: yearlyData.totalOverdue / 12 // Distribute overdue across months
+          });
+        }
+        
+        const reportData = {
+          type: `Yearly Fee Collection Report - ${currentYear}`,
+          generatedDate: new Date().toLocaleDateString(),
+          yearlyData: yearlyData,
+          summary: {
+            totalStudents: yearlyData.totalStudents,
+            totalCollection: `₹${yearlyData.totalCollection.toLocaleString()}`,
+            totalPending: `₹${yearlyData.totalPending.toLocaleString()}`,
+            totalOverdue: `₹${yearlyData.totalOverdue.toLocaleString()}`,
+            totalClasses: Object.keys(yearlyData.classBreakdown).length
+          }
+        };
+        
+        setReportData(reportData);
+        setShowReportModal(true);
+        toast.success("Yearly report generated successfully!");
+      } else {
+        toast.error("Failed to generate yearly report");
+      }
+    } catch (error) {
+      console.error("Error generating yearly report:", error);
+      toast.error("Error generating yearly report");
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  // PDF Export Function
+  const exportToPDF = async () => {
+    try {
+      setPdfExporting(true);
+      toast.loading("Generating PDF...", { id: "pdf-export" });
+
+      // Create a simplified version for PDF export
+      const pdfContent = document.createElement('div');
+      pdfContent.style.cssText = `
+        position: fixed;
+        top: -9999px;
+        left: -9999px;
+        width: 800px;
+        background: white;
+        color: black;
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        z-index: -1;
+      `;
+
+      // Add report header
+      const header = document.createElement('div');
+      header.innerHTML = `
+        <h1 style="font-size: 24px; margin-bottom: 10px; color: #000;">${reportData.type}</h1>
+        <p style="font-size: 14px; color: #666; margin-bottom: 20px;">Generated on: ${reportData.generatedDate}</p>
+        <hr style="border: 1px solid #ccc; margin: 20px 0;">
+      `;
+      pdfContent.appendChild(header);
+
+      // Add report content based on type
+      if (reportType === "monthly") {
+        const summary = document.createElement('div');
+        summary.innerHTML = `
+          <h2 style="font-size: 18px; margin: 20px 0; color: #000;">Summary</h2>
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px;">
+            <div style="border: 1px solid #ccc; padding: 15px; text-align: center;">
+              <h3 style="font-size: 14px; color: #666; margin-bottom: 5px;">Total Collection</h3>
+              <p style="font-size: 20px; font-weight: bold; color: #000;">${reportData.summary.totalCollection}</p>
+            </div>
+            <div style="border: 1px solid #ccc; padding: 15px; text-align: center;">
+              <h3 style="font-size: 14px; color: #666; margin-bottom: 5px;">Pending Fees</h3>
+              <p style="font-size: 20px; font-weight: bold; color: #000;">${reportData.summary.pendingFees}</p>
+            </div>
+            <div style="border: 1px solid #ccc; padding: 15px; text-align: center;">
+              <h3 style="font-size: 14px; color: #666; margin-bottom: 5px;">Students Paid</h3>
+              <p style="font-size: 20px; font-weight: bold; color: #000;">${reportData.summary.studentsPaid}</p>
+            </div>
+            <div style="border: 1px solid #ccc; padding: 15px; text-align: center;">
+              <h3 style="font-size: 14px; color: #666; margin-bottom: 5px;">Overdue Payments</h3>
+              <p style="font-size: 20px; font-weight: bold; color: #000;">${reportData.summary.overduePayments}</p>
+            </div>
+          </div>
+        `;
+        pdfContent.appendChild(summary);
+
+        // Add monthly breakdown table
+        const table = document.createElement('div');
+        table.innerHTML = `
+          <h2 style="font-size: 18px; margin: 20px 0; color: #000;">Monthly Collection Breakdown</h2>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+            <thead>
+              <tr style="background-color: #f5f5f5;">
+                <th style="border: 1px solid #ccc; padding: 10px; text-align: left; font-weight: bold;">Month</th>
+                <th style="border: 1px solid #ccc; padding: 10px; text-align: left; font-weight: bold;">Collected</th>
+                <th style="border: 1px solid #ccc; padding: 10px; text-align: left; font-weight: bold;">Pending</th>
+                <th style="border: 1px solid #ccc; padding: 10px; text-align: left; font-weight: bold;">Overdue</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${reportData.monthlyBreakdown.map(month => `
+                <tr>
+                  <td style="border: 1px solid #ccc; padding: 10px;">${month.month}</td>
+                  <td style="border: 1px solid #ccc; padding: 10px; color: #000;">₹${month.collected.toLocaleString()}</td>
+                  <td style="border: 1px solid #ccc; padding: 10px; color: #000;">₹${month.pending.toLocaleString()}</td>
+                  <td style="border: 1px solid #ccc; padding: 10px; color: #000;">₹${month.overdue.toLocaleString()}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+        pdfContent.appendChild(table);
+      }
+
+      if (reportType === "classwise") {
+        const summary = document.createElement('div');
+        summary.innerHTML = `
+          <h2 style="font-size: 18px; margin: 20px 0; color: #000;">Summary</h2>
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px;">
+            <div style="border: 1px solid #ccc; padding: 15px; text-align: center;">
+              <h3 style="font-size: 14px; color: #666; margin-bottom: 5px;">Total Classes</h3>
+              <p style="font-size: 20px; font-weight: bold; color: #000;">${reportData.summary.totalClasses}</p>
+            </div>
+            <div style="border: 1px solid #ccc; padding: 15px; text-align: center;">
+              <h3 style="font-size: 14px; color: #666; margin-bottom: 5px;">Total Students</h3>
+              <p style="font-size: 20px; font-weight: bold; color: #000;">${reportData.summary.totalStudents}</p>
+            </div>
+            <div style="border: 1px solid #ccc; padding: 15px; text-align: center;">
+              <h3 style="font-size: 14px; color: #666; margin-bottom: 5px;">Total Collection</h3>
+              <p style="font-size: 20px; font-weight: bold; color: #000;">${reportData.summary.totalCollection}</p>
+            </div>
+            <div style="border: 1px solid #ccc; padding: 15px; text-align: center;">
+              <h3 style="font-size: 14px; color: #666; margin-bottom: 5px;">Total Pending</h3>
+              <p style="font-size: 20px; font-weight: bold; color: #000;">${reportData.summary.totalPending}</p>
+            </div>
+          </div>
+        `;
+        pdfContent.appendChild(summary);
+
+        // Add class-wise table
+        const table = document.createElement('div');
+        table.innerHTML = `
+          <h2 style="font-size: 18px; margin: 20px 0; color: #000;">Class-wise Breakdown</h2>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 12px;">
+            <thead>
+              <tr style="background-color: #f5f5f5;">
+                <th style="border: 1px solid #ccc; padding: 8px; text-align: left; font-weight: bold;">Class</th>
+                <th style="border: 1px solid #ccc; padding: 8px; text-align: left; font-weight: bold;">Total Students</th>
+                <th style="border: 1px solid #ccc; padding: 8px; text-align: left; font-weight: bold;">Paid</th>
+                <th style="border: 1px solid #ccc; padding: 8px; text-align: left; font-weight: bold;">Pending</th>
+                <th style="border: 1px solid #ccc; padding: 8px; text-align: left; font-weight: bold;">Overdue</th>
+                <th style="border: 1px solid #ccc; padding: 8px; text-align: left; font-weight: bold;">Total Amount</th>
+                <th style="border: 1px solid #ccc; padding: 8px; text-align: left; font-weight: bold;">Collected</th>
+                <th style="border: 1px solid #ccc; padding: 8px; text-align: left; font-weight: bold;">Pending Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${reportData.classData.map(classData => `
+                <tr>
+                  <td style="border: 1px solid #ccc; padding: 8px;">${classData.className}</td>
+                  <td style="border: 1px solid #ccc; padding: 8px;">${classData.totalStudents}</td>
+                  <td style="border: 1px solid #ccc; padding: 8px; color: #000;">${classData.paidStudents}</td>
+                  <td style="border: 1px solid #ccc; padding: 8px; color: #000;">${classData.pendingStudents}</td>
+                  <td style="border: 1px solid #ccc; padding: 8px; color: #000;">${classData.overdueStudents}</td>
+                  <td style="border: 1px solid #ccc; padding: 8px; color: #000;">₹${classData.totalAmount.toLocaleString()}</td>
+                  <td style="border: 1px solid #ccc; padding: 8px; color: #000;">₹${classData.collectedAmount.toLocaleString()}</td>
+                  <td style="border: 1px solid #ccc; padding: 8px; color: #000;">₹${classData.pendingAmount.toLocaleString()}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+        pdfContent.appendChild(table);
+      }
+
+      if (reportType === "yearly") {
+        const summary = document.createElement('div');
+        summary.innerHTML = `
+          <h2 style="font-size: 18px; margin: 20px 0; color: #000;">Summary</h2>
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px;">
+            <div style="border: 1px solid #ccc; padding: 15px; text-align: center;">
+              <h3 style="font-size: 14px; color: #666; margin-bottom: 5px;">Total Students</h3>
+              <p style="font-size: 20px; font-weight: bold; color: #000;">${reportData.summary.totalStudents}</p>
+            </div>
+            <div style="border: 1px solid #ccc; padding: 15px; text-align: center;">
+              <h3 style="font-size: 14px; color: #666; margin-bottom: 5px;">Total Collection</h3>
+              <p style="font-size: 20px; font-weight: bold; color: #000;">${reportData.summary.totalCollection}</p>
+            </div>
+            <div style="border: 1px solid #ccc; padding: 15px; text-align: center;">
+              <h3 style="font-size: 14px; color: #666; margin-bottom: 5px;">Total Pending</h3>
+              <p style="font-size: 20px; font-weight: bold; color: #000;">${reportData.summary.totalPending}</p>
+            </div>
+            <div style="border: 1px solid #ccc; padding: 15px; text-align: center;">
+              <h3 style="font-size: 14px; color: #666; margin-bottom: 5px;">Total Classes</h3>
+              <p style="font-size: 20px; font-weight: bold; color: #000;">${reportData.summary.totalClasses}</p>
+            </div>
+          </div>
+        `;
+        pdfContent.appendChild(summary);
+
+        // Add monthly breakdown table
+        const monthlyTable = document.createElement('div');
+        monthlyTable.innerHTML = `
+          <h2 style="font-size: 18px; margin: 20px 0; color: #000;">Monthly Breakdown</h2>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 11px;">
+            <thead>
+              <tr style="background-color: #f5f5f5;">
+                <th style="border: 1px solid #ccc; padding: 6px; text-align: left; font-weight: bold;">Month</th>
+                <th style="border: 1px solid #ccc; padding: 6px; text-align: left; font-weight: bold;">Collected</th>
+                <th style="border: 1px solid #ccc; padding: 6px; text-align: left; font-weight: bold;">Pending</th>
+                <th style="border: 1px solid #ccc; padding: 6px; text-align: left; font-weight: bold;">Overdue</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${reportData.yearlyData.monthlyBreakdown.map(month => `
+                <tr>
+                  <td style="border: 1px solid #ccc; padding: 6px;">${month.month}</td>
+                  <td style="border: 1px solid #ccc; padding: 6px; color: #000;">₹${month.collected.toLocaleString()}</td>
+                  <td style="border: 1px solid #ccc; padding: 6px; color: #000;">₹${month.pending.toLocaleString()}</td>
+                  <td style="border: 1px solid #ccc; padding: 6px; color: #000;">₹${month.overdue.toLocaleString()}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+        pdfContent.appendChild(monthlyTable);
+
+        // Add class breakdown table
+        const classTable = document.createElement('div');
+        classTable.innerHTML = `
+          <h2 style="font-size: 18px; margin: 20px 0; color: #000;">Class-wise Breakdown</h2>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 11px;">
+            <thead>
+              <tr style="background-color: #f5f5f5;">
+                <th style="border: 1px solid #ccc; padding: 6px; text-align: left; font-weight: bold;">Class</th>
+                <th style="border: 1px solid #ccc; padding: 6px; text-align: left; font-weight: bold;">Total Students</th>
+                <th style="border: 1px solid #ccc; padding: 6px; text-align: left; font-weight: bold;">Total Collection</th>
+                <th style="border: 1px solid #ccc; padding: 6px; text-align: left; font-weight: bold;">Total Pending</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${Object.values(reportData.yearlyData.classBreakdown).map(classData => `
+                <tr>
+                  <td style="border: 1px solid #ccc; padding: 6px;">${classData.className}</td>
+                  <td style="border: 1px solid #ccc; padding: 6px; color: #000;">${classData.totalStudents}</td>
+                  <td style="border: 1px solid #ccc; padding: 6px; color: #000;">₹${classData.totalCollection.toLocaleString()}</td>
+                  <td style="border: 1px solid #ccc; padding: 6px; color: #000;">₹${classData.totalPending.toLocaleString()}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+        pdfContent.appendChild(classTable);
+      }
+
+      // Add to document temporarily
+      document.body.appendChild(pdfContent);
+
+      const canvas = await html2canvas(pdfContent, {
+        scale: 1.5,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        removeContainer: true,
+        foreignObjectRendering: false
+      });
+
+      // Remove from document
+      document.body.removeChild(pdfContent);
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 210;
+      const pageHeight = 295;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+
+      let position = 0;
+
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      const fileName = `${reportData.type.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      pdf.save(fileName);
+      
+      toast.success("PDF exported successfully!", { id: "pdf-export" });
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      toast.error("Failed to export PDF", { id: "pdf-export" });
+    } finally {
+      setPdfExporting(false);
     }
   };
 
@@ -436,7 +1020,6 @@ const FeeManagement = () => {
   const tabConfig = [
     { id: "slabs", name: "Fee Slabs", icon: Settings },
     { id: "overview", name: "Overview", icon: TrendingUp },
-    { id: "payments", name: "Payments", icon: CreditCard },
     { id: "students", name: "Students", icon: Users },
     { id: "reports", name: "Reports", icon: FileText },
   ];
@@ -730,9 +1313,13 @@ const FeeManagement = () => {
                 <p className="text-gray-600">Manage fee slabs, payments, and financial reports</p>
               </div>
               <div className="flex space-x-3">
-                <button className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                <button 
+                  onClick={generateYearlyReport}
+                  disabled={reportLoading}
+                  className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   <Download className="w-4 h-4 mr-2" />
-                  Export Report
+                  {reportLoading ? "Generating..." : "Export Yearly Report"}
                 </button>
                 {activeTab === "slabs" && (
                   <button
@@ -890,200 +1477,107 @@ const FeeManagement = () => {
                       </div>
                     </div>
                   ) : (
-                    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
-                      {/* Stats Cards */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {feeStats.map((stat, index) => (
-                          <motion.div
-                            key={stat.name}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.1 }}
-                            className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
-                          >
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-sm font-medium text-gray-600">{stat.name}</p>
-                                <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
-                                <div className="flex items-center mt-2">
-                                  <span
-                                    className={cn(
-                                      "text-sm font-medium",
-                                      stat.changeType === "increase" ? "text-green-600" : "text-red-600"
-                                    )}
-                                  >
-                                    {stat.change}
-                                  </span>
-                                  <span className="text-sm text-gray-500 ml-1">from last month</span>
-                                </div>
-                              </div>
-                              <div
+                <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
+                  {/* Stats Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {feeStats.map((stat, index) => (
+                      <motion.div
+                        key={stat.name}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-gray-600">{stat.name}</p>
+                            <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
+                            <div className="flex items-center mt-2">
+                              <span
                                 className={cn(
-                                  "p-3 rounded-full",
-                                  stat.color === "success" && "bg-green-100 text-green-600",
-                                  stat.color === "warning" && "bg-yellow-100 text-yellow-600",
-                                  stat.color === "primary" && "bg-blue-100 text-blue-600",
-                                  stat.color === "error" && "bg-red-100 text-red-600"
+                                  "text-sm font-medium",
+                                  stat.changeType === "increase" ? "text-green-600" : "text-red-600"
                                 )}
                               >
-                                <stat.icon className="w-6 h-6" />
-                              </div>
+                                {stat.change}
+                              </span>
+                              <span className="text-sm text-gray-500 ml-1">from last month</span>
                             </div>
-                          </motion.div>
-                        ))}
-                      </div>
-
-                      {/* Charts */}
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Monthly Collection Chart */}
-                        <div className="bg-white rounded-lg border border-gray-200 p-6">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Collection</h3>
-                          <ResponsiveContainer width="100%" height={300}>
-                            <LineChart data={monthlyData}>
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis dataKey="month" />
-                              <YAxis />
-                              <Tooltip />
-                              <Legend />
-                              <Line type="monotone" dataKey="collected" stroke="#3B82F6" strokeWidth={2} name="Collected" />
-                              <Line type="monotone" dataKey="pending" stroke="#F59E0B" strokeWidth={2} name="Pending" />
-                              <Line type="monotone" dataKey="overdue" stroke="#EF4444" strokeWidth={2} name="Overdue" />
-                            </LineChart>
-                          </ResponsiveContainer>
+                          </div>
+                          <div
+                            className={cn(
+                              "p-3 rounded-full",
+                              stat.color === "success" && "bg-green-100 text-green-600",
+                              stat.color === "warning" && "bg-yellow-100 text-yellow-600",
+                              stat.color === "primary" && "bg-blue-100 text-blue-600",
+                              stat.color === "error" && "bg-red-100 text-red-600"
+                            )}
+                          >
+                            <stat.icon className="w-6 h-6" />
+                          </div>
                         </div>
+                      </motion.div>
+                    ))}
+                  </div>
 
-                        {/* Payment Methods Chart */}
-                        <div className="bg-white rounded-lg border border-gray-200 p-6">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Methods</h3>
-                          <ResponsiveContainer width="100%" height={300}>
-                            <PieChart>
-                              <Pie
-                                data={paymentMethods}
-                                cx="50%"
-                                cy="50%"
-                                outerRadius={80}
-                                dataKey="value"
-                                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                              >
-                                {paymentMethods.map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={entry.color} />
-                                ))}
-                              </Pie>
-                              <Tooltip />
-                            </PieChart>
-                          </ResponsiveContainer>
+                  {/* Charts */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Monthly Collection Chart */}
+                    <div className="bg-white rounded-lg border border-gray-200 p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Collection</h3>
+                          {monthlyData && monthlyData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={monthlyData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="month" />
+                          <YAxis />
+                                <Tooltip formatter={(value) => `₹${value.toLocaleString()}`} />
+                          <Legend />
+                          <Line type="monotone" dataKey="collected" stroke="#3B82F6" strokeWidth={2} name="Collected" />
+                          <Line type="monotone" dataKey="pending" stroke="#F59E0B" strokeWidth={2} name="Pending" />
+                          <Line type="monotone" dataKey="overdue" stroke="#EF4444" strokeWidth={2} name="Overdue" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                          ) : (
+                            <div className="flex items-center justify-center h-64 text-gray-500">
+                              <p>No monthly data available</p>
+                            </div>
+                          )}
+                    </div>
+
+                    {/* Payment Methods Chart */}
+                    <div className="bg-white rounded-lg border border-gray-200 p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Methods</h3>
+                      <div>
+                        <div className="text-xs text-gray-500 mb-2">
+                          Debug: {displayPaymentMethods.length} payment methods found
                         </div>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <PieChart>
+                            <Pie
+                              data={displayPaymentMethods}
+                              cx="50%"
+                              cy="50%"
+                              outerRadius={80}
+                              dataKey="value"
+                              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                            >
+                              {displayPaymentMethods.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} />
+                              ))}
+                            </Pie>
+                            <Tooltip formatter={(value) => `${value}%`} />
+                          </PieChart>
+                        </ResponsiveContainer>
                       </div>
+                    </div>
+                    </div>
                     </motion.div>
                   )}
                 </>
               )}
 
-              {activeTab === "payments" && (
-                <div className="space-y-6">
-                  {/* Search and Filter */}
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <div className="flex-1">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                        <input
-                          type="text"
-                          placeholder="Search payments..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex space-x-2">
-                      <button className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                        <Filter className="w-4 h-4 mr-2" />
-                        Filter
-                      </button>
-                      <button className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                        <Download className="w-4 h-4 mr-2" />
-                        Export
-                      </button>
-                    </div>
-                  </div>
 
-                  {/* Payments Table */}
-                  <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Student
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Fee Type
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Amount
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Payment Date
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Method
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Status
-                            </th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Actions
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {filteredPayments.map((payment) => (
-                            <tr key={payment.id} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div>
-                                  <div className="text-sm font-medium text-gray-900">{payment.studentName}</div>
-                                  <div className="text-sm text-gray-500">{payment.studentId}</div>
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{payment.feeType}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                ₹{payment.amount.toLocaleString()}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {payment.paymentDate}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{payment.method}</td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span
-                                  className={cn(
-                                    "inline-flex px-2 py-1 text-xs font-medium rounded-full",
-                                    payment.status === "completed" && "bg-green-100 text-green-800",
-                                    payment.status === "pending" && "bg-yellow-100 text-yellow-800",
-                                    payment.status === "overdue" && "bg-red-100 text-red-800"
-                                  )}
-                                >
-                                  {payment.status}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <button className="text-blue-600 hover:text-blue-900 mr-3">
-                                  <Eye className="w-4 h-4" />
-                                </button>
-                                <button className="text-green-600 hover:text-green-900 mr-3">
-                                  <Edit3 className="w-4 h-4" />
-                                </button>
-                                <button className="text-red-600 hover:text-red-900">
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {activeTab === "students" && (
                 <div className="space-y-6">
@@ -1274,33 +1768,7 @@ const FeeManagement = () => {
                       )}
                     </div>
 
-                  {/* Quick Actions */}
-                  {filteredAndSortedStudents.length > 0 && (
-                    <div className="bg-white rounded-lg border border-gray-200 p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <button 
-                          onClick={handleMarkAllAsPaid}
-                          className="flex items-center p-4 border border-gray-200 rounded-lg bg-gray-100 cursor-not-allowed opacity-50"
-                          disabled
-                        >
-                          <CheckCircle className="w-5 h-5 mr-3 text-gray-400" />
-                          <div className="text-left">
-                            <div className="font-medium text-gray-500">Mark All as Paid</div>
-                            <div className="text-sm text-gray-400">Bulk operations disabled</div>
-                          </div>
-                        </button>
 
-                        <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                          <Download className="w-5 h-5 mr-3 text-purple-600" />
-                          <div className="text-left">
-                            <div className="font-medium text-gray-900">Export Report</div>
-                            <div className="text-sm text-gray-500">Generate fee collection report</div>
-                          </div>
-                        </button>
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -1309,25 +1777,49 @@ const FeeManagement = () => {
                   <div className="bg-white rounded-lg border border-gray-200 p-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Financial Reports</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                      <button 
+                        onClick={generateMonthlyReport}
+                        disabled={reportLoading}
+                        className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {reportLoading && reportType === "monthly" ? (
+                          <div className="w-5 h-5 mr-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
                         <FileText className="w-5 h-5 mr-3 text-blue-600" />
+                        )}
                         <div className="text-left">
                           <div className="font-medium text-gray-900">Monthly Report</div>
                           <div className="text-sm text-gray-500">Generate monthly fee collection report</div>
                         </div>
                       </button>
-                      <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                      <button 
+                        onClick={generateClassWiseReport}
+                        disabled={reportLoading}
+                        className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {reportLoading && reportType === "classwise" ? (
+                          <div className="w-5 h-5 mr-3 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
                         <FileText className="w-5 h-5 mr-3 text-green-600" />
+                        )}
                         <div className="text-left">
                           <div className="font-medium text-gray-900">Class-wise Report</div>
                           <div className="text-sm text-gray-500">Fee collection by class</div>
                         </div>
                       </button>
-                      <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                        <FileText className="w-5 h-5 mr-3 text-purple-600" />
+                      <button 
+                        onClick={generateYearlyReport}
+                        disabled={reportLoading}
+                        className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {reportLoading && reportType === "yearly" ? (
+                          <div className="w-5 h-5 mr-3 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                        <FileText className="w-5 h-5 mr-3 text-green-600" />
+                        )}
                         <div className="text-left">
-                          <div className="font-medium text-gray-900">Defaulters Report</div>
-                          <div className="text-sm text-gray-500">List of fee defaulters</div>
+                          <div className="font-medium text-gray-900">Yearly Report</div>
+                          <div className="text-sm text-gray-500">Annual fee collection summary</div>
                         </div>
                       </button>
                     </div>
@@ -1337,6 +1829,256 @@ const FeeManagement = () => {
             </div>
           </div>
         </div>
+
+        {/* Report Modal */}
+        {showReportModal && reportData && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+            <div className="relative p-8 border w-4/5 max-w-6xl shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-semibold text-gray-900">{reportData.type}</h3>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={exportToPDF}
+                    disabled={pdfExporting}
+                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {pdfExporting ? (
+                      <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <Download className="w-4 h-4 mr-2" />
+                    )}
+                    {pdfExporting ? "Generating PDF..." : "Export PDF"}
+                  </button>
+                  <button
+                    onClick={() => setShowReportModal(false)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-6 w-6"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div id="report-content" className="space-y-6">
+                {/* Report Header */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-900">{reportData.type}</h4>
+                      <p className="text-sm text-gray-600">Generated on: {reportData.generatedDate}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-gray-600">School Admin Portal</p>
+                      <p className="text-sm text-gray-600">Fee Management System</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Report Content */}
+                {reportType === "monthly" && (
+                  <div className="space-y-6">
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="bg-white border border-gray-200 rounded-lg p-4">
+                        <h5 className="text-sm font-medium text-gray-500">Total Collection</h5>
+                        <p className="text-2xl font-bold text-green-600">{reportData.summary.totalCollection}</p>
+                      </div>
+                      <div className="bg-white border border-gray-200 rounded-lg p-4">
+                        <h5 className="text-sm font-medium text-gray-500">Pending Fees</h5>
+                        <p className="text-2xl font-bold text-yellow-600">{reportData.summary.pendingFees}</p>
+                      </div>
+                      <div className="bg-white border border-gray-200 rounded-lg p-4">
+                        <h5 className="text-sm font-medium text-gray-500">Students Paid</h5>
+                        <p className="text-2xl font-bold text-blue-600">{reportData.summary.studentsPaid}</p>
+                      </div>
+                      <div className="bg-white border border-gray-200 rounded-lg p-4">
+                        <h5 className="text-sm font-medium text-gray-500">Overdue Payments</h5>
+                        <p className="text-2xl font-bold text-red-600">{reportData.summary.overduePayments}</p>
+                      </div>
+                    </div>
+
+                    {/* Monthly Breakdown Table */}
+                    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                      <h5 className="text-lg font-semibold text-gray-900 p-4 border-b">Monthly Collection Breakdown</h5>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Collected</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pending</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Overdue</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {reportData.monthlyBreakdown.map((month, index) => (
+                              <tr key={index}>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{month.month}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">₹{month.collected.toLocaleString()}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">₹{month.pending.toLocaleString()}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">₹{month.overdue.toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {reportType === "classwise" && (
+                  <div className="space-y-6">
+                    {/* Summary */}
+                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                      <h5 className="text-lg font-semibold text-gray-900 mb-4">Summary</h5>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                          <p className="text-sm text-gray-500">Total Classes</p>
+                          <p className="text-xl font-bold text-blue-600">{reportData.summary.totalClasses}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Total Students</p>
+                          <p className="text-xl font-bold text-green-600">{reportData.summary.totalStudents}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Total Collection</p>
+                          <p className="text-xl font-bold text-green-600">{reportData.summary.totalCollection}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Total Pending</p>
+                          <p className="text-xl font-bold text-yellow-600">{reportData.summary.totalPending}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Class-wise Table */}
+                    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                      <h5 className="text-lg font-semibold text-gray-900 p-4 border-b">Class-wise Breakdown</h5>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Students</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paid</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pending</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Overdue</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Amount</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Collected</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pending Amount</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {reportData.classData.map((classData, index) => (
+                              <tr key={index}>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{classData.className}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{classData.totalStudents}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">{classData.paidStudents}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">{classData.pendingStudents}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">{classData.overdueStudents}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₹{classData.totalAmount.toLocaleString()}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">₹{classData.collectedAmount.toLocaleString()}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">₹{classData.pendingAmount.toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {reportType === "yearly" && (
+                  <div className="space-y-6">
+                    {/* Summary */}
+                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                      <h5 className="text-lg font-semibold text-gray-900 mb-4">Summary</h5>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                          <p className="text-sm text-gray-500">Total Students</p>
+                          <p className="text-xl font-bold text-blue-600">{reportData.summary.totalStudents}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Total Collection</p>
+                          <p className="text-xl font-bold text-green-600">{reportData.summary.totalCollection}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Total Pending</p>
+                          <p className="text-xl font-bold text-yellow-600">{reportData.summary.totalPending}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Total Classes</p>
+                          <p className="text-xl font-bold text-purple-600">{reportData.summary.totalClasses}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Monthly Breakdown */}
+                    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                      <h5 className="text-lg font-semibold text-gray-900 p-4 border-b">Monthly Breakdown</h5>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Collected</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pending</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Overdue</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {reportData.yearlyData.monthlyBreakdown.map((month, index) => (
+                              <tr key={index}>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{month.month}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">₹{month.collected.toLocaleString()}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">₹{month.pending.toLocaleString()}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">₹{month.overdue.toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Class Breakdown */}
+                    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                      <h5 className="text-lg font-semibold text-gray-900 p-4 border-b">Class-wise Breakdown</h5>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Students</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Collection</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Pending</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {Object.values(reportData.yearlyData.classBreakdown).map((classData, index) => (
+                              <tr key={index}>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{classData.className}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{classData.totalStudents}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">₹{classData.totalCollection.toLocaleString()}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">₹{classData.totalPending.toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Create Fee Slab Modal */}
         {showCreateModal && (
