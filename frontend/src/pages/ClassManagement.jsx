@@ -663,7 +663,7 @@ const ClassManagement = () => {
                     onChange={(e) => setFormData({ ...formData, maxStudents: parseInt(e.target.value) })}
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
                     min="1"
-                    max="50"
+                    max="200"
                     required
                   />
                 </div>
@@ -885,7 +885,7 @@ const ClassManagement = () => {
                     onChange={(e) => setEditFormData({ ...editFormData, maxStudents: parseInt(e.target.value) })}
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
                     min="1"
-                    max="50"
+                    max="200"
                     required
                   />
                 </div>
