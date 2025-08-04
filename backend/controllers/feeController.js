@@ -842,7 +842,6 @@ const getFeeOverview = async (req, res) => {
     let totalCollection = 0;
     let pendingFees = 0;
     let studentsPaid = 0;
-    let overduePayments = 0;
     let totalAmount = 0;
     let totalPaidAmount = 0;
     let paymentMethods = {
@@ -883,7 +882,6 @@ const getFeeOverview = async (req, res) => {
       // Also check student payment data for this month
       let monthlyCollectedFromStudents = 0;
       let monthlyPending = 0;
-      let monthlyOverdue = 0;
       
       // Get the current month's data from student records
       students.forEach(student => {
@@ -904,26 +902,13 @@ const getFeeOverview = async (req, res) => {
         }
       });
       
-      // Get overdue fees based on installment due dates
-      const overdueFeesForMonth = await Fee.find({
-        dueDate: { $lte: monthDate }, // Due on or before this month
-        status: { $in: ['pending', 'partial'] },
-        $expr: { $gt: ['$amount', '$paidAmount'] } // Where amount > paidAmount
-      });
-      
-      monthlyOverdue = overdueFeesForMonth.reduce((sum, fee) => {
-        const unpaidAmount = fee.amount - (fee.paidAmount || 0);
-        return sum + unpaidAmount;
-      }, 0);
-      
       // Combine both sources of collection data
       const monthlyCollected = monthlyCollectedFromFees + monthlyCollectedFromStudents;
       
       monthlyData.push({
         month: monthName,
         collected: monthlyCollected,
-        pending: monthlyPending,
-        overdue: monthlyOverdue
+        pending: monthlyPending
       });
     }
 
@@ -935,21 +920,23 @@ const getFeeOverview = async (req, res) => {
       totalAmount += studentTotalAmount;
       totalPaidAmount += studentPaidAmount;
       
-      // Calculate actual overdue status using improved logic
-      const actualStatus = await calculateOverdueStatus(student);
+      // Calculate payment status
+      let status = "pending";
+      if (studentPaidAmount >= studentTotalAmount && studentPaidAmount > 0) {
+        status = "paid";
+      } else if (studentPaidAmount === 0) {
+        status = "pending";
+      } else if (studentPaidAmount > 0 && studentPaidAmount < studentTotalAmount) {
+        status = "pending";
+      }
       
       // Count students by payment status
-      switch (actualStatus) {
+      switch (status) {
         case "paid":
           studentsPaid += 1;
           totalCollection += studentPaidAmount; // Add actual amount paid
           break;
         case "pending":
-          pendingFees += (studentTotalAmount - studentPaidAmount);
-          totalCollection += studentPaidAmount; // Add actual amount paid
-          break;
-        case "overdue":
-          overduePayments += 1;
           pendingFees += (studentTotalAmount - studentPaidAmount);
           totalCollection += studentPaidAmount; // Add actual amount paid
           break;
@@ -969,7 +956,6 @@ const getFeeOverview = async (req, res) => {
     const totalCollectionChange = totalCollection > 0 ? "+12.5%" : "0%";
     const pendingFeesChange = pendingFees > 0 ? "-8.2%" : "0%";
     const studentsPaidChange = studentsPaid > 0 ? `+${studentsPaid}` : "0";
-    const overduePaymentsChange = overduePayments > 0 ? `-${overduePayments}` : "0";
 
     // Get real payment methods data from Fee collection
     const realPaymentMethods = await Fee.aggregate([
@@ -1075,21 +1061,32 @@ const getFeeOverview = async (req, res) => {
       totalCollection,
       pendingFees,
       studentsPaid,
-      overduePayments,
       totalStudents: students.length,
       monthlyData: monthlyData.slice(0, 3) // Log first 3 months
     });
     
     // Log individual student status for debugging
     students.forEach((student, index) => {
-      const actualStatus = calculateOverdueStatus(student);
+      const studentTotalAmount = student.feeSlabId?.totalAmount || 0;
+      const studentPaidAmount = student.feesPaid || 0;
+      const balance = studentTotalAmount - studentPaidAmount;
+      
+      let status = "pending";
+      if (studentPaidAmount >= studentTotalAmount && studentPaidAmount > 0) {
+        status = "paid";
+      } else if (studentPaidAmount === 0) {
+        status = "pending";
+      } else if (studentPaidAmount > 0 && studentPaidAmount < studentTotalAmount) {
+        status = "pending";
+      }
+      
       console.log(`Student ${index + 1}:`, {
         name: `${student.firstName} ${student.lastName}`,
-        totalAmount: student.feeSlabId?.totalAmount || 0,
-        paidAmount: student.feesPaid || 0,
-        balance: (student.feeSlabId?.totalAmount || 0) - (student.feesPaid || 0),
+        totalAmount: studentTotalAmount,
+        paidAmount: studentPaidAmount,
+        balance,
         originalStatus: student.paymentStatus,
-        calculatedStatus: actualStatus
+        calculatedStatus: status
       });
     });
     
@@ -1099,8 +1096,7 @@ const getFeeOverview = async (req, res) => {
       console.log('August Calculation:', {
         month: augustData.month,
         collected: augustData.collected,
-        pending: augustData.pending,
-        overdue: augustData.overdue
+        pending: augustData.pending
       });
     }
 
@@ -1120,11 +1116,6 @@ const getFeeOverview = async (req, res) => {
           value: studentsPaid.toString(),
           change: studentsPaidChange,
           changeType: "increase"
-        },
-        overduePayments: {
-          value: overduePayments.toString(),
-          change: overduePaymentsChange,
-          changeType: "decrease"
         }
       },
       monthlyData,
@@ -1157,38 +1148,7 @@ const getPaymentMethodColor = (method) => {
   return colors[method] || "#6B7280";
 };
 
-// Helper function to calculate overdue status
-const calculateOverdueStatus = async (student) => {
-  const studentTotalAmount = student.feeSlabId?.totalAmount || 0;
-  const studentPaidAmount = student.feesPaid || 0;
-  const balance = studentTotalAmount - studentPaidAmount;
-  
-  // If fully paid (no balance remaining)
-  if (balance <= 0 && studentPaidAmount > 0) {
-    return "paid";
-  }
-  
-  // If no payment made at all
-  if (studentPaidAmount === 0) {
-    return "pending";
-  }
-  
-  // Check if any installments are overdue based on due dates
-  const Fee = require('../models/Fee');
-  const overdueInstallments = await Fee.find({
-    studentId: student._id,
-    dueDate: { $lt: new Date() }, // Due date is in the past
-    status: { $in: ['pending', 'partial'] },
-    $expr: { $gt: ['$amount', '$paidAmount'] } // Where amount > paidAmount
-  });
-  
-  if (overdueInstallments.length > 0) {
-    return "overdue";
-  }
-  
-  // Default to pending for partial payments
-  return "pending";
-};
+
 
 module.exports = {
   createFee,

@@ -188,14 +188,6 @@ const FeeManagement = () => {
       icon: CheckCircle,
       color: "primary",
     },
-    {
-      name: "Overdue Payments",
-      value: overviewData.summaryCards.overduePayments.value,
-      change: overviewData.summaryCards.overduePayments.change,
-      changeType: overviewData.summaryCards.overduePayments.changeType,
-      icon: XCircle,
-      color: "error",
-    },
   ];
 
   const monthlyData = overviewData.monthlyData;
@@ -322,8 +314,7 @@ const FeeManagement = () => {
           summary: {
             totalCollection: summaryCards.totalCollection.value,
             pendingFees: summaryCards.pendingFees.value,
-            studentsPaid: summaryCards.studentsPaid.value,
-            overduePayments: summaryCards.overduePayments.value
+            studentsPaid: summaryCards.studentsPaid.value
           },
           monthlyBreakdown: monthlyData,
           charts: {
@@ -391,7 +382,6 @@ const FeeManagement = () => {
               totalStudents: 0,
               paidStudents: 0,
               pendingStudents: 0,
-              overdueStudents: 0,
               totalAmount: 0,
               collectedAmount: 0,
               pendingAmount: 0
@@ -412,13 +402,6 @@ const FeeManagement = () => {
             status = "paid";
           } else if (studentPaidAmount === 0) {
             status = "pending";
-          } else if (studentPaidAmount > 0 && balance > 0) {
-            // Check if overdue based on payment date
-            const lastPaymentDate = student.paymentDate || new Date();
-            const daysSinceLastPayment = Math.floor((new Date() - new Date(lastPaymentDate)) / (1000 * 60 * 60 * 24));
-            if (daysSinceLastPayment > 30) {
-              status = "overdue";
-            }
           }
           
           console.log('Student status:', {
@@ -433,9 +416,6 @@ const FeeManagement = () => {
             classWiseData[className].paidStudents++;
           } else if (status === "pending") {
             classWiseData[className].pendingStudents++;
-            classWiseData[className].pendingAmount += balance;
-          } else if (status === "overdue") {
-            classWiseData[className].overdueStudents++;
             classWiseData[className].pendingAmount += balance;
           }
         }
@@ -486,7 +466,6 @@ const FeeManagement = () => {
           totalStudents: allStudents.length,
           totalCollection: 0,
           totalPending: 0,
-          totalOverdue: 0,
           monthlyBreakdown: [],
           classBreakdown: {},
           paymentMethods: {}
@@ -521,20 +500,7 @@ const FeeManagement = () => {
           }
         }
         
-        // Calculate overdue based on payment dates
-        for (const student of allStudents) {
-          const studentTotalAmount = student.feeSlabId?.totalAmount || 0;
-          const studentPaidAmount = student.feesPaid || 0;
-          const balance = studentTotalAmount - studentPaidAmount;
-          
-          if (studentPaidAmount > 0 && balance > 0) {
-            const lastPaymentDate = student.paymentDate || new Date();
-            const daysSinceLastPayment = Math.floor((new Date() - new Date(lastPaymentDate)) / (1000 * 60 * 60 * 24));
-            if (daysSinceLastPayment > 30) {
-              yearlyData.totalOverdue += balance;
-            }
-          }
-        }
+
         
         // Generate monthly breakdown for the year
         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -543,13 +509,44 @@ const FeeManagement = () => {
           const monthDate = new Date(currentYear, i, 1);
           const nextMonthDate = new Date(currentYear, i + 1, 1);
           
-          // Calculate monthly collection (simplified)
+          // Calculate monthly collection and pending
           let monthlyCollected = 0;
+          let monthlyPending = 0;
+          
           for (const student of allStudents) {
+            const studentTotalAmount = student.feeSlabId?.totalAmount || 0;
+            const studentPaidAmount = student.feesPaid || 0;
+            const balance = studentTotalAmount - studentPaidAmount;
+            
+            // Check if payment was made in this month
             if (student.paymentDate) {
               const paymentDate = new Date(student.paymentDate);
               if (paymentDate >= monthDate && paymentDate < nextMonthDate) {
-                monthlyCollected += student.feesPaid || 0;
+                monthlyCollected += studentPaidAmount;
+              }
+            }
+            
+            // Calculate pending for this month based on fee structure
+            // If student has a fee slab, check if any installments are due in this month
+            if (student.feeSlabId && student.feeSlabId.installments) {
+              for (const installment of student.feeSlabId.installments) {
+                if (installment.dueDate) {
+                  const dueDate = new Date(installment.dueDate);
+                  if (dueDate >= monthDate && dueDate < nextMonthDate) {
+                    // This installment is due in this month
+                    const installmentAmount = installment.amount || 0;
+                    const installmentPaid = installment.paidAmount || 0;
+                    const installmentPending = installmentAmount - installmentPaid;
+                    if (installmentPending > 0) {
+                      monthlyPending += installmentPending;
+                    }
+                  }
+                }
+              }
+            } else {
+              // Fallback: if no fee slab, distribute pending equally
+              if (balance > 0) {
+                monthlyPending += balance / 12;
               }
             }
           }
@@ -557,8 +554,7 @@ const FeeManagement = () => {
           yearlyData.monthlyBreakdown.push({
             month: monthName,
             collected: monthlyCollected,
-            pending: yearlyData.totalPending / 12, // Distribute pending across months
-            overdue: yearlyData.totalOverdue / 12 // Distribute overdue across months
+            pending: monthlyPending
           });
         }
         
@@ -568,9 +564,8 @@ const FeeManagement = () => {
           yearlyData: yearlyData,
           summary: {
             totalStudents: yearlyData.totalStudents,
-            totalCollection: `₹${yearlyData.totalCollection.toLocaleString()}`,
-            totalPending: `₹${yearlyData.totalPending.toLocaleString()}`,
-            totalOverdue: `₹${yearlyData.totalOverdue.toLocaleString()}`,
+            totalCollection: `₹${(yearlyData.totalCollection || 0).toLocaleString()}`,
+            totalPending: `₹${(yearlyData.totalPending || 0).toLocaleString()}`,
             totalClasses: Object.keys(yearlyData.classBreakdown).length
           }
         };
@@ -623,7 +618,7 @@ const FeeManagement = () => {
         const summary = document.createElement('div');
         summary.innerHTML = `
           <h2 style="font-size: 18px; margin: 20px 0; color: #000;">Summary</h2>
-          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px;">
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 30px;">
             <div style="border: 1px solid #ccc; padding: 15px; text-align: center;">
               <h3 style="font-size: 14px; color: #666; margin-bottom: 5px;">Total Collection</h3>
               <p style="font-size: 20px; font-weight: bold; color: #000;">${reportData.summary.totalCollection}</p>
@@ -635,10 +630,6 @@ const FeeManagement = () => {
             <div style="border: 1px solid #ccc; padding: 15px; text-align: center;">
               <h3 style="font-size: 14px; color: #666; margin-bottom: 5px;">Students Paid</h3>
               <p style="font-size: 20px; font-weight: bold; color: #000;">${reportData.summary.studentsPaid}</p>
-            </div>
-            <div style="border: 1px solid #ccc; padding: 15px; text-align: center;">
-              <h3 style="font-size: 14px; color: #666; margin-bottom: 5px;">Overdue Payments</h3>
-              <p style="font-size: 20px; font-weight: bold; color: #000;">${reportData.summary.overduePayments}</p>
             </div>
           </div>
         `;
@@ -654,7 +645,6 @@ const FeeManagement = () => {
                 <th style="border: 1px solid #ccc; padding: 10px; text-align: left; font-weight: bold;">Month</th>
                 <th style="border: 1px solid #ccc; padding: 10px; text-align: left; font-weight: bold;">Collected</th>
                 <th style="border: 1px solid #ccc; padding: 10px; text-align: left; font-weight: bold;">Pending</th>
-                <th style="border: 1px solid #ccc; padding: 10px; text-align: left; font-weight: bold;">Overdue</th>
               </tr>
             </thead>
             <tbody>
@@ -663,7 +653,6 @@ const FeeManagement = () => {
                   <td style="border: 1px solid #ccc; padding: 10px;">${month.month}</td>
                   <td style="border: 1px solid #ccc; padding: 10px; color: #000;">₹${month.collected.toLocaleString()}</td>
                   <td style="border: 1px solid #ccc; padding: 10px; color: #000;">₹${month.pending.toLocaleString()}</td>
-                  <td style="border: 1px solid #ccc; padding: 10px; color: #000;">₹${month.overdue.toLocaleString()}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -708,7 +697,6 @@ const FeeManagement = () => {
                 <th style="border: 1px solid #ccc; padding: 8px; text-align: left; font-weight: bold;">Total Students</th>
                 <th style="border: 1px solid #ccc; padding: 8px; text-align: left; font-weight: bold;">Paid</th>
                 <th style="border: 1px solid #ccc; padding: 8px; text-align: left; font-weight: bold;">Pending</th>
-                <th style="border: 1px solid #ccc; padding: 8px; text-align: left; font-weight: bold;">Overdue</th>
                 <th style="border: 1px solid #ccc; padding: 8px; text-align: left; font-weight: bold;">Total Amount</th>
                 <th style="border: 1px solid #ccc; padding: 8px; text-align: left; font-weight: bold;">Collected</th>
                 <th style="border: 1px solid #ccc; padding: 8px; text-align: left; font-weight: bold;">Pending Amount</th>
@@ -721,7 +709,6 @@ const FeeManagement = () => {
                   <td style="border: 1px solid #ccc; padding: 8px;">${classData.totalStudents}</td>
                   <td style="border: 1px solid #ccc; padding: 8px; color: #000;">${classData.paidStudents}</td>
                   <td style="border: 1px solid #ccc; padding: 8px; color: #000;">${classData.pendingStudents}</td>
-                  <td style="border: 1px solid #ccc; padding: 8px; color: #000;">${classData.overdueStudents}</td>
                   <td style="border: 1px solid #ccc; padding: 8px; color: #000;">₹${classData.totalAmount.toLocaleString()}</td>
                   <td style="border: 1px solid #ccc; padding: 8px; color: #000;">₹${classData.collectedAmount.toLocaleString()}</td>
                   <td style="border: 1px solid #ccc; padding: 8px; color: #000;">₹${classData.pendingAmount.toLocaleString()}</td>
@@ -768,7 +755,6 @@ const FeeManagement = () => {
                 <th style="border: 1px solid #ccc; padding: 6px; text-align: left; font-weight: bold;">Month</th>
                 <th style="border: 1px solid #ccc; padding: 6px; text-align: left; font-weight: bold;">Collected</th>
                 <th style="border: 1px solid #ccc; padding: 6px; text-align: left; font-weight: bold;">Pending</th>
-                <th style="border: 1px solid #ccc; padding: 6px; text-align: left; font-weight: bold;">Overdue</th>
               </tr>
             </thead>
             <tbody>
@@ -777,7 +763,6 @@ const FeeManagement = () => {
                   <td style="border: 1px solid #ccc; padding: 6px;">${month.month}</td>
                   <td style="border: 1px solid #ccc; padding: 6px; color: #000;">₹${month.collected.toLocaleString()}</td>
                   <td style="border: 1px solid #ccc; padding: 6px; color: #000;">₹${month.pending.toLocaleString()}</td>
-                  <td style="border: 1px solid #ccc; padding: 6px; color: #000;">₹${month.overdue.toLocaleString()}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -1479,7 +1464,7 @@ const FeeManagement = () => {
                   ) : (
                 <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
                   {/* Stats Cards */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {feeStats.map((stat, index) => (
                       <motion.div
                         key={stat.name}
@@ -1535,7 +1520,6 @@ const FeeManagement = () => {
                           <Legend />
                           <Line type="monotone" dataKey="collected" stroke="#3B82F6" strokeWidth={2} name="Collected" />
                           <Line type="monotone" dataKey="pending" stroke="#F59E0B" strokeWidth={2} name="Pending" />
-                          <Line type="monotone" dataKey="overdue" stroke="#EF4444" strokeWidth={2} name="Overdue" />
                         </LineChart>
                       </ResponsiveContainer>
                           ) : (
@@ -1885,7 +1869,7 @@ const FeeManagement = () => {
                 {reportType === "monthly" && (
                   <div className="space-y-6">
                     {/* Summary Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="bg-white border border-gray-200 rounded-lg p-4">
                         <h5 className="text-sm font-medium text-gray-500">Total Collection</h5>
                         <p className="text-2xl font-bold text-green-600">{reportData.summary.totalCollection}</p>
@@ -1897,10 +1881,6 @@ const FeeManagement = () => {
                       <div className="bg-white border border-gray-200 rounded-lg p-4">
                         <h5 className="text-sm font-medium text-gray-500">Students Paid</h5>
                         <p className="text-2xl font-bold text-blue-600">{reportData.summary.studentsPaid}</p>
-                      </div>
-                      <div className="bg-white border border-gray-200 rounded-lg p-4">
-                        <h5 className="text-sm font-medium text-gray-500">Overdue Payments</h5>
-                        <p className="text-2xl font-bold text-red-600">{reportData.summary.overduePayments}</p>
                       </div>
                     </div>
 
@@ -1914,7 +1894,6 @@ const FeeManagement = () => {
                               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month</th>
                               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Collected</th>
                               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pending</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Overdue</th>
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
@@ -1923,7 +1902,6 @@ const FeeManagement = () => {
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{month.month}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">₹{month.collected.toLocaleString()}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">₹{month.pending.toLocaleString()}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">₹{month.overdue.toLocaleString()}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -1969,7 +1947,6 @@ const FeeManagement = () => {
                               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Students</th>
                               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paid</th>
                               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pending</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Overdue</th>
                               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Amount</th>
                               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Collected</th>
                               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pending Amount</th>
@@ -1982,7 +1959,6 @@ const FeeManagement = () => {
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{classData.totalStudents}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">{classData.paidStudents}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">{classData.pendingStudents}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">{classData.overdueStudents}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₹{classData.totalAmount.toLocaleString()}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">₹{classData.collectedAmount.toLocaleString()}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">₹{classData.pendingAmount.toLocaleString()}</td>
@@ -2030,7 +2006,6 @@ const FeeManagement = () => {
                               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month</th>
                               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Collected</th>
                               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pending</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Overdue</th>
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
@@ -2039,7 +2014,6 @@ const FeeManagement = () => {
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{month.month}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">₹{month.collected.toLocaleString()}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">₹{month.pending.toLocaleString()}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">₹{month.overdue.toLocaleString()}</td>
                               </tr>
                             ))}
                           </tbody>
