@@ -65,6 +65,7 @@ const ClassManagement = () => {
     maxStudents: 40,
     classroom: "",
     isActive: true,
+    classTeacher: "",
   });
 
   const [assignTeacherData, setAssignTeacherData] = useState({
@@ -252,6 +253,7 @@ const ClassManagement = () => {
           maxStudents: 70,
           classroom: "",
           isActive: true,
+          classTeacher: "",
         });
         fetchClasses();
       } else {
@@ -268,6 +270,7 @@ const ClassManagement = () => {
       maxStudents: classItem.maxStudents || 70,
       classroom: classItem.classroom || "",
       isActive: classItem.isActive !== false,
+      classTeacher: classItem.classTeacher?._id || "",
     });
     setShowEditModal(true);
   };
@@ -478,9 +481,18 @@ const ClassManagement = () => {
                         {getOrdinalSuffix(classItem.grade)} Class - {classItem.division}
                       </h3>
                       <p className="text-sm text-gray-600">
-                        {classItem.classTeacher ? 
-                  (classItem.classTeacher.name || classItem.classTeacher.fullName || [classItem.classTeacher.firstName, classItem.classTeacher.middleName, classItem.classTeacher.lastName].filter(Boolean).join(" ") || classItem.classTeacher.email) 
-                  : "No teacher assigned"}
+                        {classItem.classTeacher
+                          ? classItem.classTeacher.name ||
+                            classItem.classTeacher.fullName ||
+                            [
+                              classItem.classTeacher.firstName,
+                              classItem.classTeacher.middleName,
+                              classItem.classTeacher.lastName,
+                            ]
+                              .filter(Boolean)
+                              .join(" ") ||
+                            classItem.classTeacher.email
+                          : "No teacher assigned"}
                       </p>
                     </div>
                   </div>
@@ -744,7 +756,10 @@ const ClassManagement = () => {
                     ) : (
                       availableTeachers.map((teacher) => (
                         <option key={teacher._id} value={teacher._id}>
-                          {teacher.name || teacher.fullName || [teacher.firstName, teacher.middleName, teacher.lastName].filter(Boolean).join(" ") || teacher.email}
+                          {teacher.name ||
+                            teacher.fullName ||
+                            [teacher.firstName, teacher.middleName, teacher.lastName].filter(Boolean).join(" ") ||
+                            teacher.email}
                           {teacher.isClassTeacher
                             ? ` - Class Teacher of ${teacher.currentClassAssignment.className} (${
                                 teacher.totalAssignments
@@ -775,8 +790,13 @@ const ClassManagement = () => {
                             <div>
                               <p className="text-sm font-medium text-gray-700">Name</p>
                               <p className="text-sm text-gray-900">
-                          {selectedTeacher.name || selectedTeacher.fullName || [selectedTeacher.firstName, selectedTeacher.middleName, selectedTeacher.lastName].filter(Boolean).join(" ") || selectedTeacher.email}
-                        </p>
+                                {selectedTeacher.name ||
+                                  selectedTeacher.fullName ||
+                                  [selectedTeacher.firstName, selectedTeacher.middleName, selectedTeacher.lastName]
+                                    .filter(Boolean)
+                                    .join(" ") ||
+                                  selectedTeacher.email}
+                              </p>
                             </div>
                             <div>
                               <p className="text-sm font-medium text-gray-700">Email</p>
@@ -899,6 +919,41 @@ const ClassManagement = () => {
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
                     placeholder="e.g., Room 101"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Class Teacher</label>
+                  <select
+                    value={editFormData.classTeacher}
+                    onChange={(e) => setEditFormData({ ...editFormData, classTeacher: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
+                  >
+                    <option value="">No teacher assigned</option>
+                    {availableTeachers.length === 0 ? (
+                      <option value="" disabled>
+                        No teachers available
+                      </option>
+                    ) : (
+                      availableTeachers.map((teacher) => (
+                        <option key={teacher._id} value={teacher._id}>
+                          {teacher.name ||
+                            teacher.fullName ||
+                            [teacher.firstName, teacher.middleName, teacher.lastName].filter(Boolean).join(" ") ||
+                            teacher.email}
+                          {teacher.isClassTeacher
+                            ? ` - Class Teacher of ${teacher.currentClassAssignment.className} (${
+                                teacher.totalAssignments
+                              } class${teacher.totalAssignments > 1 ? "es" : ""})`
+                            : " - Available"}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  {availableTeachers.length === 0 && (
+                    <p className="text-sm text-red-600 mt-2">
+                      No teachers found. Please create teachers first or check if teachers are approved.
+                    </p>
+                  )}
                 </div>
 
                 <div>

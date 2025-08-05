@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   User,
@@ -21,38 +21,68 @@ import {
 import { toast } from "react-toastify";
 import appConfig from "../config/environment";
 
-const StudentDetailModal = ({ 
-  student, 
-  isOpen, 
-  onClose, 
-  onEdit, 
-  onRefresh 
-}) => {
+const StudentDetailModal = ({ student, isOpen, onClose, onEdit, onRefresh }) => {
   const [isDeleting, setIsDeleting] = useState(false);
+  const [calculatedInstallments, setCalculatedInstallments] = useState([]);
+
+  // Calculate installments with concession when component mounts or student changes
+  useEffect(() => {
+    if (student?.feeSlabId?._id && student?.concessionAmount > 0) {
+      calculateInstallments(student.feeSlabId._id, student.concessionAmount);
+    } else {
+      setCalculatedInstallments([]);
+    }
+  }, [student]);
+
+  // Calculate installments with concession
+  const calculateInstallments = async (slabId, concessionAmount) => {
+    if (!slabId || !concessionAmount || concessionAmount <= 0) {
+      setCalculatedInstallments([]);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${appConfig.API_BASE_URL}/fee-slabs/${slabId}/calculate-concession`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ concessionAmount: parseFloat(concessionAmount) }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setCalculatedInstallments(data.data.installments);
+      }
+    } catch (error) {
+      console.error("Error calculating concession:", error);
+    }
+  };
 
   if (!student) return null;
 
   const getStudentName = () => {
     if (student.firstName && student.lastName) {
-      return `${student.firstName} ${student.middleName ? student.middleName + ' ' : ''}${student.lastName}`.trim();
+      return `${student.firstName} ${student.middleName ? student.middleName + " " : ""}${student.lastName}`.trim();
     }
-    return student.name || 'N/A';
+    return student.name || "N/A";
   };
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'active':
-        return 'bg-green-100 text-green-800';
-      case 'inactive':
-        return 'bg-red-100 text-red-800';
-      case 'suspended':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'graduated':
-        return 'bg-blue-100 text-blue-800';
-      case 'transferred':
-        return 'bg-purple-100 text-purple-800';
+      case "active":
+        return "bg-green-100 text-green-800";
+      case "inactive":
+        return "bg-red-100 text-red-800";
+      case "suspended":
+        return "bg-yellow-100 text-yellow-800";
+      case "graduated":
+        return "bg-blue-100 text-blue-800";
+      case "transferred":
+        return "bg-purple-100 text-purple-800";
       default:
-        return 'bg-gray-100 text-gray-800';
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -102,12 +132,14 @@ const StudentDetailModal = ({
             <div>
               <h2 className="text-2xl font-bold text-gray-900">{getStudentName()}</h2>
               <div className="flex items-center gap-2 mt-1">
-                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(student.status)}`}>
-                  {student.status || 'active'}
+                <span
+                  className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(
+                    student.status
+                  )}`}
+                >
+                  {student.status || "active"}
                 </span>
-                {student.studentId && (
-                  <span className="text-sm text-gray-500">ID: {student.studentId}</span>
-                )}
+                {student.studentId && <span className="text-sm text-gray-500">ID: {student.studentId}</span>}
               </div>
             </div>
           </div>
@@ -125,12 +157,9 @@ const StudentDetailModal = ({
               className="flex items-center px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium transition-colors disabled:opacity-50"
             >
               <Trash2 className="w-4 h-4 mr-2" />
-              {isDeleting ? 'Deleting...' : 'Delete'}
+              {isDeleting ? "Deleting..." : "Delete"}
             </button>
-            <button
-              onClick={onClose}
-              className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-            >
+            <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
               <X className="w-6 h-6" />
             </button>
           </div>
@@ -155,24 +184,24 @@ const StudentDetailModal = ({
                   <div className="flex justify-between">
                     <span className="text-gray-600">Date of Birth:</span>
                     <span className="font-medium">
-                      {student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString() : 'N/A'}
+                      {student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString() : "N/A"}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Gender:</span>
-                    <span className="font-medium capitalize">{student.gender || 'N/A'}</span>
+                    <span className="font-medium capitalize">{student.gender || "N/A"}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Roll Number:</span>
-                    <span className="font-medium">{student.rollNumber || 'N/A'}</span>
+                    <span className="font-medium">{student.rollNumber || "N/A"}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Blood Group:</span>
-                    <span className="font-medium">{student.bloodGroup || 'N/A'}</span>
+                    <span className="font-medium">{student.bloodGroup || "N/A"}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Nationality:</span>
-                    <span className="font-medium">{student.nationality || 'N/A'}</span>
+                    <span className="font-medium">{student.nationality || "N/A"}</span>
                   </div>
                 </div>
               </div>
@@ -186,11 +215,11 @@ const StudentDetailModal = ({
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Email:</span>
-                    <span className="font-medium">{student.email || 'N/A'}</span>
+                    <span className="font-medium">{student.email || "N/A"}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Mobile Number:</span>
-                    <span className="font-medium">{student.mobileNumber || student.phone || 'N/A'}</span>
+                    <span className="font-medium">{student.mobileNumber || student.phone || "N/A"}</span>
                   </div>
                   {student.optionalMobileNumber && (
                     <div className="flex justify-between">
@@ -201,7 +230,7 @@ const StudentDetailModal = ({
                   <div className="flex justify-between">
                     <span className="text-gray-600">Address:</span>
                     <span className="font-medium text-right max-w-xs">
-                      {student.currentAddress || student.address?.street || 'N/A'}
+                      {student.currentAddress || student.address?.street || "N/A"}
                     </span>
                   </div>
                 </div>
@@ -216,7 +245,7 @@ const StudentDetailModal = ({
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Mother's Name:</span>
-                    <span className="font-medium">{student.mothersName || student.mother?.name || 'N/A'}</span>
+                    <span className="font-medium">{student.mothersName || student.mother?.name || "N/A"}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Parent's Mobile:</span>
@@ -249,25 +278,25 @@ const StudentDetailModal = ({
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Student ID:</span>
-                    <span className="font-medium">{student.studentId || 'N/A'}</span>
+                    <span className="font-medium">{student.studentId || "N/A"}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Grade:</span>
-                    <span className="font-medium">{student.grade || student.currentGrade || 'N/A'}</span>
+                    <span className="font-medium">{student.grade || student.currentGrade || "N/A"}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Academic Year:</span>
-                    <span className="font-medium">{student.academicYear || 'N/A'}</span>
+                    <span className="font-medium">{student.academicYear || "N/A"}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Admission Date:</span>
                     <span className="font-medium">
-                      {student.admissionDate ? new Date(student.admissionDate).toLocaleDateString() : 'N/A'}
+                      {student.admissionDate ? new Date(student.admissionDate).toLocaleDateString() : "N/A"}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Fee Category:</span>
-                    <span className="font-medium capitalize">{student.feeCategory || 'regular'}</span>
+                    <span className="font-medium capitalize">{student.feeCategory || "regular"}</span>
                   </div>
                   {student.feeDiscount > 0 && (
                     <div className="flex justify-between">
@@ -287,22 +316,26 @@ const StudentDetailModal = ({
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Fee Structure:</span>
-                    <span className="font-medium capitalize">{student.feeStructure || 'regular'}</span>
+                    <span className="font-medium capitalize">{student.feeStructure || "regular"}</span>
                   </div>
                   {student.feeSlabId && (
                     <div className="flex justify-between">
                       <span className="text-gray-600">Fee Slab:</span>
-                      <span className="font-medium">{student.feeSlabId?.slabName || 'N/A'}</span>
+                      <span className="font-medium">{student.feeSlabId?.slabName || "N/A"}</span>
                     </div>
                   )}
                   <div className="flex justify-between">
                     <span className="text-gray-600">Payment Status:</span>
-                    <span className={`font-medium capitalize px-2 py-1 rounded-full text-xs ${
-                      student.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
-                      student.paymentStatus === 'overdue' ? 'bg-red-100 text-red-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {student.paymentStatus || 'pending'}
+                    <span
+                      className={`font-medium capitalize px-2 py-1 rounded-full text-xs ${
+                        student.paymentStatus === "paid"
+                          ? "bg-green-100 text-green-800"
+                          : student.paymentStatus === "overdue"
+                          ? "bg-red-100 text-red-800"
+                          : "bg-yellow-100 text-yellow-800"
+                      }`}
+                    >
+                      {student.paymentStatus || "pending"}
                     </span>
                   </div>
                   {student.concessionAmount > 0 && (
@@ -329,7 +362,9 @@ const StudentDetailModal = ({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Remaining Amount:</span>
-                    <span className="font-medium">₹{((student.feeSlabId?.totalAmount || 0) - (student.feesPaid || 0)).toLocaleString()}</span>
+                    <span className="font-medium">
+                      ₹{((student.feeSlabId?.totalAmount || 0) - (student.feesPaid || 0)).toLocaleString()}
+                    </span>
                   </div>
                   {student.paymentDate && (
                     <div className="flex justify-between">
@@ -340,7 +375,7 @@ const StudentDetailModal = ({
                   {student.paymentMethod && (
                     <div className="flex justify-between">
                       <span className="text-gray-600">Payment Method:</span>
-                      <span className="font-medium capitalize">{student.paymentMethod.replace('_', ' ')}</span>
+                      <span className="font-medium capitalize">{student.paymentMethod.replace("_", " ")}</span>
                     </div>
                   )}
                   {student.transactionId && (
@@ -350,6 +385,39 @@ const StudentDetailModal = ({
                     </div>
                   )}
                 </div>
+
+                {/* Installment Details */}
+                {student.feeSlabId && (
+                  <div className="mt-4">
+                    <h4 className="text-md font-medium text-gray-800 mb-3">Installment Structure</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {(calculatedInstallments.length > 0
+                        ? calculatedInstallments
+                        : student.feeSlabId.installments || []
+                      ).map((installment, index) => (
+                        <div key={index} className="bg-white p-3 rounded border">
+                          <div className="font-medium text-sm">
+                            Installment {installment.installmentNumber || index + 1}
+                          </div>
+                          <div className="text-lg font-bold text-green-600">₹{installment.amount.toLocaleString()}</div>
+                          <div className="text-xs text-gray-500">
+                            {installment.percentage
+                              ? `${installment.percentage}%`
+                              : `${((installment.amount / (student.feeSlabId.totalAmount || 1)) * 100).toFixed(1)}%`}
+                          </div>
+                          <div className="text-xs text-gray-600">
+                            Due: {new Date(installment.dueDate).toLocaleDateString()}
+                          </div>
+                          {installment.discountAmount && (
+                            <div className="text-xs text-blue-600">
+                              Saved: ₹{installment.discountAmount.toLocaleString()}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Transport Information */}
@@ -430,16 +498,17 @@ const StudentDetailModal = ({
                     Documents
                   </h3>
                   <div className="space-y-2">
-                    {Object.entries(student.documents).map(([key, value]) => (
-                      value && (
-                        <div key={key} className="flex justify-between">
-                          <span className="text-gray-600 capitalize">
-                            {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}:
-                          </span>
-                          <span className="font-medium text-green-600">✓ Available</span>
-                        </div>
-                      )
-                    ))}
+                    {Object.entries(student.documents).map(
+                      ([key, value]) =>
+                        value && (
+                          <div key={key} className="flex justify-between">
+                            <span className="text-gray-600 capitalize">
+                              {key.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase())}:
+                            </span>
+                            <span className="font-medium text-green-600">✓ Available</span>
+                          </div>
+                        )
+                    )}
                   </div>
                 </div>
               )}
@@ -459,4 +528,4 @@ const StudentDetailModal = ({
   );
 };
 
-export default StudentDetailModal; 
+export default StudentDetailModal;

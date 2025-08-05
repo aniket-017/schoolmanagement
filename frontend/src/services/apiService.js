@@ -45,7 +45,7 @@ class ApiService {
   setCache(key, data) {
     cache.set(key, {
       data,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     });
   }
 
@@ -246,6 +246,94 @@ class ApiService {
     },
   };
 
+  // Students APIs
+  students = {
+    getAll: async (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await fetch(`${this.baseURL}/students?${queryString}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getById: async (id) => {
+      const response = await fetch(`${this.baseURL}/students/${id}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    create: async (data) => {
+      const response = await fetch(`${this.baseURL}/students`, {
+        method: "POST",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(data),
+      });
+      return this.handleResponse(response);
+    },
+
+    update: async (id, data) => {
+      const response = await fetch(`${this.baseURL}/students/${id}`, {
+        method: "PUT",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(data),
+      });
+      return this.handleResponse(response);
+    },
+
+    delete: async (id) => {
+      const response = await fetch(`${this.baseURL}/students/${id}`, {
+        method: "DELETE",
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+  };
+
+  // Users APIs (for teachers and staff)
+  users = {
+    getAll: async (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await fetch(`${this.baseURL}/users?${queryString}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getById: async (id) => {
+      const response = await fetch(`${this.baseURL}/users/${id}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    create: async (data) => {
+      const response = await fetch(`${this.baseURL}/users`, {
+        method: "POST",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(data),
+      });
+      return this.handleResponse(response);
+    },
+
+    update: async (id, data) => {
+      const response = await fetch(`${this.baseURL}/users/${id}`, {
+        method: "PUT",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(data),
+      });
+      return this.handleResponse(response);
+    },
+
+    delete: async (id) => {
+      const response = await fetch(`${this.baseURL}/users/${id}`, {
+        method: "DELETE",
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+  };
+
   // Classes APIs
   classes = {
     getAll: async (params = {}) => {
@@ -371,7 +459,7 @@ class ApiService {
       });
       return this.handleResponse(response);
     },
-    
+
     getStudentCalendar: async () => {
       const response = await fetch(`${this.baseURL}/annual-calendar`, {
         headers: this.getAuthHeaders(),

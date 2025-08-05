@@ -18,13 +18,7 @@ import {
 import { toast } from "react-toastify";
 import appConfig from "../config/environment";
 
-const StudentEditModal = ({ 
-  student, 
-  isOpen, 
-  onClose, 
-  onSave, 
-  onRefresh 
-}) => {
+const StudentEditModal = ({ student, isOpen, onClose, onSave, onRefresh }) => {
   const [formData, setFormData] = useState({
     firstName: "",
     middleName: "",
@@ -47,7 +41,7 @@ const StudentEditModal = ({
     pickupPoint: "",
     dropPoint: "",
     remarks: "",
-    
+
     // Fee Slab fields
     feeSlabId: "",
     feeStructure: "",
@@ -64,6 +58,8 @@ const StudentEditModal = ({
   const [isSaving, setIsSaving] = useState(false);
   const [feeSlabs, setFeeSlabs] = useState([]);
   const [loadingFeeSlabs, setLoadingFeeSlabs] = useState(false);
+  const [selectedSlab, setSelectedSlab] = useState(null);
+  const [calculatedInstallments, setCalculatedInstallments] = useState([]);
 
   useEffect(() => {
     if (student) {
@@ -74,7 +70,7 @@ const StudentEditModal = ({
         email: student.email || "",
         mobileNumber: student.mobileNumber || student.phone || "",
         optionalMobileNumber: student.optionalMobileNumber || "",
-        dateOfBirth: student.dateOfBirth ? new Date(student.dateOfBirth).toISOString().split('T')[0] : "",
+        dateOfBirth: student.dateOfBirth ? new Date(student.dateOfBirth).toISOString().split("T")[0] : "",
         gender: student.gender || "",
         currentAddress: student.currentAddress || student.address?.street || "",
         mothersName: student.mothersName || student.mother?.name || "",
@@ -89,7 +85,7 @@ const StudentEditModal = ({
         pickupPoint: student.pickupPoint || "",
         dropPoint: student.dropPoint || "",
         remarks: student.remarks || "",
-        
+
         // Fee Slab fields
         feeSlabId: student.feeSlabId || "",
         feeStructure: student.feeStructure || "",
@@ -98,13 +94,26 @@ const StudentEditModal = ({
         lateFees: student.lateFees || 0,
         scholarshipDetails: student.scholarshipDetails || "",
         // Payment fields
-        paymentDate: student.paymentDate ? new Date(student.paymentDate).toISOString().split('T')[0] : "",
+        paymentDate: student.paymentDate ? new Date(student.paymentDate).toISOString().split("T")[0] : "",
         paymentMethod: student.paymentMethod || "",
         transactionId: student.transactionId || "",
         feesPaid: student.feesPaid || 0,
       });
     }
   }, [student]);
+
+  // Set selected slab when fee slabs are loaded or fee slab ID changes
+  useEffect(() => {
+    if (formData.feeSlabId && feeSlabs.length > 0) {
+      const slab = feeSlabs.find((s) => s._id === formData.feeSlabId);
+      setSelectedSlab(slab);
+
+      // Calculate installments if concession amount exists
+      if (formData.concessionAmount && formData.concessionAmount > 0) {
+        calculateInstallments(formData.feeSlabId, formData.concessionAmount);
+      }
+    }
+  }, [formData.feeSlabId, feeSlabs, formData.concessionAmount]);
 
   // Fetch fee slabs
   const fetchFeeSlabs = async () => {
@@ -122,6 +131,32 @@ const StudentEditModal = ({
       console.error("Error fetching fee slabs:", error);
     } finally {
       setLoadingFeeSlabs(false);
+    }
+  };
+
+  // Calculate installments with concession
+  const calculateInstallments = async (slabId, concessionAmount) => {
+    if (!slabId || !concessionAmount || concessionAmount <= 0) {
+      setCalculatedInstallments([]);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${appConfig.API_BASE_URL}/fee-slabs/${slabId}/calculate-concession`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ concessionAmount: parseFloat(concessionAmount) }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setCalculatedInstallments(data.data.installments);
+      }
+    } catch (error) {
+      console.error("Error calculating concession:", error);
     }
   };
 
@@ -187,10 +222,32 @@ const StudentEditModal = ({
   };
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
+
+    // Handle fee slab change
+    if (field === "feeSlabId") {
+      const slab = feeSlabs.find((s) => s._id === value);
+      setSelectedSlab(slab);
+
+      // Calculate installments if concession amount exists
+      if (formData.concessionAmount && formData.concessionAmount > 0) {
+        calculateInstallments(value, formData.concessionAmount);
+      } else {
+        setCalculatedInstallments([]);
+      }
+    }
+
+    // Handle concession amount change
+    if (field === "concessionAmount") {
+      if (formData.feeSlabId && value > 0) {
+        calculateInstallments(formData.feeSlabId, value);
+      } else {
+        setCalculatedInstallments([]);
+      }
+    }
   };
 
   if (!student) return null;
@@ -215,17 +272,15 @@ const StudentEditModal = ({
             <div>
               <h2 className="text-xl font-bold text-gray-900">Edit Student</h2>
               <p className="text-sm text-gray-500">
-                {student.firstName && student.lastName 
-                  ? `${student.firstName} ${student.middleName ? student.middleName + ' ' : ''}${student.lastName}`.trim()
-                  : student.name || 'Student'
-                }
+                {student.firstName && student.lastName
+                  ? `${student.firstName} ${student.middleName ? student.middleName + " " : ""}${
+                      student.lastName
+                    }`.trim()
+                  : student.name || "Student"}
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-          >
+          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
             <X className="w-6 h-6" />
           </button>
         </div>
@@ -249,7 +304,7 @@ const StudentEditModal = ({
                         type="text"
                         required
                         value={formData.firstName}
-                        onChange={(e) => handleInputChange('firstName', e.target.value)}
+                        onChange={(e) => handleInputChange("firstName", e.target.value)}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
@@ -258,7 +313,7 @@ const StudentEditModal = ({
                       <input
                         type="text"
                         value={formData.middleName}
-                        onChange={(e) => handleInputChange('middleName', e.target.value)}
+                        onChange={(e) => handleInputChange("middleName", e.target.value)}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
@@ -268,29 +323,27 @@ const StudentEditModal = ({
                         type="text"
                         required
                         value={formData.lastName}
-                        onChange={(e) => handleInputChange('lastName', e.target.value)}
+                        onChange={(e) => handleInputChange("lastName", e.target.value)}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                   </div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
                       <input
                         type="date"
-                        required
                         value={formData.dateOfBirth}
-                        onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+                        onChange={(e) => handleInputChange("dateOfBirth", e.target.value)}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Gender *</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
                       <select
-                        required
                         value={formData.gender}
-                        onChange={(e) => handleInputChange('gender', e.target.value)}
+                        onChange={(e) => handleInputChange("gender", e.target.value)}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
                         <option value="">Select Gender</option>
@@ -307,7 +360,7 @@ const StudentEditModal = ({
                       <input
                         type="text"
                         value={formData.bloodGroup}
-                        onChange={(e) => handleInputChange('bloodGroup', e.target.value)}
+                        onChange={(e) => handleInputChange("bloodGroup", e.target.value)}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="e.g., A+, B-, O+"
                       />
@@ -317,7 +370,7 @@ const StudentEditModal = ({
                       <input
                         type="text"
                         value={formData.nationality}
-                        onChange={(e) => handleInputChange('nationality', e.target.value)}
+                        onChange={(e) => handleInputChange("nationality", e.target.value)}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
@@ -328,7 +381,7 @@ const StudentEditModal = ({
                     <input
                       type="text"
                       value={formData.religion}
-                      onChange={(e) => handleInputChange('religion', e.target.value)}
+                      onChange={(e) => handleInputChange("religion", e.target.value)}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
@@ -348,7 +401,7 @@ const StudentEditModal = ({
                       <input
                         type="email"
                         value={formData.email}
-                        onChange={(e) => handleInputChange('email', e.target.value)}
+                        onChange={(e) => handleInputChange("email", e.target.value)}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
@@ -361,7 +414,7 @@ const StudentEditModal = ({
                         title="Mobile number must be exactly 10 digits and cannot start with 0"
                         placeholder="Enter 10 digit mobile number"
                         value={formData.mobileNumber}
-                        onChange={(e) => handleInputChange('mobileNumber', e.target.value)}
+                        onChange={(e) => handleInputChange("mobileNumber", e.target.value)}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
@@ -373,7 +426,7 @@ const StudentEditModal = ({
                         title="Mobile number must be exactly 10 digits and cannot start with 0"
                         placeholder="Enter 10 digit mobile number (optional)"
                         value={formData.optionalMobileNumber}
-                        onChange={(e) => handleInputChange('optionalMobileNumber', e.target.value)}
+                        onChange={(e) => handleInputChange("optionalMobileNumber", e.target.value)}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
@@ -384,7 +437,7 @@ const StudentEditModal = ({
                     <textarea
                       required
                       value={formData.currentAddress}
-                      onChange={(e) => handleInputChange('currentAddress', e.target.value)}
+                      onChange={(e) => handleInputChange("currentAddress", e.target.value)}
                       rows={3}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
@@ -406,11 +459,10 @@ const StudentEditModal = ({
                         type="text"
                         required
                         value={formData.mothersName}
-                        onChange={(e) => handleInputChange('mothersName', e.target.value)}
+                        onChange={(e) => handleInputChange("mothersName", e.target.value)}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
-
                   </div>
                 </div>
               </div>
@@ -431,7 +483,7 @@ const StudentEditModal = ({
                       type="text"
                       required
                       value={formData.rollNumber}
-                      onChange={(e) => handleInputChange('rollNumber', e.target.value)}
+                      onChange={(e) => handleInputChange("rollNumber", e.target.value)}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
@@ -441,7 +493,7 @@ const StudentEditModal = ({
                       <label className="block text-sm font-medium text-gray-700 mb-1">Fee Category</label>
                       <select
                         value={formData.feeCategory}
-                        onChange={(e) => handleInputChange('feeCategory', e.target.value)}
+                        onChange={(e) => handleInputChange("feeCategory", e.target.value)}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
                         <option value="regular">Regular</option>
@@ -456,7 +508,7 @@ const StudentEditModal = ({
                         min="0"
                         max="100"
                         value={formData.feeDiscount}
-                        onChange={(e) => handleInputChange('feeDiscount', parseInt(e.target.value) || 0)}
+                        onChange={(e) => handleInputChange("feeDiscount", parseInt(e.target.value) || 0)}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
@@ -476,7 +528,7 @@ const StudentEditModal = ({
                       <label className="block text-sm font-medium text-gray-700 mb-1">Fee Structure</label>
                       <select
                         value={formData.feeStructure}
-                        onChange={(e) => handleInputChange('feeStructure', e.target.value)}
+                        onChange={(e) => handleInputChange("feeStructure", e.target.value)}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
                         <option value="">Select Fee Structure (Optional)</option>
@@ -492,16 +544,23 @@ const StudentEditModal = ({
                       </label>
                       <select
                         value={formData.feeSlabId}
-                        onChange={(e) => handleInputChange('feeSlabId', e.target.value)}
+                        onChange={(e) => handleInputChange("feeSlabId", e.target.value)}
                         disabled={loadingFeeSlabs || formData.feeStructure === "free" || !formData.feeStructure}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
                       >
                         <option value="">
-                          {loadingFeeSlabs ? "Loading slabs..." : !formData.feeStructure ? "Select fee structure first" : formData.feeStructure === "free" ? "Not applicable" : "Select Fee Slab (Optional)"}
+                          {loadingFeeSlabs
+                            ? "Loading slabs..."
+                            : !formData.feeStructure
+                            ? "Select fee structure first"
+                            : formData.feeStructure === "free"
+                            ? "Not applicable"
+                            : "Select Fee Slab (Optional)"}
                         </option>
                         {feeSlabs.map((slab) => (
                           <option key={slab._id} value={slab._id}>
-                            {slab.slabName} - ₹{slab.totalAmount.toLocaleString()} ({slab.installments.length} installments)
+                            {slab.slabName} - ₹{slab.totalAmount.toLocaleString()} ({slab.installments.length}{" "}
+                            installments)
                           </option>
                         ))}
                       </select>
@@ -513,7 +572,7 @@ const StudentEditModal = ({
                       <label className="block text-sm font-medium text-gray-700 mb-1">Payment Status</label>
                       <select
                         value={formData.paymentStatus}
-                        onChange={(e) => handleInputChange('paymentStatus', e.target.value)}
+                        onChange={(e) => handleInputChange("paymentStatus", e.target.value)}
                         disabled={!formData.feeStructure}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
                       >
@@ -527,12 +586,18 @@ const StudentEditModal = ({
                       <input
                         type="number"
                         value={formData.concessionAmount}
-                        onChange={(e) => handleInputChange('concessionAmount', parseFloat(e.target.value) || 0)}
+                        onChange={(e) => handleInputChange("concessionAmount", parseFloat(e.target.value) || 0)}
                         min="0"
+                        max={selectedSlab ? selectedSlab.totalAmount : undefined}
                         placeholder="0"
                         disabled={formData.feeStructure === "free"}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
                       />
+                      {selectedSlab && formData.concessionAmount > 0 && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {((formData.concessionAmount / selectedSlab.totalAmount) * 100).toFixed(1)}% discount
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -542,7 +607,7 @@ const StudentEditModal = ({
                       <input
                         type="number"
                         value={formData.lateFees}
-                        onChange={(e) => handleInputChange('lateFees', parseFloat(e.target.value) || 0)}
+                        onChange={(e) => handleInputChange("lateFees", parseFloat(e.target.value) || 0)}
                         min="0"
                         placeholder="0"
                         disabled={!formData.feeStructure}
@@ -555,7 +620,7 @@ const StudentEditModal = ({
                     <label className="block text-sm font-medium text-gray-700 mb-1">Scholarship Details</label>
                     <textarea
                       value={formData.scholarshipDetails}
-                      onChange={(e) => handleInputChange('scholarshipDetails', e.target.value)}
+                      onChange={(e) => handleInputChange("scholarshipDetails", e.target.value)}
                       rows={3}
                       disabled={!formData.feeStructure}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
@@ -563,13 +628,112 @@ const StudentEditModal = ({
                     />
                   </div>
 
+                  {/* Fee Calculation Preview */}
+                  {formData.feeStructure && (
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h4 className="text-md font-medium text-gray-800 mb-3">Fee Summary</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+                        <div className="bg-white p-3 rounded border">
+                          <div className="text-gray-600">Fee Structure</div>
+                          <div className="font-medium capitalize">{formData.feeStructure}</div>
+                        </div>
+                        <div className="bg-white p-3 rounded border">
+                          <div className="text-gray-600">Fee Slab</div>
+                          <div className="font-medium">{selectedSlab ? selectedSlab.slabName : "Not selected"}</div>
+                        </div>
+                        <div className="bg-white p-3 rounded border">
+                          <div className="text-gray-600">Total Amount</div>
+                          <div className="font-medium">
+                            {selectedSlab ? `₹${selectedSlab.totalAmount.toLocaleString()}` : "N/A"}
+                          </div>
+                        </div>
+                        <div className="bg-white p-3 rounded border">
+                          <div className="text-gray-600">Status</div>
+                          <div
+                            className={`font-medium capitalize ${
+                              formData.paymentStatus === "paid"
+                                ? "text-green-600"
+                                : formData.paymentStatus === "overdue"
+                                ? "text-red-600"
+                                : "text-yellow-600"
+                            }`}
+                          >
+                            {formData.paymentStatus || "Pending"}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Concession Applied */}
+                      {formData.concessionAmount > 0 && selectedSlab && (
+                        <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-200">
+                          <h5 className="font-medium text-blue-800 mb-2">Concession Applied</h5>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                            <div>
+                              <span className="text-blue-600">Original Amount:</span>
+                              <span className="font-medium ml-2">₹{selectedSlab.totalAmount.toLocaleString()}</span>
+                            </div>
+                            <div>
+                              <span className="text-blue-600">Concession:</span>
+                              <span className="font-medium ml-2">
+                                ₹{parseInt(formData.concessionAmount).toLocaleString()}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-blue-600">Final Amount:</span>
+                              <span className="font-medium ml-2">
+                                ₹{(selectedSlab.totalAmount - (formData.concessionAmount || 0)).toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Installment Details */}
+                      {selectedSlab && (
+                        <div className="mt-4">
+                          <h5 className="font-medium text-gray-800 mb-2">
+                            Installment Structure {calculatedInstallments.length > 0 ? "(With Concession)" : ""}
+                          </h5>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {(calculatedInstallments.length > 0
+                              ? calculatedInstallments
+                              : selectedSlab.installments
+                            ).map((installment, index) => (
+                              <div key={index} className="bg-white p-3 rounded border">
+                                <div className="font-medium text-sm">
+                                  Installment {installment.installmentNumber || index + 1}
+                                </div>
+                                <div className="text-lg font-bold text-green-600">
+                                  ₹{installment.amount.toLocaleString()}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {installment.percentage
+                                    ? `${installment.percentage}%`
+                                    : `${((installment.amount / selectedSlab.totalAmount) * 100).toFixed(1)}%`}
+                                </div>
+                                <div className="text-xs text-gray-600">
+                                  Due: {new Date(installment.dueDate).toLocaleDateString()}
+                                </div>
+                                {installment.discountAmount && (
+                                  <div className="text-xs text-blue-600">
+                                    Saved: ₹{installment.discountAmount.toLocaleString()}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Payment Date</label>
                       <input
                         type="date"
                         value={formData.paymentDate}
-                        onChange={(e) => handleInputChange('paymentDate', e.target.value)}
+                        onChange={(e) => handleInputChange("paymentDate", e.target.value)}
                         disabled={!formData.feeStructure}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
                       />
@@ -578,7 +742,7 @@ const StudentEditModal = ({
                       <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
                       <select
                         value={formData.paymentMethod}
-                        onChange={(e) => handleInputChange('paymentMethod', e.target.value)}
+                        onChange={(e) => handleInputChange("paymentMethod", e.target.value)}
                         disabled={!formData.feeStructure}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
                       >
@@ -596,7 +760,7 @@ const StudentEditModal = ({
                       <input
                         type="text"
                         value={formData.transactionId}
-                        onChange={(e) => handleInputChange('transactionId', e.target.value)}
+                        onChange={(e) => handleInputChange("transactionId", e.target.value)}
                         disabled={!formData.feeStructure}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
                         placeholder="Transaction ID (optional)"
@@ -610,7 +774,7 @@ const StudentEditModal = ({
                       <input
                         type="number"
                         value={formData.feesPaid}
-                        onChange={(e) => handleInputChange('feesPaid', parseFloat(e.target.value) || 0)}
+                        onChange={(e) => handleInputChange("feesPaid", parseFloat(e.target.value) || 0)}
                         min="0"
                         disabled={!formData.feeStructure}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
@@ -643,7 +807,7 @@ const StudentEditModal = ({
                       type="checkbox"
                       id="transportRequired"
                       checked={formData.transportRequired}
-                      onChange={(e) => handleInputChange('transportRequired', e.target.checked)}
+                      onChange={(e) => handleInputChange("transportRequired", e.target.checked)}
                       className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                     />
                     <label htmlFor="transportRequired" className="ml-2 text-sm font-medium text-gray-700">
@@ -658,7 +822,7 @@ const StudentEditModal = ({
                         <input
                           type="text"
                           value={formData.pickupPoint}
-                          onChange={(e) => handleInputChange('pickupPoint', e.target.value)}
+                          onChange={(e) => handleInputChange("pickupPoint", e.target.value)}
                           className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
                       </div>
@@ -667,7 +831,7 @@ const StudentEditModal = ({
                         <input
                           type="text"
                           value={formData.dropPoint}
-                          onChange={(e) => handleInputChange('dropPoint', e.target.value)}
+                          onChange={(e) => handleInputChange("dropPoint", e.target.value)}
                           className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
                       </div>
@@ -681,7 +845,7 @@ const StudentEditModal = ({
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Remarks</h3>
                 <textarea
                   value={formData.remarks}
-                  onChange={(e) => handleInputChange('remarks', e.target.value)}
+                  onChange={(e) => handleInputChange("remarks", e.target.value)}
                   rows={4}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Any additional remarks about the student..."
@@ -705,7 +869,7 @@ const StudentEditModal = ({
               className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
             >
               <Save className="w-4 h-4 mr-2" />
-              {isSaving ? 'Saving...' : 'Save Changes'}
+              {isSaving ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </form>
@@ -714,4 +878,4 @@ const StudentEditModal = ({
   );
 };
 
-export default StudentEditModal; 
+export default StudentEditModal;

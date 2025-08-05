@@ -1,6 +1,7 @@
 const Fee = require("../models/Fee");
 const User = require("../models/User");
 const Student = require("../models/Student");
+const { findStudentById } = require("../utils/studentLookup");
 
 // @desc    Create fee record
 // @route   POST /api/fees
@@ -9,17 +10,23 @@ const createFee = async (req, res) => {
   try {
     const { studentId, feeType, amount, dueDate, academicYear, semester, month, discount, remarks } = req.body;
 
-    // Check if student exists
-    const student = await User.findById(studentId);
-    if (!student || student.role !== "student") {
+    // Find student using utility function
+    const studentResult = await findStudentById(studentId);
+
+    if (!studentResult.found) {
       return res.status(404).json({
         success: false,
         message: "Student not found",
       });
     }
 
+    const { student, isStudentModel, userRecord } = studentResult;
+
+    // Use the User record ID for fee creation
+    const feeStudentId = userRecord._id;
+
     const fee = await Fee.create({
-      studentId,
+      studentId: feeStudentId,
       feeType,
       amount,
       dueDate,
@@ -247,19 +254,35 @@ const getStudentFees = async (req, res) => {
 // @access  Private
 const processFeePayment = async (req, res) => {
   try {
+    console.log("=== PAYMENT PROCESSING STARTED ===");
+    console.log("Fee ID:", req.params.id);
+    console.log("Request body:", req.body);
+    console.log("User processing payment:", req.user.id, req.user.role);
+
     const { paidAmount, paymentMethod, transactionId, remarks } = req.body;
 
+    console.log("Finding fee record...");
     const fee = await Fee.findById(req.params.id);
 
     if (!fee) {
+      console.log("❌ Fee record not found!");
       return res.status(404).json({
         success: false,
         message: "Fee record not found",
       });
     }
 
+    console.log("✅ Fee record found:");
+    console.log("- Fee ID:", fee._id);
+    console.log("- Student ID:", fee.studentId);
+    console.log("- Fee Type:", fee.feeType);
+    console.log("- Total Amount:", fee.amount);
+    console.log("- Previously Paid:", fee.paidAmount);
+    console.log("- Academic Year:", fee.academicYear);
+
     // Check if user is authorized to pay this fee
     if (req.user.role === "student" && req.user.id !== fee.studentId.toString()) {
+      console.log("❌ Access denied for student");
       return res.status(403).json({
         success: false,
         message: "Access denied",
@@ -268,15 +291,22 @@ const processFeePayment = async (req, res) => {
 
     // Calculate remaining balance
     const remainingBalance = fee.amount - fee.paidAmount + fee.penalty - fee.discount;
+    console.log("Payment validation:");
+    console.log("- Remaining balance:", remainingBalance);
+    console.log("- Payment amount:", paidAmount);
 
     if (paidAmount > remainingBalance) {
+      console.log("❌ Payment amount exceeds remaining balance");
       return res.status(400).json({
         success: false,
         message: "Payment amount exceeds remaining balance",
       });
     }
 
+    console.log("✅ Payment amount validated");
+
     // Update fee record
+    console.log("Updating fee record...");
     fee.paidAmount += paidAmount;
     fee.paymentMethod = paymentMethod;
     fee.transactionId = transactionId;
@@ -285,21 +315,71 @@ const processFeePayment = async (req, res) => {
 
     if (fee.paidAmount >= fee.amount) {
       fee.paidDate = new Date();
+      console.log("✅ Fee fully paid, setting paidDate");
     }
 
     await fee.save();
+    console.log("✅ Fee record updated successfully");
+
+    // Add payment record to student's payment history
+    console.log("Adding payment to student's payment history...");
+    console.log("Looking for student with ID:", fee.studentId);
+
+    const studentForPayment = await Student.findById(fee.studentId);
+
+    if (!studentForPayment) {
+      console.log("❌ Student not found in Student model with ID:", fee.studentId);
+    } else {
+      console.log("✅ Student found:");
+      console.log("- Student ID:", studentForPayment._id);
+      console.log("- Student Name:", studentForPayment.name || studentForPayment.firstName);
+      console.log(
+        "- Current payment history length:",
+        studentForPayment.paymentHistory ? studentForPayment.paymentHistory.length : 0
+      );
+
+      const paymentRecord = {
+        paymentDate: new Date(),
+        amount: paidAmount,
+        paymentMethod,
+        transactionId,
+        receiptNumber: fee.receiptNumber,
+        feeType: fee.feeType,
+        installmentNumber: fee.installmentNumber,
+        academicYear: fee.academicYear,
+        semester: fee.semester,
+        month: fee.month,
+        remarks,
+        processedBy: req.user.id,
+        status: "completed",
+      };
+
+      console.log("Payment record to add:", paymentRecord);
+
+      studentForPayment.paymentHistory.push(paymentRecord);
+
+      console.log("Payment history after push:", studentForPayment.paymentHistory.length);
+
+      await studentForPayment.save();
+      console.log("✅ Student payment history updated and saved successfully");
+
+      // Verify the payment was saved
+      const verifyStudent = await Student.findById(fee.studentId);
+      console.log("Verification - Payment history length after save:", verifyStudent.paymentHistory.length);
+      console.log("Latest payment record:", verifyStudent.paymentHistory[verifyStudent.paymentHistory.length - 1]);
+    }
 
     await fee.populate("studentId", "name studentId");
 
     // Update Student model with admin-updated fee data
-    const Student = require("../models/Student");
+    // Use the already imported Student model, don't re-require it
     const student = await Student.findById(fee.studentId);
-    
+
     if (student) {
       // Get all fees for this student to calculate total paid amount
       const allStudentFees = await Fee.find({ studentId: fee.studentId });
       const totalPaidAmount = allStudentFees.reduce((sum, f) => sum + (f.paidAmount || 0), 0);
-      
+
       // Determine overall payment status
       let overallStatus = "pending";
       if (totalPaidAmount >= (student.feeSlabId?.totalAmount || 0)) {
@@ -308,10 +388,10 @@ const processFeePayment = async (req, res) => {
         overallStatus = "partial";
       } else {
         // Check if any fees are overdue
-        const hasOverdueFees = allStudentFees.some(f => f.status === "overdue");
+        const hasOverdueFees = allStudentFees.some((f) => f.status === "overdue");
         overallStatus = hasOverdueFees ? "overdue" : "pending";
       }
-      
+
       // Update student's fee information
       await Student.findByIdAndUpdate(fee.studentId, {
         paymentStatus: overallStatus,
@@ -410,10 +490,10 @@ const getFeeStats = async (req, res) => {
 
     // Get admin-updated fee data from Student model
     const Student = require("../models/Student");
-    
+
     let studentFilter = {};
     if (academicYear) studentFilter.academicYear = academicYear;
-    
+
     const students = await Student.find(studentFilter).populate("feeSlabId", "totalAmount");
 
     // Calculate statistics using admin-updated data
@@ -424,16 +504,16 @@ const getFeeStats = async (req, res) => {
     let paidCount = 0;
     let overdueCount = 0;
 
-    students.forEach(student => {
+    students.forEach((student) => {
       // Count fees based on fee slab installments
       if (student.feeSlabId) {
         const installmentCount = student.feeSlabId.installments?.length || 1;
         totalFees += installmentCount;
         totalAmount += student.feeSlabId.totalAmount || 0;
       }
-      
+
       totalPaidAmount += student.feesPaid || 0;
-      
+
       // Count students by payment status
       switch (student.paymentStatus) {
         case "paid":
@@ -491,25 +571,25 @@ const getClassFeeStatus = async (req, res) => {
     // Get all students in the class
     const User = require("../models/User");
     const Student = require("../models/Student");
-    
+
     // First try to find students in User model
-    let students = await User.find({ 
-      class: classId, 
+    let students = await User.find({
+      class: classId,
       role: "student",
-      isActive: { $ne: false }
+      isActive: { $ne: false },
     });
-    
+
     console.log("Found students in User model:", students.length);
-    
+
     // If no students found in User model, try Student model
     if (students.length === 0) {
       students = await Student.find({
         class: classId,
-        isActive: { $ne: false }
+        isActive: { $ne: false },
       });
       console.log("Found students in Student model:", students.length);
     }
-    
+
     console.log("Total students found:", students.length);
 
     if (!students.length) {
@@ -519,24 +599,23 @@ const getClassFeeStatus = async (req, res) => {
       });
     }
 
-    const studentIds = students.map(student => student._id);
+    const studentIds = students.map((student) => student._id);
 
     // Get fee information for all students in the class
     let feeFilter = { studentId: { $in: studentIds } };
     if (academicYear) feeFilter.academicYear = academicYear;
     if (month) feeFilter.month = month;
 
-    const fees = await Fee.find(feeFilter)
-      .populate("studentId", "name studentId rollNumber")
-      .sort({ dueDate: 1 });
+    const fees = await Fee.find(feeFilter).populate("studentId", "name studentId rollNumber").sort({ dueDate: 1 });
 
     // Group fees by student and use admin-updated data
     const studentFeeStatus = {};
-    students.forEach(student => {
+    students.forEach((student) => {
       studentFeeStatus[student._id.toString()] = {
         student: {
           _id: student._id,
-          name: student.name || `${student.firstName || ''} ${student.middleName || ''} ${student.lastName || ''}`.trim(),
+          name:
+            student.name || `${student.firstName || ""} ${student.middleName || ""} ${student.lastName || ""}`.trim(),
           studentId: student.studentId,
           rollNumber: student.studentId, // Use studentId as rollNumber since User model doesn't have rollNumber
         },
@@ -549,7 +628,7 @@ const getClassFeeStatus = async (req, res) => {
     });
 
     // Process fee data and use admin-updated information
-    fees.forEach(fee => {
+    fees.forEach((fee) => {
       const studentId = fee.studentId._id.toString();
       if (studentFeeStatus[studentId]) {
         studentFeeStatus[studentId].fees.push(fee);
@@ -563,15 +642,19 @@ const getClassFeeStatus = async (req, res) => {
         // Use admin-updated payment status and amounts
         studentFeeStatus[studentId].status = student.paymentStatus || "pending";
         studentFeeStatus[studentId].paidAmount = student.feesPaid || 0;
-        
+
         // Get total amount from fee slab or calculate from fees
         if (student.feeSlabId) {
           studentFeeStatus[studentId].totalAmount = student.feeSlabId.totalAmount || 0;
         } else {
-          studentFeeStatus[studentId].totalAmount = studentFeeStatus[studentId].fees.reduce((sum, fee) => sum + fee.amount, 0);
+          studentFeeStatus[studentId].totalAmount = studentFeeStatus[studentId].fees.reduce(
+            (sum, fee) => sum + fee.amount,
+            0
+          );
         }
-        
-        studentFeeStatus[studentId].pendingAmount = studentFeeStatus[studentId].totalAmount - studentFeeStatus[studentId].paidAmount;
+
+        studentFeeStatus[studentId].pendingAmount =
+          studentFeeStatus[studentId].totalAmount - studentFeeStatus[studentId].paidAmount;
       }
     }
 
@@ -608,19 +691,19 @@ const createClassFees = async (req, res) => {
     // Get all students in the class
     const User = require("../models/User");
     const Student = require("../models/Student");
-    
+
     // First try to find students in User model
-    let students = await User.find({ 
-      class: classId, 
+    let students = await User.find({
+      class: classId,
       role: "student",
-      isActive: { $ne: false }
+      isActive: { $ne: false },
     });
-    
+
     // If no students found in User model, try Student model
     if (students.length === 0) {
       students = await Student.find({
         class: classId,
-        isActive: { $ne: false }
+        isActive: { $ne: false },
       });
     }
 
@@ -680,7 +763,7 @@ const updateFeeStatus = async (req, res) => {
     }
 
     const updateData = { status };
-    
+
     if (status === "paid") {
       updateData.paidAmount = paidAmount || fee.amount;
       updateData.paidDate = new Date();
@@ -697,18 +780,20 @@ const updateFeeStatus = async (req, res) => {
       updateData.remarks = remarks;
     }
 
-    const updatedFee = await Fee.findByIdAndUpdate(feeId, updateData, { new: true })
-      .populate("studentId", "name studentId");
+    const updatedFee = await Fee.findByIdAndUpdate(feeId, updateData, { new: true }).populate(
+      "studentId",
+      "name studentId"
+    );
 
     // Update Student model with admin-updated fee data
     const Student = require("../models/Student");
     const student = await Student.findById(fee.studentId);
-    
+
     if (student) {
       // Get all fees for this student to calculate total paid amount
       const allStudentFees = await Fee.find({ studentId: fee.studentId });
       const totalPaidAmount = allStudentFees.reduce((sum, f) => sum + (f.paidAmount || 0), 0);
-      
+
       // Determine overall payment status
       let overallStatus = "pending";
       if (totalPaidAmount >= (student.feeSlabId?.totalAmount || 0)) {
@@ -717,10 +802,10 @@ const updateFeeStatus = async (req, res) => {
         overallStatus = "partial";
       } else {
         // Check if any fees are overdue
-        const hasOverdueFees = allStudentFees.some(f => f.status === "overdue");
+        const hasOverdueFees = allStudentFees.some((f) => f.status === "overdue");
         overallStatus = hasOverdueFees ? "overdue" : "pending";
       }
-      
+
       // Update student's fee information
       await Student.findByIdAndUpdate(fee.studentId, {
         paymentStatus: overallStatus,
@@ -832,10 +917,10 @@ const getFeeOverview = async (req, res) => {
 
     // Get admin-updated fee data from Student model
     const Student = require("../models/Student");
-    
+
     let studentFilter = {};
     if (academicYear) studentFilter.academicYear = academicYear;
-    
+
     const students = await Student.find(studentFilter).populate("feeSlabId", "totalAmount installments");
 
     // Calculate comprehensive statistics
@@ -850,45 +935,45 @@ const getFeeOverview = async (req, res) => {
       card: 0,
       cheque: 0,
       bank_transfer: 0,
-      other: 0
+      other: 0,
     };
 
     // Monthly data for the last 6 months - using REAL payment data
     const monthlyData = [];
     const currentDate = new Date();
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
     // Get actual payment data from Fee collection for the last 6 months
-    const Fee = require('../models/Fee');
-    
+    const Fee = require("../models/Fee");
+
     for (let i = 5; i >= 0; i--) {
       const monthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
       const nextMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - i + 1, 1);
       const monthName = months[monthDate.getMonth()];
-      
-             // Get actual payments made in this month
-       const monthPayments = await Fee.find({
-         paidDate: {
-           $gte: monthDate,
-           $lt: nextMonthDate
-         },
-         status: { $in: ['paid', 'partial'] },
-         paidAmount: { $gt: 0 }
-       });
-      
+
+      // Get actual payments made in this month
+      const monthPayments = await Fee.find({
+        paidDate: {
+          $gte: monthDate,
+          $lt: nextMonthDate,
+        },
+        status: { $in: ["paid", "partial"] },
+        paidAmount: { $gt: 0 },
+      });
+
       // Calculate real monthly totals from Fee collection
       const monthlyCollectedFromFees = monthPayments.reduce((sum, fee) => sum + (fee.paidAmount || 0), 0);
-      
+
       // Also check student payment data for this month
       let monthlyCollectedFromStudents = 0;
       let monthlyPending = 0;
-      
+
       // Get the current month's data from student records
-      students.forEach(student => {
+      students.forEach((student) => {
         const studentTotalAmount = student.feeSlabId?.totalAmount || 0;
         const studentPaidAmount = student.feesPaid || 0;
         const balance = studentTotalAmount - studentPaidAmount;
-        
+
         // Check if payment was made in this month
         if (student.paymentDate) {
           const paymentDate = new Date(student.paymentDate);
@@ -896,19 +981,19 @@ const getFeeOverview = async (req, res) => {
             monthlyCollectedFromStudents += studentPaidAmount;
           }
         }
-        
+
         if (balance > 0) {
           monthlyPending += balance;
         }
       });
-      
+
       // Combine both sources of collection data
       const monthlyCollected = monthlyCollectedFromFees + monthlyCollectedFromStudents;
-      
+
       monthlyData.push({
         month: monthName,
         collected: monthlyCollected,
-        pending: monthlyPending
+        pending: monthlyPending,
       });
     }
 
@@ -916,10 +1001,10 @@ const getFeeOverview = async (req, res) => {
     for (const student of students) {
       const studentTotalAmount = student.feeSlabId?.totalAmount || 0;
       const studentPaidAmount = student.feesPaid || 0;
-      
+
       totalAmount += studentTotalAmount;
       totalPaidAmount += studentPaidAmount;
-      
+
       // Calculate payment status
       let status = "pending";
       if (studentPaidAmount >= studentTotalAmount && studentPaidAmount > 0) {
@@ -929,7 +1014,7 @@ const getFeeOverview = async (req, res) => {
       } else if (studentPaidAmount > 0 && studentPaidAmount < studentTotalAmount) {
         status = "pending";
       }
-      
+
       // Count students by payment status
       switch (status) {
         case "paid":
@@ -937,11 +1022,11 @@ const getFeeOverview = async (req, res) => {
           totalCollection += studentPaidAmount; // Add actual amount paid
           break;
         case "pending":
-          pendingFees += (studentTotalAmount - studentPaidAmount);
+          pendingFees += studentTotalAmount - studentPaidAmount;
           totalCollection += studentPaidAmount; // Add actual amount paid
           break;
         default:
-          pendingFees += (studentTotalAmount - studentPaidAmount);
+          pendingFees += studentTotalAmount - studentPaidAmount;
           totalCollection += studentPaidAmount; // Add actual amount paid
       }
 
@@ -961,66 +1046,66 @@ const getFeeOverview = async (req, res) => {
     const realPaymentMethods = await Fee.aggregate([
       {
         $match: {
-          status: { $in: ['paid', 'partial'] },
-          paymentMethod: { 
-            $exists: true, 
-            $ne: null, 
-            $ne: '',
-            $in: ['cash', 'online', 'cheque', 'card', 'bank_transfer', 'other']
-          }
-        }
+          status: { $in: ["paid", "partial"] },
+          paymentMethod: {
+            $exists: true,
+            $ne: null,
+            $ne: "",
+            $in: ["cash", "online", "cheque", "card", "bank_transfer", "other"],
+          },
+        },
       },
       {
         $group: {
-          _id: '$paymentMethod',
+          _id: "$paymentMethod",
           count: { $sum: 1 },
-          totalAmount: { $sum: '$paidAmount' }
-        }
+          totalAmount: { $sum: "$paidAmount" },
+        },
       },
       {
-        $sort: { totalAmount: -1 }
-      }
+        $sort: { totalAmount: -1 },
+      },
     ]);
 
     // Also get payment methods from Student collection
     const studentPaymentMethods = await Student.aggregate([
       {
         $match: {
-          paymentMethod: { 
-            $exists: true, 
-            $ne: null, 
-            $ne: '',
-            $in: ['cash', 'online', 'cheque', 'card', 'bank_transfer', 'other']
+          paymentMethod: {
+            $exists: true,
+            $ne: null,
+            $ne: "",
+            $in: ["cash", "online", "cheque", "card", "bank_transfer", "other"],
           },
-          feesPaid: { $gt: 0 }
-        }
+          feesPaid: { $gt: 0 },
+        },
       },
       {
         $group: {
-          _id: '$paymentMethod',
+          _id: "$paymentMethod",
           count: { $sum: 1 },
-          totalAmount: { $sum: '$feesPaid' }
-        }
+          totalAmount: { $sum: "$feesPaid" },
+        },
       },
       {
-        $sort: { totalAmount: -1 }
-      }
+        $sort: { totalAmount: -1 },
+      },
     ]);
 
     // Combine both sources of payment methods data
     const combinedPaymentMethods = {};
-    
+
     // Add Fee collection data
-    realPaymentMethods.forEach(method => {
+    realPaymentMethods.forEach((method) => {
       if (!combinedPaymentMethods[method._id]) {
         combinedPaymentMethods[method._id] = { count: 0, totalAmount: 0 };
       }
       combinedPaymentMethods[method._id].count += method.count;
       combinedPaymentMethods[method._id].totalAmount += method.totalAmount;
     });
-    
+
     // Add Student collection data
-    studentPaymentMethods.forEach(method => {
+    studentPaymentMethods.forEach((method) => {
       if (!combinedPaymentMethods[method._id]) {
         combinedPaymentMethods[method._id] = { count: 0, totalAmount: 0 };
       }
@@ -1031,14 +1116,14 @@ const getFeeOverview = async (req, res) => {
     // Calculate payment methods percentages from combined data
     const totalPayments = Object.values(combinedPaymentMethods).reduce((sum, method) => sum + method.count, 0);
     const paymentMethodsData = [];
-    
-    console.log('Payment Methods Debug:', {
+
+    console.log("Payment Methods Debug:", {
       feePaymentMethods: realPaymentMethods,
       studentPaymentMethods: studentPaymentMethods,
       combinedPaymentMethods,
-      totalPayments
+      totalPayments,
     });
-    
+
     if (totalPayments > 0) {
       Object.entries(combinedPaymentMethods).forEach(([method, data]) => {
         const percentage = Math.round((data.count / totalPayments) * 100);
@@ -1046,31 +1131,29 @@ const getFeeOverview = async (req, res) => {
         paymentMethodsData.push({
           name: methodName,
           value: percentage,
-          color: getPaymentMethodColor(method)
+          color: getPaymentMethodColor(method),
         });
       });
     } else {
       // If no payment methods data, show empty state
-      paymentMethodsData.push(
-        { name: "No Payments", value: 100, color: "#6B7280" }
-      );
+      paymentMethodsData.push({ name: "No Payments", value: 100, color: "#6B7280" });
     }
 
     // Debug logging to verify data
-    console.log('Fee Overview Data:', {
+    console.log("Fee Overview Data:", {
       totalCollection,
       pendingFees,
       studentsPaid,
       totalStudents: students.length,
-      monthlyData: monthlyData.slice(0, 3) // Log first 3 months
+      monthlyData: monthlyData.slice(0, 3), // Log first 3 months
     });
-    
+
     // Log individual student status for debugging
     students.forEach((student, index) => {
       const studentTotalAmount = student.feeSlabId?.totalAmount || 0;
       const studentPaidAmount = student.feesPaid || 0;
       const balance = studentTotalAmount - studentPaidAmount;
-      
+
       let status = "pending";
       if (studentPaidAmount >= studentTotalAmount && studentPaidAmount > 0) {
         status = "paid";
@@ -1079,24 +1162,24 @@ const getFeeOverview = async (req, res) => {
       } else if (studentPaidAmount > 0 && studentPaidAmount < studentTotalAmount) {
         status = "pending";
       }
-      
+
       console.log(`Student ${index + 1}:`, {
         name: `${student.firstName} ${student.lastName}`,
         totalAmount: studentTotalAmount,
         paidAmount: studentPaidAmount,
         balance,
         originalStatus: student.paymentStatus,
-        calculatedStatus: status
+        calculatedStatus: status,
       });
     });
-    
+
     // Log August calculation specifically
-    const augustData = monthlyData.find(data => data.month === 'Aug');
+    const augustData = monthlyData.find((data) => data.month === "Aug");
     if (augustData) {
-      console.log('August Calculation:', {
+      console.log("August Calculation:", {
         month: augustData.month,
         collected: augustData.collected,
-        pending: augustData.pending
+        pending: augustData.pending,
       });
     }
 
@@ -1105,21 +1188,21 @@ const getFeeOverview = async (req, res) => {
         totalCollection: {
           value: `₹${totalCollection.toLocaleString()}`,
           change: totalCollectionChange,
-          changeType: "increase"
+          changeType: "increase",
         },
         pendingFees: {
           value: `₹${pendingFees.toLocaleString()}`,
           change: pendingFeesChange,
-          changeType: "decrease"
+          changeType: "decrease",
         },
         studentsPaid: {
           value: studentsPaid.toString(),
           change: studentsPaidChange,
-          changeType: "increase"
-        }
+          changeType: "increase",
+        },
       },
       monthlyData,
-      paymentMethods: paymentMethodsData
+      paymentMethods: paymentMethodsData,
     };
 
     res.json({
@@ -1143,12 +1226,235 @@ const getPaymentMethodColor = (method) => {
     card: "#F59E0B",
     cheque: "#EF4444",
     bank_transfer: "#8B5CF6",
-    other: "#6B7280"
+    other: "#6B7280",
   };
   return colors[method] || "#6B7280";
 };
 
+// @desc    Get students with overdue installments
+// @route   GET /api/fees/overdue-students
+// @access  Private (Admin only)
+const getOverdueStudents = async (req, res) => {
+  try {
+    const currentDate = new Date();
 
+    // Get all students with fee slabs
+    const students = await Student.find({
+      isActive: true,
+      feeSlabId: { $exists: true, $ne: null },
+    })
+      .populate("feeSlabId", "slabName totalAmount installments")
+      .populate("class", "name grade division");
+
+    const overdueStudents = [];
+
+    students.forEach((student) => {
+      if (student.feeSlabId && student.feeSlabId.installments) {
+        const overdueInstallments = student.feeSlabId.installments.filter((installment) => {
+          const dueDate = new Date(installment.dueDate);
+          const isOverdue = dueDate < currentDate;
+
+          // Calculate remaining amount for this installment
+          const totalInstallmentAmount = installment.amount;
+          const paidAmount = student.feesPaid || 0;
+          const remainingAmount = Math.max(0, totalInstallmentAmount - paidAmount);
+
+          return isOverdue && remainingAmount > 0;
+        });
+
+        if (overdueInstallments.length > 0) {
+          // Calculate total overdue amount
+          const totalOverdueAmount = overdueInstallments.reduce((sum, installment) => {
+            const totalInstallmentAmount = installment.amount;
+            const paidAmount = student.feesPaid || 0;
+            const remainingAmount = Math.max(0, totalInstallmentAmount - paidAmount);
+            return sum + remainingAmount;
+          }, 0);
+
+          overdueStudents.push({
+            ...student.toObject(),
+            overdueInstallments,
+            totalOverdueAmount,
+            overdueCount: overdueInstallments.length,
+          });
+        }
+      }
+    });
+
+    res.json({
+      success: true,
+      data: overdueStudents,
+      count: overdueStudents.length,
+    });
+  } catch (error) {
+    console.error("Error fetching overdue students:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching overdue students",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Get payment history for a student
+// @route   GET /api/fees/student/:studentId/payment-history
+// @access  Private (Admin only)
+const getStudentPaymentHistory = async (req, res) => {
+  try {
+    console.log("=== PAYMENT HISTORY REQUEST STARTED ===");
+    const { studentId } = req.params;
+    const { page = 1, limit = 20, academicYear, feeType } = req.query;
+
+    console.log("Payment history request for student:", studentId);
+    console.log("Query parameters:", { page, limit, academicYear, feeType });
+
+    // Find student using utility function
+    console.log("Finding student using utility function...");
+    const studentResult = await findStudentById(studentId);
+
+    if (!studentResult.found) {
+      console.log("❌ Student not found in either User or Student model:", studentId);
+      return res.status(404).json({
+        success: false,
+        message: "Student not found",
+      });
+    }
+
+    const { student, isStudentModel, userRecord } = studentResult;
+    console.log("✅ Student found:", student.name || student.firstName);
+    console.log("- Is Student Model:", isStudentModel);
+    console.log("- User Record ID:", userRecord._id);
+
+    // Get the Student model record (not User) to access paymentHistory
+    let studentRecord = null;
+    if (isStudentModel) {
+      console.log("Using Student model record directly");
+      studentRecord = student;
+    } else {
+      console.log("Finding Student model record using User ID:", userRecord._id);
+      // Find Student model record using User ID
+      studentRecord = await Student.findById(userRecord._id);
+    }
+
+    console.log("Student record for payment history:");
+    console.log("- Student Record ID:", studentRecord?._id);
+    console.log("- Student Record Found:", !!studentRecord);
+    console.log("- Payment History Array Exists:", !!studentRecord?.paymentHistory);
+    console.log("- Payment History Length:", studentRecord?.paymentHistory?.length || 0);
+
+    if (!studentRecord || !studentRecord.paymentHistory) {
+      console.log("❌ No student record or payment history found, returning empty response");
+      return res.json({
+        success: true,
+        data: {
+          paymentHistory: [],
+          summary: {
+            totalAmount: 0,
+            totalPayments: 0,
+            averageAmount: 0,
+          },
+          pagination: {
+            currentPage: parseInt(page),
+            totalPages: 0,
+            totalPayments: 0,
+            hasNext: false,
+            hasPrev: false,
+          },
+        },
+      });
+    }
+
+    console.log("✅ Payment history array found, processing...");
+    console.log("Original payment history:");
+    studentRecord.paymentHistory.forEach((payment, index) => {
+      console.log(`  Payment ${index + 1}:`, {
+        date: payment.paymentDate,
+        amount: payment.amount,
+        method: payment.paymentMethod,
+        feeType: payment.feeType,
+        academicYear: payment.academicYear,
+      });
+    });
+
+    // Filter payment history based on query parameters
+    let filteredPayments = studentRecord.paymentHistory;
+    console.log("Applying filters...");
+    console.log("- Academic Year filter:", academicYear);
+    console.log("- Fee Type filter:", feeType);
+
+    if (academicYear) {
+      const beforeFilter = filteredPayments.length;
+      filteredPayments = filteredPayments.filter((payment) => payment.academicYear === academicYear);
+      console.log(`- Academic Year filter applied: ${beforeFilter} -> ${filteredPayments.length}`);
+    }
+
+    if (feeType) {
+      const beforeFilter = filteredPayments.length;
+      filteredPayments = filteredPayments.filter((payment) => payment.feeType === feeType);
+      console.log(`- Fee Type filter applied: ${beforeFilter} -> ${filteredPayments.length}`);
+    }
+
+    // Sort by payment date (newest first)
+    filteredPayments.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+    console.log("✅ Payments sorted by date (newest first)");
+
+    const totalPayments = filteredPayments.length;
+    console.log("Total filtered payment records:", totalPayments);
+
+    // Apply pagination
+    const skip = (page - 1) * limit;
+    const paginatedPayments = filteredPayments.slice(skip, skip + parseInt(limit));
+
+    // Populate processedBy field
+    const populatedPayments = await Student.populate(paginatedPayments, {
+      path: "processedBy",
+      select: "name",
+    });
+
+    console.log("Payment history records found:", paginatedPayments.length);
+
+    // Calculate summary statistics
+    const totalAmount = filteredPayments.reduce((sum, payment) => sum + payment.amount, 0);
+    const averageAmount = totalPayments > 0 ? totalAmount / totalPayments : 0;
+
+    const summaryData = {
+      totalAmount,
+      totalPayments,
+      averageAmount,
+    };
+
+    console.log("Summary data:", summaryData);
+
+    const response = {
+      success: true,
+      data: {
+        paymentHistory: populatedPayments,
+        summary: {
+          totalAmount: summaryData.totalAmount,
+          totalPayments: summaryData.totalPayments,
+          averageAmount: summaryData.averageAmount,
+        },
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(totalPayments / limit),
+          totalPayments,
+          hasNext: parseInt(page) < Math.ceil(totalPayments / limit),
+          hasPrev: parseInt(page) > 1,
+        },
+      },
+    };
+
+    console.log("Sending response with", paginatedPayments.length, "payment records");
+    res.json(response);
+  } catch (error) {
+    console.error("Error fetching payment history:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching payment history",
+      error: error.message,
+    });
+  }
+};
 
 module.exports = {
   createFee,
@@ -1164,4 +1470,6 @@ module.exports = {
   createFeesFromSlab,
   generateFeesForStudent,
   getFeeOverview,
+  getOverdueStudents,
+  getStudentPaymentHistory,
 };

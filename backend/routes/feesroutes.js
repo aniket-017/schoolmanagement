@@ -14,6 +14,8 @@ const {
   createFeesFromSlab,
   generateFeesForStudent,
   getFeeOverview,
+  getOverdueStudents,
+  getStudentPaymentHistory,
 } = require("../controllers/feeController");
 const { auth, authorize } = require("../middleware/auth");
 
@@ -81,5 +83,15 @@ router.put("/:feeId/status", auth, authorize("admin"), updateFeeStatus);
 // @desc    Get comprehensive fee overview statistics
 // @access  Private (Admin only)
 router.get("/overview", auth, authorize("admin"), getFeeOverview);
+
+// @route   GET /api/fees/overdue-students
+// @desc    Get students with overdue installments
+// @access  Private (Admin only)
+router.get("/overdue-students", auth, authorize("admin"), getOverdueStudents);
+
+// @route   GET /api/fees/student/:studentId/payment-history
+// @desc    Get payment history for a student
+// @access  Private (Admin only)
+router.get("/student/:studentId/payment-history", auth, authorize("admin"), getStudentPaymentHistory);
 
 module.exports = router;

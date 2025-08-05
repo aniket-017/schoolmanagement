@@ -149,7 +149,7 @@ const studentSchema = new mongoose.Schema(
     // Academic Information
     category: {
       type: String,
-      enum: ['Open', 'NT', 'VJ', "OBC", "SC", "ST", "EWS", "PWD", "Other"],
+      enum: ["Open", "NT", "VJ", "OBC", "SC", "ST", "EWS", "PWD", "Other"],
       trim: true,
       required: false, // Make it optional
       default: undefined, // Allow null/undefined values
@@ -267,7 +267,7 @@ const studentSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    
+
     // Payment Information
     paymentDate: {
       type: Date,
@@ -285,6 +285,59 @@ const studentSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+
+    // Payment History Array - stores all payment records
+    paymentHistory: [
+      {
+        paymentDate: {
+          type: Date,
+          required: true,
+          default: Date.now,
+        },
+        amount: {
+          type: Number,
+          required: true,
+          min: 0,
+        },
+        paymentMethod: {
+          type: String,
+          enum: ["cash", "online", "cheque", "card", "bank_transfer"],
+          required: true,
+        },
+        transactionId: {
+          type: String,
+          trim: true,
+        },
+        receiptNumber: {
+          type: String,
+          trim: true,
+        },
+        feeType: {
+          type: String,
+          enum: ["tuition", "library", "sports", "transport", "examination", "miscellaneous", "admission", "annual"],
+        },
+        installmentNumber: {
+          type: Number,
+          min: 1,
+        },
+        academicYear: String,
+        semester: String,
+        month: String,
+        remarks: {
+          type: String,
+          trim: true,
+        },
+        processedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        status: {
+          type: String,
+          enum: ["completed", "pending", "failed", "cancelled"],
+          default: "completed",
+        },
+      },
+    ],
 
     // Attendance & Timetable
     attendancePercentage: {

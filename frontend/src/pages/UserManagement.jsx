@@ -45,7 +45,6 @@ const UserManagement = () => {
     page: 1,
     limit: 10,
     role: "",
-    status: "",
     search: "",
   });
 
@@ -181,7 +180,6 @@ const UserManagement = () => {
       });
 
       if (filters.role) queryParams.append("role", filters.role);
-      if (filters.status) queryParams.append("status", filters.status);
       if (filters.search) queryParams.append("search", filters.search);
 
       const response = await fetch(`${appConfig.API_BASE_URL}/users?${queryParams}`, {
@@ -292,6 +290,7 @@ const UserManagement = () => {
           firstName: data.user.firstName || "",
           middleName: data.user.middleName || "",
           lastName: data.user.lastName || "",
+          role: data.user.role || "",
           gender: data.user.gender || "",
           dateOfBirth: data.user.dateOfBirth ? data.user.dateOfBirth.split("T")[0] : "",
           socialCategory: data.user.socialCategory || "",
@@ -511,33 +510,6 @@ const UserManagement = () => {
     }));
   };
 
-  const toggleUserStatus = async (userId, currentStatus) => {
-    try {
-      const token = localStorage.getItem("token");
-      const newStatus = currentStatus === "approved" ? "suspended" : "approved";
-
-      const response = await fetch(`${appConfig.API_BASE_URL}/users/${userId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        fetchUsers();
-        toast.success(`User status updated to ${newStatus}`);
-      } else {
-        toast.error(`Error: ${data.message}`);
-      }
-    } catch (error) {
-      console.error("Error updating user status:", error);
-      toast.error("Error updating user status");
-    }
-  };
-
   const handleDeleteUser = async (userId, userName) => {
     const confirmed = window.confirm(
       `Are you sure you want to delete "${userName}"?\n\nThis action will permanently remove the user from the system and cannot be undone.`
@@ -666,7 +638,10 @@ const UserManagement = () => {
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Teacher Management</h1>
-            <p className="text-gray-600">Manage teachers and administrative staff. Students are managed separately in the Student Management section.</p>
+            <p className="text-gray-600">
+              Manage teachers and administrative staff. Students are managed separately in the Student Management
+              section.
+            </p>
           </div>
 
           {/* Tab Navigation */}
@@ -730,18 +705,9 @@ const UserManagement = () => {
                       <option value="teacher">Teacher</option>
                       <option value="admin">Admin</option>
                       <option value="principal">Principal</option>
-                    </select>
-
-                    <select
-                      name="status"
-                      value={filters.status}
-                      onChange={handleFilterChange}
-                      className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    >
-                      <option value="">All Status</option>
-                      <option value="approved">Approved</option>
-                      <option value="pending">Pending</option>
-                      <option value="suspended">Suspended</option>
+                      <option value="cleaner">Cleaner</option>
+                      <option value="bus_driver">Bus Driver</option>
+                      <option value="accountant">Accountant</option>
                     </select>
 
                     <select
@@ -849,6 +815,12 @@ const UserManagement = () => {
                                     ? "bg-purple-100 text-purple-800"
                                     : user.role === "principal"
                                     ? "bg-red-100 text-red-800"
+                                    : user.role === "cleaner"
+                                    ? "bg-green-100 text-green-800"
+                                    : user.role === "bus_driver"
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : user.role === "accountant"
+                                    ? "bg-indigo-100 text-indigo-800"
                                     : "bg-gray-100 text-gray-800"
                                 }`}
                               >
@@ -897,24 +869,12 @@ const UserManagement = () => {
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                               <div className="flex items-center justify-end space-x-2">
                                 <button
-                                  onClick={() => toggleUserStatus(user._id, user.status)}
-                                  className={`${
-                                    user.status === "approved"
-                                      ? "text-red-600 hover:text-red-900"
-                                      : "text-green-600 hover:text-green-900"
-                                  } transition-colors`}
+                                  onClick={(e) => handleEditClick(user, e)}
+                                  className="text-indigo-600 hover:text-indigo-900"
+                                  title="Edit User"
                                 >
-                                  {user.status === "approved" ? "Suspend" : "Activate"}
+                                  <PencilIcon className="h-5 w-5" />
                                 </button>
-                                {user.role === "teacher" && (
-                                  <button
-                                    onClick={(e) => handleEditClick(user, e)}
-                                    className="text-indigo-600 hover:text-indigo-900"
-                                    title="Edit Teacher"
-                                  >
-                                    <PencilIcon className="h-5 w-5" />
-                                  </button>
-                                )}
                                 <button
                                   onClick={() => handleDeleteUser(user._id, user.name || user.firstName || user.email)}
                                   className="text-red-600 hover:text-red-900 transition-colors"
@@ -1736,6 +1696,30 @@ const UserManagement = () => {
               </button>
             </div>
             <form onSubmit={handleEditSubmit} className="space-y-6">
+              {/* Role Information */}
+              <div className="bg-blue-50 rounded-lg p-4 mb-6">
+                <h3 className="text-lg font-semibold mb-4 text-blue-900">Role Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                    <select
+                      name="role"
+                      value={editForm.role}
+                      onChange={handleEditInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">Select Role</option>
+                      <option value="admin">Admin</option>
+                      <option value="principal">Principal</option>
+                      <option value="teacher">Teacher</option>
+                      <option value="cleaner">Cleaner</option>
+                      <option value="bus_driver">Bus Driver</option>
+                      <option value="accountant">Accountant</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
               {/* Personal Information */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
@@ -2292,6 +2276,30 @@ const UserManagement = () => {
 
               {/* Form */}
               <form onSubmit={handleEditSubmit} className="space-y-6">
+                {/* Role Information */}
+                <div className="bg-blue-50 rounded-lg p-6 mb-6">
+                  <h3 className="text-lg font-semibold mb-4 text-blue-900">Role Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                      <select
+                        name="role"
+                        value={editForm.role}
+                        onChange={handleEditInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="">Select Role</option>
+                        <option value="admin">Admin</option>
+                        <option value="principal">Principal</option>
+                        <option value="teacher">Teacher</option>
+                        <option value="cleaner">Cleaner</option>
+                        <option value="bus_driver">Bus Driver</option>
+                        <option value="accountant">Accountant</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Personal Information */}
                 <div className="bg-gray-50 rounded-lg p-6 mb-6">
                   <h3 className="text-lg font-semibold mb-4">Personal Information</h3>

@@ -56,10 +56,10 @@ const FeeManagement = () => {
       totalCollection: { value: "₹0", change: "0%", changeType: "increase" },
       pendingFees: { value: "₹0", change: "0%", changeType: "decrease" },
       studentsPaid: { value: "0", change: "0", changeType: "increase" },
-      overduePayments: { value: "0", change: "0", changeType: "decrease" }
+      overduePayments: { value: "0", change: "0", changeType: "decrease" },
     },
     monthlyData: [],
-    paymentMethods: []
+    paymentMethods: [],
   });
   const [overviewLoading, setOverviewLoading] = useState(false);
 
@@ -108,7 +108,6 @@ const FeeManagement = () => {
   });
   const [loadingStudents, setLoadingStudents] = useState(false);
 
-
   const [showMarkPaidModal, setShowMarkPaidModal] = useState(false);
   const [selectedFee, setSelectedFee] = useState(null);
   const [markPaidData, setMarkPaidData] = useState({
@@ -133,24 +132,36 @@ const FeeManagement = () => {
   const [feeSlabFilter, setFeeSlabFilter] = useState("");
   const [classFilter, setClassFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [overdueFilter, setOverdueFilter] = useState("");
+  const [overdueStudents, setOverdueStudents] = useState([]);
+
+  // Payment History states
+  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [paymentHistoryLoading, setPaymentHistoryLoading] = useState(false);
+  const [paymentHistorySummary, setPaymentHistorySummary] = useState({
+    totalAmount: 0,
+    totalPayments: 0,
+    averageAmount: 0,
+  });
+  const [showPaymentHistory, setShowPaymentHistory] = useState(false);
 
   // Compute unique options for dropdowns
   const feeSlabOptions = useMemo(() => {
-    const setVals = new Set(filteredStudents.map(s => s.feeSlabId?.slabName || s.feeStructure || "N/A"));
+    const setVals = new Set(filteredStudents.map((s) => s.feeSlabId?.slabName || s.feeStructure || "N/A"));
     return Array.from(setVals);
   }, [filteredStudents]);
   const classOptions = useMemo(() => {
-    const setVals = new Set(filteredStudents.map(s => s.class?.name || s.class?.grade || "N/A"));
+    const setVals = new Set(filteredStudents.map((s) => s.class?.name || s.class?.grade || "N/A"));
     return Array.from(setVals);
   }, [filteredStudents]);
   const statusOptions = useMemo(() => {
-    const setVals = new Set(filteredStudents.map(s => s.paymentStatus || "pending"));
+    const setVals = new Set(filteredStudents.map((s) => s.paymentStatus || "pending"));
     return Array.from(setVals);
   }, [filteredStudents]);
 
   // Filtering logic for students
   const filteredAndSortedStudents = useMemo(() => {
-    return filteredStudents.filter(student => {
+    let filtered = filteredStudents.filter((student) => {
       const feeSlab = student.feeSlabId?.slabName || student.feeStructure || "N/A";
       const className = student.class?.name || student.class?.grade || "N/A";
       const status = student.paymentStatus || "pending";
@@ -160,7 +171,18 @@ const FeeManagement = () => {
         (statusFilter === "" || status === statusFilter)
       );
     });
-  }, [filteredStudents, feeSlabFilter, classFilter, statusFilter]);
+
+    // Apply overdue filter
+    if (overdueFilter === "overdue") {
+      const overdueStudentIds = overdueStudents.map((student) => student._id);
+      filtered = filtered.filter((student) => overdueStudentIds.includes(student._id));
+    } else if (overdueFilter === "not-overdue") {
+      const overdueStudentIds = overdueStudents.map((student) => student._id);
+      filtered = filtered.filter((student) => !overdueStudentIds.includes(student._id));
+    }
+
+    return filtered;
+  }, [filteredStudents, feeSlabFilter, classFilter, statusFilter, overdueFilter, overdueStudents]);
 
   // Sample data
   const feeStats = [
@@ -193,25 +215,26 @@ const FeeManagement = () => {
   const monthlyData = overviewData.monthlyData;
 
   const paymentMethods = overviewData.paymentMethods;
-  
+
   // If no payment methods data, use sample data for testing
   const samplePaymentMethods = [
     { name: "Cash", value: 40, color: "#10B981" },
     { name: "Online", value: 35, color: "#3B82F6" },
-    { name: "Card", value: 25, color: "#F59E0B" }
+    { name: "Card", value: 25, color: "#F59E0B" },
   ];
-  
+
   // Check if payment methods data is valid (not just "No Payments")
-  const hasValidPaymentMethods = paymentMethods && 
-    paymentMethods.length > 0 && 
+  const hasValidPaymentMethods =
+    paymentMethods &&
+    paymentMethods.length > 0 &&
     !(paymentMethods.length === 1 && paymentMethods[0].name === "No Payments");
-  
+
   const displayPaymentMethods = hasValidPaymentMethods ? paymentMethods : samplePaymentMethods;
-  
+
   // Debug logging for payment methods
-  console.log('Payment Methods Data:', paymentMethods);
-  console.log('Has Valid Payment Methods:', hasValidPaymentMethods);
-  console.log('Display Payment Methods:', displayPaymentMethods);
+  console.log("Payment Methods Data:", paymentMethods);
+  console.log("Has Valid Payment Methods:", hasValidPaymentMethods);
+  console.log("Display Payment Methods:", displayPaymentMethods);
 
   const recentPayments = [
     {
@@ -283,9 +306,9 @@ const FeeManagement = () => {
     try {
       const response = await apiService.fees.getFeeOverview();
       if (response.success) {
-        console.log('Frontend received overview data:', response.data);
-        console.log('Monthly data:', response.data.monthlyData);
-        console.log('Payment methods:', response.data.paymentMethods);
+        console.log("Frontend received overview data:", response.data);
+        console.log("Monthly data:", response.data.monthlyData);
+        console.log("Payment methods:", response.data.paymentMethods);
         setOverviewData(response.data);
       } else {
         toast.error("Failed to fetch fee overview data");
@@ -307,22 +330,22 @@ const FeeManagement = () => {
       if (response.success) {
         const monthlyData = response.data.monthlyData;
         const summaryCards = response.data.summaryCards;
-        
+
         const reportData = {
           type: "Monthly Fee Collection Report",
           generatedDate: new Date().toLocaleDateString(),
           summary: {
             totalCollection: summaryCards.totalCollection.value,
             pendingFees: summaryCards.pendingFees.value,
-            studentsPaid: summaryCards.studentsPaid.value
+            studentsPaid: summaryCards.studentsPaid.value,
           },
           monthlyBreakdown: monthlyData,
           charts: {
             monthlyCollection: monthlyData,
-            paymentMethods: response.data.paymentMethods
-          }
+            paymentMethods: response.data.paymentMethods,
+          },
         };
-        
+
         setReportData(reportData);
         setShowReportModal(true);
       } else {
@@ -344,26 +367,26 @@ const FeeManagement = () => {
       if (allStudents.length === 0) {
         await fetchAllStudents();
       }
-      
+
       const response = await apiService.fees.getFeeOverview();
       if (response.success) {
-        console.log('All Students Data:', allStudents);
-        console.log('Number of students:', allStudents.length);
-        
+        console.log("All Students Data:", allStudents);
+        console.log("Number of students:", allStudents.length);
+
         // Group students by class for class-wise report
         const classWiseData = {};
-        
+
         // Process students with async support
         for (const student of allStudents) {
-          console.log('Processing student:', {
+          console.log("Processing student:", {
             name: `${student.firstName} ${student.lastName}`,
             class: student.class,
             className: student.class?.name,
             classGrade: student.class?.grade,
             feeSlab: student.feeSlabId,
-            feesPaid: student.feesPaid
+            feesPaid: student.feesPaid,
           });
-          
+
           // Try different ways to get class name
           let className = "Unknown Class";
           if (student.class?.name) {
@@ -371,11 +394,11 @@ const FeeManagement = () => {
           } else if (student.class?.grade) {
             className = student.class.grade;
           } else if (student.class) {
-            className = typeof student.class === 'string' ? student.class : 'Unknown Class';
+            className = typeof student.class === "string" ? student.class : "Unknown Class";
           }
-          
-          console.log('Final className:', className);
-          
+
+          console.log("Final className:", className);
+
           if (!classWiseData[className]) {
             classWiseData[className] = {
               className,
@@ -384,34 +407,34 @@ const FeeManagement = () => {
               pendingStudents: 0,
               totalAmount: 0,
               collectedAmount: 0,
-              pendingAmount: 0
+              pendingAmount: 0,
             };
           }
-          
+
           classWiseData[className].totalStudents++;
           classWiseData[className].totalAmount += student.feeSlabId?.totalAmount || 0;
           classWiseData[className].collectedAmount += student.feesPaid || 0;
-          
+
           // Use simple status calculation for frontend
           const studentTotalAmount = student.feeSlabId?.totalAmount || 0;
           const studentPaidAmount = student.feesPaid || 0;
           const balance = studentTotalAmount - studentPaidAmount;
-          
+
           let status = "pending";
           if (balance <= 0 && studentPaidAmount > 0) {
             status = "paid";
           } else if (studentPaidAmount === 0) {
             status = "pending";
           }
-          
-          console.log('Student status:', {
+
+          console.log("Student status:", {
             name: `${student.firstName} ${student.lastName}`,
             totalAmount: studentTotalAmount,
             paidAmount: studentPaidAmount,
             balance,
-            status
+            status,
           });
-          
+
           if (status === "paid") {
             classWiseData[className].paidStudents++;
           } else if (status === "pending") {
@@ -419,9 +442,9 @@ const FeeManagement = () => {
             classWiseData[className].pendingAmount += balance;
           }
         }
-        
-        console.log('Class-wise data:', classWiseData);
-        
+
+        console.log("Class-wise data:", classWiseData);
+
         const reportData = {
           type: "Class-wise Fee Collection Report",
           generatedDate: new Date().toLocaleDateString(),
@@ -430,12 +453,12 @@ const FeeManagement = () => {
             totalClasses: Object.keys(classWiseData).length,
             totalStudents: allStudents.length,
             totalCollection: response.data.summaryCards.totalCollection.value,
-            totalPending: response.data.summaryCards.pendingFees.value
-          }
+            totalPending: response.data.summaryCards.pendingFees.value,
+          },
         };
-        
-        console.log('Final report data:', reportData);
-        
+
+        console.log("Final report data:", reportData);
+
         setReportData(reportData);
         setShowReportModal(true);
       } else {
@@ -457,7 +480,7 @@ const FeeManagement = () => {
       if (allStudents.length === 0) {
         await fetchAllStudents();
       }
-      
+
       const response = await apiService.fees.getFeeOverview();
       if (response.success) {
         // Calculate yearly totals
@@ -468,18 +491,18 @@ const FeeManagement = () => {
           totalPending: 0,
           monthlyBreakdown: [],
           classBreakdown: {},
-          paymentMethods: {}
+          paymentMethods: {},
         };
-        
+
         // Process students for yearly data
         for (const student of allStudents) {
           const studentTotalAmount = student.feeSlabId?.totalAmount || 0;
           const studentPaidAmount = student.feesPaid || 0;
           const balance = studentTotalAmount - studentPaidAmount;
-          
+
           yearlyData.totalCollection += studentPaidAmount;
           yearlyData.totalPending += balance;
-          
+
           // Class breakdown
           const className = student.class?.name || student.class?.grade || "Unknown Class";
           if (!yearlyData.classBreakdown[className]) {
@@ -487,37 +510,36 @@ const FeeManagement = () => {
               className,
               totalStudents: 0,
               totalCollection: 0,
-              totalPending: 0
+              totalPending: 0,
             };
           }
           yearlyData.classBreakdown[className].totalStudents++;
           yearlyData.classBreakdown[className].totalCollection += studentPaidAmount;
           yearlyData.classBreakdown[className].totalPending += balance;
-          
+
           // Payment method breakdown
           if (student.paymentMethod) {
-            yearlyData.paymentMethods[student.paymentMethod] = (yearlyData.paymentMethods[student.paymentMethod] || 0) + 1;
+            yearlyData.paymentMethods[student.paymentMethod] =
+              (yearlyData.paymentMethods[student.paymentMethod] || 0) + 1;
           }
         }
-        
 
-        
         // Generate monthly breakdown for the year
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
         for (let i = 0; i < 12; i++) {
           const monthName = months[i];
           const monthDate = new Date(currentYear, i, 1);
           const nextMonthDate = new Date(currentYear, i + 1, 1);
-          
+
           // Calculate monthly collection and pending
           let monthlyCollected = 0;
           let monthlyPending = 0;
-          
+
           for (const student of allStudents) {
             const studentTotalAmount = student.feeSlabId?.totalAmount || 0;
             const studentPaidAmount = student.feesPaid || 0;
             const balance = studentTotalAmount - studentPaidAmount;
-            
+
             // Check if payment was made in this month
             if (student.paymentDate) {
               const paymentDate = new Date(student.paymentDate);
@@ -525,7 +547,7 @@ const FeeManagement = () => {
                 monthlyCollected += studentPaidAmount;
               }
             }
-            
+
             // Calculate pending for this month based on fee structure
             // If student has a fee slab, check if any installments are due in this month
             if (student.feeSlabId && student.feeSlabId.installments) {
@@ -550,14 +572,14 @@ const FeeManagement = () => {
               }
             }
           }
-          
+
           yearlyData.monthlyBreakdown.push({
             month: monthName,
             collected: monthlyCollected,
-            pending: monthlyPending
+            pending: monthlyPending,
           });
         }
-        
+
         const reportData = {
           type: `Yearly Fee Collection Report - ${currentYear}`,
           generatedDate: new Date().toLocaleDateString(),
@@ -566,10 +588,10 @@ const FeeManagement = () => {
             totalStudents: yearlyData.totalStudents,
             totalCollection: `₹${(yearlyData.totalCollection || 0).toLocaleString()}`,
             totalPending: `₹${(yearlyData.totalPending || 0).toLocaleString()}`,
-            totalClasses: Object.keys(yearlyData.classBreakdown).length
-          }
+            totalClasses: Object.keys(yearlyData.classBreakdown).length,
+          },
         };
-        
+
         setReportData(reportData);
         setShowReportModal(true);
         toast.success("Yearly report generated successfully!");
@@ -591,7 +613,7 @@ const FeeManagement = () => {
       toast.loading("Generating PDF...", { id: "pdf-export" });
 
       // Create a simplified version for PDF export
-      const pdfContent = document.createElement('div');
+      const pdfContent = document.createElement("div");
       pdfContent.style.cssText = `
         position: fixed;
         top: -9999px;
@@ -605,7 +627,7 @@ const FeeManagement = () => {
       `;
 
       // Add report header
-      const header = document.createElement('div');
+      const header = document.createElement("div");
       header.innerHTML = `
         <h1 style="font-size: 24px; margin-bottom: 10px; color: #000;">${reportData.type}</h1>
         <p style="font-size: 14px; color: #666; margin-bottom: 20px;">Generated on: ${reportData.generatedDate}</p>
@@ -615,7 +637,7 @@ const FeeManagement = () => {
 
       // Add report content based on type
       if (reportType === "monthly") {
-        const summary = document.createElement('div');
+        const summary = document.createElement("div");
         summary.innerHTML = `
           <h2 style="font-size: 18px; margin: 20px 0; color: #000;">Summary</h2>
           <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 30px;">
@@ -636,7 +658,7 @@ const FeeManagement = () => {
         pdfContent.appendChild(summary);
 
         // Add monthly breakdown table
-        const table = document.createElement('div');
+        const table = document.createElement("div");
         table.innerHTML = `
           <h2 style="font-size: 18px; margin: 20px 0; color: #000;">Monthly Collection Breakdown</h2>
           <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
@@ -648,13 +670,17 @@ const FeeManagement = () => {
               </tr>
             </thead>
             <tbody>
-              ${reportData.monthlyBreakdown.map(month => `
+              ${reportData.monthlyBreakdown
+                .map(
+                  (month) => `
                 <tr>
                   <td style="border: 1px solid #ccc; padding: 10px;">${month.month}</td>
                   <td style="border: 1px solid #ccc; padding: 10px; color: #000;">₹${month.collected.toLocaleString()}</td>
                   <td style="border: 1px solid #ccc; padding: 10px; color: #000;">₹${month.pending.toLocaleString()}</td>
                 </tr>
-              `).join('')}
+              `
+                )
+                .join("")}
             </tbody>
           </table>
         `;
@@ -662,7 +688,7 @@ const FeeManagement = () => {
       }
 
       if (reportType === "classwise") {
-        const summary = document.createElement('div');
+        const summary = document.createElement("div");
         summary.innerHTML = `
           <h2 style="font-size: 18px; margin: 20px 0; color: #000;">Summary</h2>
           <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px;">
@@ -687,7 +713,7 @@ const FeeManagement = () => {
         pdfContent.appendChild(summary);
 
         // Add class-wise table
-        const table = document.createElement('div');
+        const table = document.createElement("div");
         table.innerHTML = `
           <h2 style="font-size: 18px; margin: 20px 0; color: #000;">Class-wise Breakdown</h2>
           <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 12px;">
@@ -703,7 +729,9 @@ const FeeManagement = () => {
               </tr>
             </thead>
             <tbody>
-              ${reportData.classData.map(classData => `
+              ${reportData.classData
+                .map(
+                  (classData) => `
                 <tr>
                   <td style="border: 1px solid #ccc; padding: 8px;">${classData.className}</td>
                   <td style="border: 1px solid #ccc; padding: 8px;">${classData.totalStudents}</td>
@@ -713,7 +741,9 @@ const FeeManagement = () => {
                   <td style="border: 1px solid #ccc; padding: 8px; color: #000;">₹${classData.collectedAmount.toLocaleString()}</td>
                   <td style="border: 1px solid #ccc; padding: 8px; color: #000;">₹${classData.pendingAmount.toLocaleString()}</td>
                 </tr>
-              `).join('')}
+              `
+                )
+                .join("")}
             </tbody>
           </table>
         `;
@@ -721,7 +751,7 @@ const FeeManagement = () => {
       }
 
       if (reportType === "yearly") {
-        const summary = document.createElement('div');
+        const summary = document.createElement("div");
         summary.innerHTML = `
           <h2 style="font-size: 18px; margin: 20px 0; color: #000;">Summary</h2>
           <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px;">
@@ -746,7 +776,7 @@ const FeeManagement = () => {
         pdfContent.appendChild(summary);
 
         // Add monthly breakdown table
-        const monthlyTable = document.createElement('div');
+        const monthlyTable = document.createElement("div");
         monthlyTable.innerHTML = `
           <h2 style="font-size: 18px; margin: 20px 0; color: #000;">Monthly Breakdown</h2>
           <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 11px;">
@@ -758,20 +788,24 @@ const FeeManagement = () => {
               </tr>
             </thead>
             <tbody>
-              ${reportData.yearlyData.monthlyBreakdown.map(month => `
+              ${reportData.yearlyData.monthlyBreakdown
+                .map(
+                  (month) => `
                 <tr>
                   <td style="border: 1px solid #ccc; padding: 6px;">${month.month}</td>
                   <td style="border: 1px solid #ccc; padding: 6px; color: #000;">₹${month.collected.toLocaleString()}</td>
                   <td style="border: 1px solid #ccc; padding: 6px; color: #000;">₹${month.pending.toLocaleString()}</td>
                 </tr>
-              `).join('')}
+              `
+                )
+                .join("")}
             </tbody>
           </table>
         `;
         pdfContent.appendChild(monthlyTable);
 
         // Add class breakdown table
-        const classTable = document.createElement('div');
+        const classTable = document.createElement("div");
         classTable.innerHTML = `
           <h2 style="font-size: 18px; margin: 20px 0; color: #000;">Class-wise Breakdown</h2>
           <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 11px;">
@@ -784,14 +818,18 @@ const FeeManagement = () => {
               </tr>
             </thead>
             <tbody>
-              ${Object.values(reportData.yearlyData.classBreakdown).map(classData => `
+              ${Object.values(reportData.yearlyData.classBreakdown)
+                .map(
+                  (classData) => `
                 <tr>
                   <td style="border: 1px solid #ccc; padding: 6px;">${classData.className}</td>
                   <td style="border: 1px solid #ccc; padding: 6px; color: #000;">${classData.totalStudents}</td>
                   <td style="border: 1px solid #ccc; padding: 6px; color: #000;">₹${classData.totalCollection.toLocaleString()}</td>
                   <td style="border: 1px solid #ccc; padding: 6px; color: #000;">₹${classData.totalPending.toLocaleString()}</td>
                 </tr>
-              `).join('')}
+              `
+                )
+                .join("")}
             </tbody>
           </table>
         `;
@@ -805,17 +843,17 @@ const FeeManagement = () => {
         scale: 1.5,
         useCORS: true,
         allowTaint: true,
-        backgroundColor: '#ffffff',
+        backgroundColor: "#ffffff",
         logging: false,
         removeContainer: true,
-        foreignObjectRendering: false
+        foreignObjectRendering: false,
       });
 
       // Remove from document
       document.body.removeChild(pdfContent);
 
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
       const imgWidth = 210;
       const pageHeight = 295;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
@@ -823,19 +861,19 @@ const FeeManagement = () => {
 
       let position = 0;
 
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
       heightLeft -= pageHeight;
 
       while (heightLeft >= 0) {
         position = heightLeft - imgHeight;
         pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
         heightLeft -= pageHeight;
       }
 
-      const fileName = `${reportData.type.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      const fileName = `${reportData.type.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.pdf`;
       pdf.save(fileName);
-      
+
       toast.success("PDF exported successfully!", { id: "pdf-export" });
     } catch (error) {
       console.error("Error exporting PDF:", error);
@@ -1015,6 +1053,7 @@ const FeeManagement = () => {
     }
     if (activeTab === "students") {
       fetchAllStudents();
+      fetchOverdueStudents();
     }
     if (activeTab === "overview") {
       fetchFeeOverview();
@@ -1044,6 +1083,82 @@ const FeeManagement = () => {
     }
   };
 
+  // Fetch overdue students
+  const fetchOverdueStudents = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${appConfig.API_BASE_URL}/fees/overdue-students`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setOverdueStudents(data.data || []);
+      } else {
+        console.error("Failed to fetch overdue students:", data.message);
+      }
+    } catch (error) {
+      console.error("Error fetching overdue students:", error);
+    }
+  };
+
+  // Fetch payment history for a student
+  const fetchPaymentHistory = async (studentId) => {
+    try {
+      setPaymentHistoryLoading(true);
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        toast.error("Authentication token not found. Please login again.");
+        return;
+      }
+
+      console.log("Fetching payment history for student:", studentId);
+      const response = await fetch(`${appConfig.API_BASE_URL}/fees/student/${studentId}/payment-history`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      console.log("Payment history response status:", response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Payment history API error:", response.status, errorText);
+        toast.error(`Failed to fetch payment history: ${response.status}`);
+        return;
+      }
+
+      const data = await response.json();
+      console.log("Payment history data:", data);
+
+      if (data.success) {
+        setPaymentHistory(data.data.paymentHistory || []);
+        setPaymentHistorySummary(
+          data.data.summary || {
+            totalAmount: 0,
+            totalPayments: 0,
+            averageAmount: 0,
+          }
+        );
+
+        if (!data.data.paymentHistory || data.data.paymentHistory.length === 0) {
+          toast.info(
+            "No payment history found for this student. Payment history will appear here once payments are processed."
+          );
+        }
+      } else {
+        console.error("Failed to fetch payment history:", data.message);
+        toast.error(data.message || "Failed to fetch payment history");
+      }
+    } catch (error) {
+      console.error("Error fetching payment history:", error);
+      toast.error("Network error while fetching payment history");
+    } finally {
+      setPaymentHistoryLoading(false);
+    }
+  };
+
   // Search students
   const handleSearch = (searchTerm) => {
     setSearchTerm(searchTerm);
@@ -1051,30 +1166,25 @@ const FeeManagement = () => {
       setFilteredStudents(allStudents);
       return;
     }
-    
-    const filtered = allStudents.filter(student => {
+
+    const filtered = allStudents.filter((student) => {
       const searchLower = searchTerm.toLowerCase();
-      const studentName = student.name || 
-                         (student.firstName && student.lastName ? `${student.firstName} ${student.lastName}`.trim() : '') ||
-                         student.firstName || 
-                         student.studentId || 
-                         '';
-      
-      return studentName.toLowerCase().includes(searchLower) ||
-             student.studentId?.toLowerCase().includes(searchLower) ||
-             student.email?.toLowerCase().includes(searchLower);
+      const studentName =
+        student.name ||
+        (student.firstName && student.lastName ? `${student.firstName} ${student.lastName}`.trim() : "") ||
+        student.firstName ||
+        student.studentId ||
+        "";
+
+      return (
+        studentName.toLowerCase().includes(searchLower) ||
+        student.studentId?.toLowerCase().includes(searchLower) ||
+        student.email?.toLowerCase().includes(searchLower)
+      );
     });
-    
+
     setFilteredStudents(filtered);
   };
-
-
-
-
-
-
-
-
 
   // Mark fee as paid
   const handleMarkFeePaid = async () => {
@@ -1084,36 +1194,52 @@ const FeeManagement = () => {
     }
 
     try {
+      console.log("Processing payment for fee:", selectedFee._id);
+      console.log("Payment data:", markPaidData);
+
       const token = localStorage.getItem("token");
-      const response = await fetch(`${appConfig.API_BASE_URL}/fees/${selectedFee._id}/status`, {
+      const response = await fetch(`${appConfig.API_BASE_URL}/fees/${selectedFee._id}/pay`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(markPaidData),
+        body: JSON.stringify({
+          paidAmount: markPaidData.paidAmount,
+          paymentMethod: markPaidData.paymentMethod,
+          transactionId: markPaidData.transactionId,
+          remarks: markPaidData.remarks,
+        }),
       });
 
       const data = await response.json();
+      console.log("Payment response:", data);
+
       if (data.success) {
-        toast.success("Fee status updated successfully");
+        toast.success("Payment processed successfully");
         setShowMarkPaidModal(false);
         setSelectedFee(null);
         // Refresh the class students to show updated fee status
         fetchClassStudents(selectedClass);
       } else {
-        toast.error(data.message || "Failed to update fee status");
+        toast.error(data.message || "Failed to process payment");
       }
     } catch (error) {
-      console.error("Error updating fee status:", error);
-      toast.error("Error updating fee status");
+      console.error("Error processing payment:", error);
+      toast.error("Error processing payment");
     }
   };
 
   // Handle mark as paid button click
   const handleMarkAsPaidClick = (student) => {
+    console.log("=== MARK AS PAID CLICKED ===");
+    console.log("Student data:", student);
+    console.log("Fee status:", student.feeStatus);
+
     if (student.feeStatus?.fees?.length > 0) {
       const fee = student.feeStatus.fees[0];
+      console.log("Selected fee for payment:", fee);
+
       setSelectedFee(fee);
       setMarkPaidData({
         status: "paid",
@@ -1122,8 +1248,16 @@ const FeeManagement = () => {
         transactionId: "",
         remarks: "",
       });
+      console.log("Mark paid data set:", {
+        status: "paid",
+        paidAmount: fee.amount,
+        paymentMethod: "cash",
+        transactionId: "",
+        remarks: "",
+      });
       setShowMarkPaidModal(true);
     } else {
+      console.log("❌ No fees found for student");
       toast.error("No fees found for this student");
     }
   };
@@ -1133,7 +1267,7 @@ const FeeManagement = () => {
     setSelectedStudent(student);
     setFeeEditData({
       paymentStatus: student.paymentStatus || "pending",
-      paymentDate: student.paymentDate ? new Date(student.paymentDate).toISOString().split('T')[0] : "",
+      paymentDate: student.paymentDate ? new Date(student.paymentDate).toISOString().split("T")[0] : "",
       paymentMethod: student.paymentMethod || "",
       paymentType: student.paymentType || "full",
       transactionId: student.transactionId || "",
@@ -1145,8 +1279,15 @@ const FeeManagement = () => {
 
   // Handle student view
   const handleStudentView = (student) => {
+    if (!student || !student._id) {
+      toast.error("Invalid student data");
+      return;
+    }
+
     setSelectedStudent(student);
     setShowStudentViewModal(true);
+    // Fetch payment history for the student
+    fetchPaymentHistory(student._id);
   };
 
   // Handle update status
@@ -1195,54 +1336,103 @@ const FeeManagement = () => {
     toast.error("Bulk operations are disabled. Please use individual actions for each student.");
   };
 
-
-
-
-
   // Handle fee edit
   const handleFeeEdit = async (e) => {
     e.preventDefault();
     try {
       const token = localStorage.getItem("token");
-      
+
       // Calculate the new total fees paid by adding current payment to existing fees paid
       const newFeesPaid = (selectedStudent.feesPaid || 0) + (feeEditData.feesPaid || 0);
-      
-      const response = await fetch(`${appConfig.API_BASE_URL}/students/${selectedStudent._id}`, {
-        method: "PUT",
+
+      // First, find the student's active fees
+      const feesResponse = await fetch(`${appConfig.API_BASE_URL}/fees/student/${selectedStudent._id}`, {
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          ...feeEditData,
-          feesPaid: newFeesPaid, // Update the total fees paid
-          paymentDate: feeEditData.paymentDate || new Date().toISOString().split('T')[0]
-        }),
       });
 
-      const data = await response.json();
-      if (data.success) {
-        toast.success("Fee payment updated successfully");
-        setShowStudentEditModal(false);
-        fetchAllStudents(); // Refresh the student list
+      const feesData = await feesResponse.json();
+      console.log("Student fees data:", feesData);
+
+      if (feesData.success && feesData.data && feesData.data.fees && feesData.data.fees.length > 0) {
+        // Get the first active fee
+        const fee = feesData.data.fees[0];
+        console.log("Found active fee for payment processing:", fee);
+
+        // Process the payment using the fee payment endpoint
+        const paymentResponse = await fetch(`${appConfig.API_BASE_URL}/fees/${fee._id}/pay`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            paidAmount: feeEditData.feesPaid,
+            paymentMethod: feeEditData.paymentMethod,
+            transactionId: feeEditData.transactionId || "",
+            remarks: feeEditData.remarks || "",
+          }),
+        });
+
+        const paymentData = await paymentResponse.json();
+        console.log("Payment processing response:", paymentData);
+
+        if (paymentData.success) {
+          toast.success("Payment processed successfully and added to payment history");
+          setShowStudentEditModal(false);
+          fetchAllStudents(); // Refresh the student list
+        } else {
+          // If payment processing fails, fall back to the old method
+          fallbackToStudentUpdate();
+        }
       } else {
-        toast.error(data.message || "Error updating fee payment");
+        // If no active fees found, fall back to the old method
+        console.log("No active fees found, falling back to direct student update");
+        fallbackToStudentUpdate();
+      }
+
+      // Function to fall back to the old method of updating student directly
+      async function fallbackToStudentUpdate() {
+        console.log("Using fallback method to update student payment info");
+        const studentResponse = await fetch(`${appConfig.API_BASE_URL}/students/${selectedStudent._id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            ...feeEditData,
+            feesPaid: newFeesPaid, // Update the total fees paid
+            paymentDate: feeEditData.paymentDate || new Date().toISOString().split("T")[0],
+          }),
+        });
+
+        const studentData = await studentResponse.json();
+        if (studentData.success) {
+          toast.success("Fee payment updated successfully (legacy method)");
+          setShowStudentEditModal(false);
+          fetchAllStudents(); // Refresh the student list
+        } else {
+          toast.error(studentData.message || "Error updating fee payment");
+        }
       }
     } catch (error) {
-      console.error("Error updating fee payment:", error);
-      toast.error("Error updating fee payment");
+      console.error("Error processing payment:", error);
+      toast.error("Error processing payment");
     }
   };
 
   // Fee Reminder Functions
   const handleSendFeeReminder = (student) => {
     setSelectedStudentForReminder(student);
-    const remainingAmount = ((student.feeSlabId?.totalAmount || 0)) - (student.feesPaid || 0);
-    
+    const remainingAmount = (student.feeSlabId?.totalAmount || 0) - (student.feesPaid || 0);
+
     setFeeReminderData({
       subject: `Fee Reminder - ₹${remainingAmount.toLocaleString()} Remaining`,
-      message: `Dear ${student.name || `${student.firstName || ''} ${student.lastName || ''}`.trim()},\n\nThis is a reminder that you have ₹${remainingAmount.toLocaleString()} remaining in your fee payment.\n\nPlease ensure timely payment to avoid any inconvenience.\n\nBest regards,\nSchool Administration`,
+      message: `Dear ${
+        student.name || `${student.firstName || ""} ${student.lastName || ""}`.trim()
+      },\n\nThis is a reminder that you have ₹${remainingAmount.toLocaleString()} remaining in your fee payment.\n\nPlease ensure timely payment to avoid any inconvenience.\n\nBest regards,\nSchool Administration`,
       priority: "medium",
     });
     setShowFeeReminderModal(true);
@@ -1254,8 +1444,9 @@ const FeeManagement = () => {
 
     try {
       setSendingReminder(true);
-      const remainingAmount = ((selectedStudentForReminder.feeSlabId?.totalAmount || 0)) - (selectedStudentForReminder.feesPaid || 0);
-      
+      const remainingAmount =
+        (selectedStudentForReminder.feeSlabId?.totalAmount || 0) - (selectedStudentForReminder.feesPaid || 0);
+
       const messageData = {
         studentId: selectedStudentForReminder._id,
         subject: feeReminderData.subject,
@@ -1267,7 +1458,7 @@ const FeeManagement = () => {
       };
 
       await apiService.messages.sendFeeReminder(messageData);
-      
+
       toast.success("Fee reminder sent successfully!");
       setShowFeeReminderModal(false);
       setSelectedStudentForReminder(null);
@@ -1298,7 +1489,7 @@ const FeeManagement = () => {
                 <p className="text-gray-600">Manage fee slabs, payments, and financial reports</p>
               </div>
               <div className="flex space-x-3">
-                <button 
+                <button
                   onClick={generateYearlyReport}
                   disabled={reportLoading}
                   className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1462,106 +1653,116 @@ const FeeManagement = () => {
                       </div>
                     </div>
                   ) : (
-                <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
-                  {/* Stats Cards */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {feeStats.map((stat, index) => (
-                      <motion.div
-                        key={stat.name}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                        className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-gray-600">{stat.name}</p>
-                            <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
-                            <div className="flex items-center mt-2">
-                              <span
+                    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
+                      {/* Stats Cards */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {feeStats.map((stat, index) => (
+                          <motion.div
+                            key={stat.name}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.1 }}
+                            className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-gray-600">{stat.name}</p>
+                                <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
+                                <div className="flex items-center mt-2">
+                                  <span
+                                    className={cn(
+                                      "text-sm font-medium",
+                                      stat.changeType === "increase" ? "text-green-600" : "text-red-600"
+                                    )}
+                                  >
+                                    {stat.change}
+                                  </span>
+                                  <span className="text-sm text-gray-500 ml-1">from last month</span>
+                                </div>
+                              </div>
+                              <div
                                 className={cn(
-                                  "text-sm font-medium",
-                                  stat.changeType === "increase" ? "text-green-600" : "text-red-600"
+                                  "p-3 rounded-full",
+                                  stat.color === "success" && "bg-green-100 text-green-600",
+                                  stat.color === "warning" && "bg-yellow-100 text-yellow-600",
+                                  stat.color === "primary" && "bg-blue-100 text-blue-600",
+                                  stat.color === "error" && "bg-red-100 text-red-600"
                                 )}
                               >
-                                {stat.change}
-                              </span>
-                              <span className="text-sm text-gray-500 ml-1">from last month</span>
+                                <stat.icon className="w-6 h-6" />
+                              </div>
                             </div>
-                          </div>
-                          <div
-                            className={cn(
-                              "p-3 rounded-full",
-                              stat.color === "success" && "bg-green-100 text-green-600",
-                              stat.color === "warning" && "bg-yellow-100 text-yellow-600",
-                              stat.color === "primary" && "bg-blue-100 text-blue-600",
-                              stat.color === "error" && "bg-red-100 text-red-600"
-                            )}
-                          >
-                            <stat.icon className="w-6 h-6" />
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
+                          </motion.div>
+                        ))}
+                      </div>
 
-                  {/* Charts */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Monthly Collection Chart */}
-                    <div className="bg-white rounded-lg border border-gray-200 p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Collection</h3>
+                      {/* Charts */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Monthly Collection Chart */}
+                        <div className="bg-white rounded-lg border border-gray-200 p-6">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Collection</h3>
                           {monthlyData && monthlyData.length > 0 ? (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={monthlyData}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="month" />
-                          <YAxis />
+                            <ResponsiveContainer width="100%" height={300}>
+                              <LineChart data={monthlyData}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="month" />
+                                <YAxis />
                                 <Tooltip formatter={(value) => `₹${value.toLocaleString()}`} />
-                          <Legend />
-                          <Line type="monotone" dataKey="collected" stroke="#3B82F6" strokeWidth={2} name="Collected" />
-                          <Line type="monotone" dataKey="pending" stroke="#F59E0B" strokeWidth={2} name="Pending" />
-                        </LineChart>
-                      </ResponsiveContainer>
+                                <Legend />
+                                <Line
+                                  type="monotone"
+                                  dataKey="collected"
+                                  stroke="#3B82F6"
+                                  strokeWidth={2}
+                                  name="Collected"
+                                />
+                                <Line
+                                  type="monotone"
+                                  dataKey="pending"
+                                  stroke="#F59E0B"
+                                  strokeWidth={2}
+                                  name="Pending"
+                                />
+                              </LineChart>
+                            </ResponsiveContainer>
                           ) : (
                             <div className="flex items-center justify-center h-64 text-gray-500">
                               <p>No monthly data available</p>
                             </div>
                           )}
-                    </div>
-
-                    {/* Payment Methods Chart */}
-                    <div className="bg-white rounded-lg border border-gray-200 p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Methods</h3>
-                      <div>
-                        <div className="text-xs text-gray-500 mb-2">
-                          Debug: {displayPaymentMethods.length} payment methods found
                         </div>
-                        <ResponsiveContainer width="100%" height={300}>
-                          <PieChart>
-                            <Pie
-                              data={displayPaymentMethods}
-                              cx="50%"
-                              cy="50%"
-                              outerRadius={80}
-                              dataKey="value"
-                              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                            >
-                              {displayPaymentMethods.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                              ))}
-                            </Pie>
-                            <Tooltip formatter={(value) => `${value}%`} />
-                          </PieChart>
-                        </ResponsiveContainer>
+
+                        {/* Payment Methods Chart */}
+                        <div className="bg-white rounded-lg border border-gray-200 p-6">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Methods</h3>
+                          <div>
+                            <div className="text-xs text-gray-500 mb-2">
+                              Debug: {displayPaymentMethods.length} payment methods found
+                            </div>
+                            <ResponsiveContainer width="100%" height={300}>
+                              <PieChart>
+                                <Pie
+                                  data={displayPaymentMethods}
+                                  cx="50%"
+                                  cy="50%"
+                                  outerRadius={80}
+                                  dataKey="value"
+                                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                >
+                                  {displayPaymentMethods.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                  ))}
+                                </Pie>
+                                <Tooltip formatter={(value) => `${value}%`} />
+                              </PieChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    </div>
                     </motion.div>
                   )}
                 </>
               )}
-
-
 
               {activeTab === "students" && (
                 <div className="space-y-6">
@@ -1569,9 +1770,7 @@ const FeeManagement = () => {
                   <div className="bg-white rounded-lg border border-gray-200 p-6">
                     <div className="flex flex-col sm:flex-row gap-4">
                       <div className="flex-1">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Search Students
-                        </label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Search Students</label>
                         <div className="relative">
                           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                           <input
@@ -1589,12 +1788,14 @@ const FeeManagement = () => {
                           <label className="block text-xs font-medium text-gray-700 mb-1">Fee Slab</label>
                           <select
                             value={feeSlabFilter}
-                            onChange={e => setFeeSlabFilter(e.target.value)}
+                            onChange={(e) => setFeeSlabFilter(e.target.value)}
                             className="border border-gray-300 rounded-lg px-2 py-1"
                           >
                             <option value="">All</option>
-                            {feeSlabOptions.map(opt => (
-                              <option key={opt} value={opt}>{opt}</option>
+                            {feeSlabOptions.map((opt) => (
+                              <option key={opt} value={opt}>
+                                {opt}
+                              </option>
                             ))}
                           </select>
                         </div>
@@ -1602,12 +1803,14 @@ const FeeManagement = () => {
                           <label className="block text-xs font-medium text-gray-700 mb-1">Class</label>
                           <select
                             value={classFilter}
-                            onChange={e => setClassFilter(e.target.value)}
+                            onChange={(e) => setClassFilter(e.target.value)}
                             className="border border-gray-300 rounded-lg px-2 py-1"
                           >
                             <option value="">All</option>
-                            {classOptions.map(opt => (
-                              <option key={opt} value={opt}>{opt}</option>
+                            {classOptions.map((opt) => (
+                              <option key={opt} value={opt}>
+                                {opt}
+                              </option>
                             ))}
                           </select>
                         </div>
@@ -1615,13 +1818,27 @@ const FeeManagement = () => {
                           <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
                           <select
                             value={statusFilter}
-                            onChange={e => setStatusFilter(e.target.value)}
+                            onChange={(e) => setStatusFilter(e.target.value)}
                             className="border border-gray-300 rounded-lg px-2 py-1"
                           >
                             <option value="">All</option>
-                            {statusOptions.map(opt => (
-                              <option key={opt} value={opt}>{opt.charAt(0).toUpperCase() + opt.slice(1)}</option>
+                            {statusOptions.map((opt) => (
+                              <option key={opt} value={opt}>
+                                {opt.charAt(0).toUpperCase() + opt.slice(1)}
+                              </option>
                             ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Due Date</label>
+                          <select
+                            value={overdueFilter}
+                            onChange={(e) => setOverdueFilter(e.target.value)}
+                            className="border border-gray-300 rounded-lg px-2 py-1"
+                          >
+                            <option value="">All</option>
+                            <option value="overdue">Overdue</option>
+                            <option value="not-overdue">Not Overdue</option>
                           </select>
                         </div>
                       </div>
@@ -1634,9 +1851,7 @@ const FeeManagement = () => {
                         Students ({filteredAndSortedStudents.length})
                       </h3>
                       <div className="flex space-x-2">
-                        <span className="text-sm text-gray-600">
-                          Individual messaging enabled
-                        </span>
+                        <span className="text-sm text-gray-600">Individual messaging enabled</span>
                       </div>
                     </div>
                     {loadingStudents ? (
@@ -1665,6 +1880,9 @@ const FeeManagement = () => {
                                 Remaining
                               </th>
                               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Overdue
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Payment Date
                               </th>
                               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1681,78 +1899,97 @@ const FeeManagement = () => {
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <div>
                                     <div className="text-sm font-medium text-gray-900">
-                                      {student.name || `${student.firstName || ''} ${student.middleName || ''} ${student.lastName || ''}`.trim()}
+                                      {student.name ||
+                                        `${student.firstName || ""} ${student.middleName || ""} ${
+                                          student.lastName || ""
+                                        }`.trim()}
                                     </div>
                                     <div className="text-sm text-gray-500">{student.email}</div>
                                   </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  {student.feeSlabId?.slabName || 
-                                   student.feeStructure || "N/A"}
+                                  {student.feeSlabId?.slabName || student.feeStructure || "N/A"}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  ₹{(student.feeSlabId?.totalAmount || 
-                                     0).toLocaleString()}
+                                  ₹{(student.feeSlabId?.totalAmount || 0).toLocaleString()}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                   ₹{student.feesPaid?.toLocaleString() || "0"}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  ₹{(((student.feeSlabId?.totalAmount || 
-                                       0)) - (student.feesPaid || 0)).toLocaleString()}
+                                  ₹{((student.feeSlabId?.totalAmount || 0) - (student.feesPaid || 0)).toLocaleString()}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {(() => {
+                                    const overdueStudent = overdueStudents.find((s) => s._id === student._id);
+                                    if (overdueStudent) {
+                                      return (
+                                        <div>
+                                          <span className="text-red-600 font-medium">
+                                            ₹{overdueStudent.totalOverdueAmount?.toLocaleString() || "0"}
+                                          </span>
+                                          <div className="text-xs text-gray-500">
+                                            {overdueStudent.overdueCount} installment(s)
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+                                    return <span className="text-green-600">No Overdue</span>;
+                                  })()}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                   {student.paymentDate ? new Date(student.paymentDate).toLocaleDateString() : "N/A"}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                                    student.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
-                                    student.paymentStatus === 'overdue' ? 'bg-red-100 text-red-800' :
-                                    'bg-yellow-100 text-yellow-800'
-                                  }`}>
-                                    {student.paymentStatus || 'pending'}
+                                  <span
+                                    className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                                      student.paymentStatus === "paid"
+                                        ? "bg-green-100 text-green-800"
+                                        : student.paymentStatus === "overdue"
+                                        ? "bg-red-100 text-red-800"
+                                        : "bg-yellow-100 text-yellow-800"
+                                    }`}
+                                  >
+                                    {student.paymentStatus || "pending"}
                                   </span>
-                                  </td>
-                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-
-                                  <button 
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                  <button
                                     onClick={() => handleStudentEdit(student)}
                                     className="text-blue-600 hover:text-blue-900 mr-3"
                                     title="Edit Student"
                                   >
                                     <Edit3 className="w-4 h-4" />
                                   </button>
-                                  <button 
+                                  <button
                                     onClick={() => handleStudentView(student)}
                                     className="text-green-600 hover:text-green-900 mr-3"
                                     title="View Details"
                                   >
-                                      <Eye className="w-4 h-4" />
-                                    </button>
-                                    <button 
-                                      onClick={() => handleUpdateStatus(student)}
+                                    <Eye className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleUpdateStatus(student)}
                                     className="text-purple-600 hover:text-purple-900 mr-3"
                                     title="Update Status"
-                                    >
-                                      <Settings className="w-4 h-4" />
-                                    </button>
-                                    <button 
-                                      onClick={() => handleSendFeeReminder(student)}
-                                      className="text-orange-600 hover:text-orange-900 mr-3"
-                                      title="Send Fee Reminder"
-                                    >
-                                      <Bell className="w-4 h-4" />
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </div>
-
-
+                                  >
+                                    <Settings className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleSendFeeReminder(student)}
+                                    className="text-orange-600 hover:text-orange-900 mr-3"
+                                    title="Send Fee Reminder"
+                                  >
+                                    <Bell className="w-4 h-4" />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -1761,7 +1998,7 @@ const FeeManagement = () => {
                   <div className="bg-white rounded-lg border border-gray-200 p-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Financial Reports</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <button 
+                      <button
                         onClick={generateMonthlyReport}
                         disabled={reportLoading}
                         className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1769,14 +2006,14 @@ const FeeManagement = () => {
                         {reportLoading && reportType === "monthly" ? (
                           <div className="w-5 h-5 mr-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                         ) : (
-                        <FileText className="w-5 h-5 mr-3 text-blue-600" />
+                          <FileText className="w-5 h-5 mr-3 text-blue-600" />
                         )}
                         <div className="text-left">
                           <div className="font-medium text-gray-900">Monthly Report</div>
                           <div className="text-sm text-gray-500">Generate monthly fee collection report</div>
                         </div>
                       </button>
-                      <button 
+                      <button
                         onClick={generateClassWiseReport}
                         disabled={reportLoading}
                         className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1784,14 +2021,14 @@ const FeeManagement = () => {
                         {reportLoading && reportType === "classwise" ? (
                           <div className="w-5 h-5 mr-3 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
                         ) : (
-                        <FileText className="w-5 h-5 mr-3 text-green-600" />
+                          <FileText className="w-5 h-5 mr-3 text-green-600" />
                         )}
                         <div className="text-left">
                           <div className="font-medium text-gray-900">Class-wise Report</div>
                           <div className="text-sm text-gray-500">Fee collection by class</div>
                         </div>
                       </button>
-                      <button 
+                      <button
                         onClick={generateYearlyReport}
                         disabled={reportLoading}
                         className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1799,7 +2036,7 @@ const FeeManagement = () => {
                         {reportLoading && reportType === "yearly" ? (
                           <div className="w-5 h-5 mr-3 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
                         ) : (
-                        <FileText className="w-5 h-5 mr-3 text-green-600" />
+                          <FileText className="w-5 h-5 mr-3 text-green-600" />
                         )}
                         <div className="text-left">
                           <div className="font-medium text-gray-900">Yearly Report</div>
@@ -1833,10 +2070,7 @@ const FeeManagement = () => {
                     )}
                     {pdfExporting ? "Generating PDF..." : "Export PDF"}
                   </button>
-                  <button
-                    onClick={() => setShowReportModal(false)}
-                    className="text-gray-500 hover:text-gray-700"
-                  >
+                  <button onClick={() => setShowReportModal(false)} className="text-gray-500 hover:text-gray-700">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       className="h-6 w-6"
@@ -1892,16 +2126,26 @@ const FeeManagement = () => {
                           <thead className="bg-gray-50">
                             <tr>
                               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Collected</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pending</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                Collected
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                Pending
+                              </th>
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
                             {reportData.monthlyBreakdown.map((month, index) => (
                               <tr key={index}>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{month.month}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">₹{month.collected.toLocaleString()}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">₹{month.pending.toLocaleString()}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                  {month.month}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">
+                                  ₹{month.collected.toLocaleString()}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">
+                                  ₹{month.pending.toLocaleString()}
+                                </td>
                               </tr>
                             ))}
                           </tbody>
@@ -1944,24 +2188,48 @@ const FeeManagement = () => {
                           <thead className="bg-gray-50">
                             <tr>
                               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Students</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                Total Students
+                              </th>
                               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paid</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pending</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Amount</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Collected</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pending Amount</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                Pending
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                Total Amount
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                Collected
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                Pending Amount
+                              </th>
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
                             {reportData.classData.map((classData, index) => (
                               <tr key={index}>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{classData.className}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{classData.totalStudents}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">{classData.paidStudents}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">{classData.pendingStudents}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₹{classData.totalAmount.toLocaleString()}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">₹{classData.collectedAmount.toLocaleString()}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">₹{classData.pendingAmount.toLocaleString()}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                  {classData.className}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {classData.totalStudents}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">
+                                  {classData.paidStudents}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">
+                                  {classData.pendingStudents}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  ₹{classData.totalAmount.toLocaleString()}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">
+                                  ₹{classData.collectedAmount.toLocaleString()}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">
+                                  ₹{classData.pendingAmount.toLocaleString()}
+                                </td>
                               </tr>
                             ))}
                           </tbody>
@@ -2004,16 +2272,26 @@ const FeeManagement = () => {
                           <thead className="bg-gray-50">
                             <tr>
                               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Collected</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pending</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                Collected
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                Pending
+                              </th>
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
                             {reportData.yearlyData.monthlyBreakdown.map((month, index) => (
                               <tr key={index}>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{month.month}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">₹{month.collected.toLocaleString()}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">₹{month.pending.toLocaleString()}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                  {month.month}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">
+                                  ₹{month.collected.toLocaleString()}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">
+                                  ₹{month.pending.toLocaleString()}
+                                </td>
                               </tr>
                             ))}
                           </tbody>
@@ -2029,18 +2307,32 @@ const FeeManagement = () => {
                           <thead className="bg-gray-50">
                             <tr>
                               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Students</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Collection</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Pending</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                Total Students
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                Total Collection
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                Total Pending
+                              </th>
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
                             {Object.values(reportData.yearlyData.classBreakdown).map((classData, index) => (
                               <tr key={index}>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{classData.className}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{classData.totalStudents}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">₹{classData.totalCollection.toLocaleString()}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">₹{classData.totalPending.toLocaleString()}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                  {classData.className}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {classData.totalStudents}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">
+                                  ₹{classData.totalCollection.toLocaleString()}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">
+                                  ₹{classData.totalPending.toLocaleString()}
+                                </td>
                               </tr>
                             ))}
                           </tbody>
@@ -2364,20 +2656,13 @@ const FeeManagement = () => {
           </div>
         )}
 
-
-
-
-
         {/* Mark as Paid Modal */}
         {showMarkPaidModal && selectedFee && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Mark Fee as Paid</h3>
-                <button
-                  onClick={() => setShowMarkPaidModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
+                <button onClick={() => setShowMarkPaidModal(false)} className="text-gray-400 hover:text-gray-600">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -2458,35 +2743,36 @@ const FeeManagement = () => {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
               <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
+                <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold text-gray-900">Edit Fee Information</h3>
-                <button
-                    onClick={() => setShowStudentEditModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
+                  <button onClick={() => setShowStudentEditModal(false)} className="text-gray-400 hover:text-gray-600">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
 
                 <div className="mb-4">
                   <p className="text-sm text-gray-600">
-                    <strong>Student:</strong> {selectedStudent.name || `${selectedStudent.firstName || ''} ${selectedStudent.middleName || ''} ${selectedStudent.lastName || ''}`.trim()}
+                    <strong>Student:</strong>{" "}
+                    {selectedStudent.name ||
+                      `${selectedStudent.firstName || ""} ${selectedStudent.middleName || ""} ${
+                        selectedStudent.lastName || ""
+                      }`.trim()}
                   </p>
                   <p className="text-sm text-gray-600">
                     <strong>Class:</strong> {selectedStudent.class?.name || selectedStudent.class?.grade || "N/A"}
                   </p>
                   <p className="text-sm text-gray-600">
-                    <strong>Fee Slab:</strong> {selectedStudent.feeSlabId?.slabName || 
-                      selectedStudent.feeStructure || "N/A"}
+                    <strong>Fee Slab:</strong>{" "}
+                    {selectedStudent.feeSlabId?.slabName || selectedStudent.feeStructure || "N/A"}
                   </p>
                   <p className="text-sm text-gray-600">
-                    <strong>Total Amount:</strong> ₹{(selectedStudent.feeSlabId?.totalAmount || 
-                      0).toLocaleString()}
+                    <strong>Total Amount:</strong> ₹{(selectedStudent.feeSlabId?.totalAmount || 0).toLocaleString()}
                   </p>
                   <p className="text-sm text-gray-600">
-                    <strong>Remaining Fees:</strong> ₹{(((selectedStudent.feeSlabId?.totalAmount || 0)) - (selectedStudent.feesPaid || 0)).toLocaleString()}
+                    <strong>Remaining Fees:</strong> ₹
+                    {((selectedStudent.feeSlabId?.totalAmount || 0) - (selectedStudent.feesPaid || 0)).toLocaleString()}
                   </p>
                   {selectedStudent.feeSlabId?.installments && selectedStudent.feeSlabId.installments.length > 0 && (
                     <div className="mt-4 p-3 bg-blue-50 rounded-lg">
@@ -2566,7 +2852,8 @@ const FeeManagement = () => {
                       value={feeEditData.feesPaid}
                       onChange={(e) => {
                         const value = parseFloat(e.target.value) || 0;
-                        const maxAmount = ((selectedStudent.feeSlabId?.totalAmount || 0) - (selectedStudent.feesPaid || 0));
+                        const maxAmount =
+                          (selectedStudent.feeSlabId?.totalAmount || 0) - (selectedStudent.feesPaid || 0);
                         if (value <= maxAmount) {
                           setFeeEditData({ ...feeEditData, feesPaid: value });
                         }
@@ -2582,9 +2869,9 @@ const FeeManagement = () => {
                     <input
                       type="text"
                       value={(
-                        (selectedStudent.feeSlabId?.totalAmount || 0)
-                        - (selectedStudent.feesPaid || 0)
-                        - (feeEditData.feesPaid || 0)
+                        (selectedStudent.feeSlabId?.totalAmount || 0) -
+                        (selectedStudent.feesPaid || 0) -
+                        (feeEditData.feesPaid || 0)
                       ).toLocaleString()}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100"
                       disabled
@@ -2592,20 +2879,20 @@ const FeeManagement = () => {
                     />
                   </div>
 
-              <div className="flex justify-end space-x-3 mt-6">
-                <button
+                  <div className="flex justify-end space-x-3 mt-6">
+                    <button
                       type="button"
                       onClick={() => setShowStudentEditModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
+                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
                       type="submit"
                       className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
-                >
+                    >
                       Update Fee
-                </button>
+                    </button>
                   </div>
                 </form>
               </div>
@@ -2619,10 +2906,7 @@ const FeeManagement = () => {
             <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Fee Information</h3>
-                <button
-                  onClick={() => setShowStudentViewModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
+                <button onClick={() => setShowStudentViewModal(false)} className="text-gray-400 hover:text-gray-600">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -2637,7 +2921,10 @@ const FeeManagement = () => {
                     <div>
                       <span className="text-gray-600">Name:</span>
                       <span className="font-medium ml-2">
-                        {selectedStudent.name || `${selectedStudent.firstName || ''} ${selectedStudent.middleName || ''} ${selectedStudent.lastName || ''}`.trim()}
+                        {selectedStudent.name ||
+                          `${selectedStudent.firstName || ""} ${selectedStudent.middleName || ""} ${
+                            selectedStudent.lastName || ""
+                          }`.trim()}
                       </span>
                     </div>
                     <div>
@@ -2646,11 +2933,15 @@ const FeeManagement = () => {
                     </div>
                     <div>
                       <span className="text-gray-600">Class:</span>
-                      <span className="font-medium ml-2">{selectedStudent.class?.name || selectedStudent.class?.grade || "N/A"}</span>
+                      <span className="font-medium ml-2">
+                        {selectedStudent.class?.name || selectedStudent.class?.grade || "N/A"}
+                      </span>
                     </div>
                     <div>
                       <span className="text-gray-600">Contact:</span>
-                      <span className="font-medium ml-2">{selectedStudent.mobileNumber || selectedStudent.phone || "N/A"}</span>
+                      <span className="font-medium ml-2">
+                        {selectedStudent.mobileNumber || selectedStudent.phone || "N/A"}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -2661,17 +2952,19 @@ const FeeManagement = () => {
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="text-gray-600">Fee Structure:</span>
-                      <span className="font-medium ml-2 capitalize">{selectedStudent.feeStructure || 'regular'}</span>
+                      <span className="font-medium ml-2 capitalize">{selectedStudent.feeStructure || "regular"}</span>
                     </div>
                     <div>
                       <span className="text-gray-600">Fee Slab:</span>
-                      <span className="font-medium ml-2">{selectedStudent.feeSlabId?.slabName || 
-                        selectedStudent.feeStructure || "N/A"}</span>
+                      <span className="font-medium ml-2">
+                        {selectedStudent.feeSlabId?.slabName || selectedStudent.feeStructure || "N/A"}
+                      </span>
                     </div>
                     <div>
                       <span className="text-gray-600">Total Amount:</span>
-                      <span className="font-medium ml-2">₹{(selectedStudent.feeSlabId?.totalAmount || 
-                        0).toLocaleString()}</span>
+                      <span className="font-medium ml-2">
+                        ₹{(selectedStudent.feeSlabId?.totalAmount || 0).toLocaleString()}
+                      </span>
                     </div>
                     <div>
                       <span className="text-gray-600">Fees Paid:</span>
@@ -2679,17 +2972,25 @@ const FeeManagement = () => {
                     </div>
                     <div>
                       <span className="text-gray-600">Remaining Amount:</span>
-                      <span className="font-medium ml-2">₹{(((selectedStudent.feeSlabId?.totalAmount || 
-                        0)) - (selectedStudent.feesPaid || 0)).toLocaleString()}</span>
+                      <span className="font-medium ml-2">
+                        ₹
+                        {(
+                          (selectedStudent.feeSlabId?.totalAmount || 0) - (selectedStudent.feesPaid || 0)
+                        ).toLocaleString()}
+                      </span>
                     </div>
                     <div>
                       <span className="text-gray-600">Payment Status:</span>
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ml-2 ${
-                        selectedStudent.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
-                        selectedStudent.paymentStatus === 'overdue' ? 'bg-red-100 text-red-800' :
-                        'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {selectedStudent.paymentStatus || 'pending'}
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ml-2 ${
+                          selectedStudent.paymentStatus === "paid"
+                            ? "bg-green-100 text-green-800"
+                            : selectedStudent.paymentStatus === "overdue"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-yellow-100 text-yellow-800"
+                        }`}
+                      >
+                        {selectedStudent.paymentStatus || "pending"}
                       </span>
                     </div>
                     {selectedStudent.concessionAmount > 0 && (
@@ -2701,7 +3002,9 @@ const FeeManagement = () => {
                     {selectedStudent.lateFees > 0 && (
                       <div>
                         <span className="text-gray-600">Late Fees:</span>
-                        <span className="font-medium ml-2 text-red-600">₹{selectedStudent.lateFees.toLocaleString()}</span>
+                        <span className="font-medium ml-2 text-red-600">
+                          ₹{selectedStudent.lateFees.toLocaleString()}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -2713,27 +3016,22 @@ const FeeManagement = () => {
                     <h4 className="font-semibold text-gray-900 mb-3">Installment Schedule</h4>
                     <div className="space-y-3">
                       {selectedStudent.feeSlabId.installments.map((installment, index) => (
-                        <div key={index} className="flex justify-between items-center p-3 bg-white rounded-lg border border-gray-200">
+                        <div
+                          key={index}
+                          className="flex justify-between items-center p-3 bg-white rounded-lg border border-gray-200"
+                        >
                           <div className="flex-1">
-                            <div className="font-medium text-gray-900">
-                              Installment {installment.installmentNumber}
-                            </div>
+                            <div className="font-medium text-gray-900">Installment {installment.installmentNumber}</div>
                             <div className="text-sm text-gray-600">
                               Due: {new Date(installment.dueDate).toLocaleDateString()}
                             </div>
                             {installment.description && (
-                              <div className="text-sm text-gray-500">
-                                {installment.description}
-                              </div>
+                              <div className="text-sm text-gray-500">{installment.description}</div>
                             )}
                           </div>
                           <div className="text-right">
-                            <div className="font-semibold text-gray-900">
-                              ₹{installment.amount.toLocaleString()}
-                            </div>
-                            <div className="text-sm text-gray-600">
-                              {installment.percentage}%
-                            </div>
+                            <div className="font-semibold text-gray-900">₹{installment.amount.toLocaleString()}</div>
+                            <div className="text-sm text-gray-600">{installment.percentage}%</div>
                           </div>
                         </div>
                       ))}
@@ -2748,13 +3046,17 @@ const FeeManagement = () => {
                     {selectedStudent.paymentDate && (
                       <div>
                         <span className="text-gray-600">Payment Date:</span>
-                        <span className="font-medium ml-2">{new Date(selectedStudent.paymentDate).toLocaleDateString()}</span>
+                        <span className="font-medium ml-2">
+                          {new Date(selectedStudent.paymentDate).toLocaleDateString()}
+                        </span>
                       </div>
                     )}
                     {selectedStudent.paymentMethod && (
                       <div>
                         <span className="text-gray-600">Payment Method:</span>
-                        <span className="font-medium ml-2 capitalize">{selectedStudent.paymentMethod.replace('_', ' ')}</span>
+                        <span className="font-medium ml-2 capitalize">
+                          {selectedStudent.paymentMethod.replace("_", " ")}
+                        </span>
                       </div>
                     )}
                     {selectedStudent.transactionId && (
@@ -2770,6 +3072,141 @@ const FeeManagement = () => {
                       </div>
                     )}
                   </div>
+                </div>
+
+                {/* Payment History */}
+                <div className="bg-white rounded-lg p-4 border border-gray-200">
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="font-semibold text-gray-900">Payment History</h4>
+                    {paymentHistoryLoading && (
+                      <div className="flex items-center text-sm text-gray-500">
+                        <svg
+                          className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-500"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        Loading...
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Payment History Summary */}
+                  {paymentHistorySummary.totalPayments > 0 && (
+                    <div className="grid grid-cols-3 gap-4 mb-4 p-3 bg-blue-50 rounded-lg">
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-blue-900">
+                          ₹{paymentHistorySummary.totalAmount.toLocaleString()}
+                        </div>
+                        <div className="text-xs text-blue-600">Total Paid</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-blue-900">{paymentHistorySummary.totalPayments}</div>
+                        <div className="text-xs text-blue-600">Total Payments</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-blue-900">
+                          ₹{paymentHistorySummary.averageAmount.toLocaleString()}
+                        </div>
+                        <div className="text-xs text-blue-600">Average Payment</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Payment History Table */}
+                  {paymentHistory.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Date
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Amount
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Method
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Type
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Transaction ID
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Status
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {paymentHistory.map((payment, index) => (
+                            <tr key={payment._id || index} className="hover:bg-gray-50">
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                                {new Date(payment.paymentDate).toLocaleDateString()}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                                ₹{payment.amount.toLocaleString()}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 capitalize">
+                                {payment.paymentMethod.replace("_", " ")}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 capitalize">
+                                {payment.feeType || "N/A"}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                {payment.transactionId || "N/A"}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap">
+                                <span
+                                  className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                                    payment.status === "completed"
+                                      ? "bg-green-100 text-green-800"
+                                      : payment.status === "pending"
+                                      ? "bg-yellow-100 text-yellow-800"
+                                      : "bg-red-100 text-red-800"
+                                  }`}
+                                >
+                                  {payment.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : !paymentHistoryLoading ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <svg
+                        className="mx-auto h-12 w-12 text-gray-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        />
+                      </svg>
+                      <p className="mt-2 text-sm">No payment history found</p>
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
@@ -2791,10 +3228,7 @@ const FeeManagement = () => {
             <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Update Payment Status</h3>
-                <button
-                  onClick={() => setShowUpdateStatusModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
+                <button onClick={() => setShowUpdateStatusModal(false)} className="text-gray-400 hover:text-gray-600">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -2803,7 +3237,11 @@ const FeeManagement = () => {
 
               <div className="mb-4">
                 <p className="text-sm text-gray-600 mb-2">
-                  <strong>Student:</strong> {selectedStudent.name || `${selectedStudent.firstName || ''} ${selectedStudent.middleName || ''} ${selectedStudent.lastName || ''}`.trim()}
+                  <strong>Student:</strong>{" "}
+                  {selectedStudent.name ||
+                    `${selectedStudent.firstName || ""} ${selectedStudent.middleName || ""} ${
+                      selectedStudent.lastName || ""
+                    }`.trim()}
                 </p>
                 <p className="text-sm text-gray-600 mb-2">
                   <strong>Total Amount:</strong> ₹{(selectedStudent.feeSlabId?.totalAmount || 0).toLocaleString()}
@@ -2812,16 +3250,21 @@ const FeeManagement = () => {
                   <strong>Fees Paid:</strong> ₹{(selectedStudent.feesPaid || 0).toLocaleString()}
                 </p>
                 <p className="text-sm text-gray-600 mb-2">
-                  <strong>Remaining Fees:</strong> ₹{(((selectedStudent.feeSlabId?.totalAmount || 0)) - (selectedStudent.feesPaid || 0)).toLocaleString()}
+                  <strong>Remaining Fees:</strong> ₹
+                  {((selectedStudent.feeSlabId?.totalAmount || 0) - (selectedStudent.feesPaid || 0)).toLocaleString()}
                 </p>
                 <p className="text-sm text-gray-600">
-                  <strong>Current Status:</strong> 
-                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ml-2 ${
-                    selectedStudent.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
-                    selectedStudent.paymentStatus === 'overdue' ? 'bg-red-100 text-red-800' :
-                    'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {selectedStudent.paymentStatus || 'pending'}
+                  <strong>Current Status:</strong>
+                  <span
+                    className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ml-2 ${
+                      selectedStudent.paymentStatus === "paid"
+                        ? "bg-green-100 text-green-800"
+                        : selectedStudent.paymentStatus === "overdue"
+                        ? "bg-red-100 text-red-800"
+                        : "bg-yellow-100 text-yellow-800"
+                    }`}
+                  >
+                    {selectedStudent.paymentStatus || "pending"}
                   </span>
                 </p>
               </div>
@@ -2878,10 +3321,7 @@ const FeeManagement = () => {
             <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Send Fee Reminder</h3>
-                <button
-                  onClick={() => setShowFeeReminderModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
+                <button onClick={() => setShowFeeReminderModal(false)} className="text-gray-400 hover:text-gray-600">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -2892,28 +3332,42 @@ const FeeManagement = () => {
                 <h4 className="font-medium text-gray-900 mb-2">Student Information</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="font-medium">Name:</span> {selectedStudentForReminder.name || `${selectedStudentForReminder.firstName || ''} ${selectedStudentForReminder.lastName || ''}`.trim()}
+                    <span className="font-medium">Name:</span>{" "}
+                    {selectedStudentForReminder.name ||
+                      `${selectedStudentForReminder.firstName || ""} ${
+                        selectedStudentForReminder.lastName || ""
+                      }`.trim()}
                   </div>
                   <div>
                     <span className="font-medium">Email:</span> {selectedStudentForReminder.email}
                   </div>
                   <div>
-                    <span className="font-medium">Total Amount:</span> ₹{(selectedStudentForReminder.feeSlabId?.totalAmount || 0).toLocaleString()}
+                    <span className="font-medium">Total Amount:</span> ₹
+                    {(selectedStudentForReminder.feeSlabId?.totalAmount || 0).toLocaleString()}
                   </div>
                   <div>
-                    <span className="font-medium">Fees Paid:</span> ₹{(selectedStudentForReminder.feesPaid || 0).toLocaleString()}
+                    <span className="font-medium">Fees Paid:</span> ₹
+                    {(selectedStudentForReminder.feesPaid || 0).toLocaleString()}
                   </div>
                   <div>
-                    <span className="font-medium">Remaining Amount:</span> ₹{(((selectedStudentForReminder.feeSlabId?.totalAmount || 0)) - (selectedStudentForReminder.feesPaid || 0)).toLocaleString()}
+                    <span className="font-medium">Remaining Amount:</span> ₹
+                    {(
+                      (selectedStudentForReminder.feeSlabId?.totalAmount || 0) -
+                      (selectedStudentForReminder.feesPaid || 0)
+                    ).toLocaleString()}
                   </div>
                   <div>
-                    <span className="font-medium">Status:</span> 
-                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ml-2 ${
-                      selectedStudentForReminder.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
-                      selectedStudentForReminder.paymentStatus === 'overdue' ? 'bg-red-100 text-red-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {selectedStudentForReminder.paymentStatus || 'pending'}
+                    <span className="font-medium">Status:</span>
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ml-2 ${
+                        selectedStudentForReminder.paymentStatus === "paid"
+                          ? "bg-green-100 text-green-800"
+                          : selectedStudentForReminder.paymentStatus === "overdue"
+                          ? "bg-red-100 text-red-800"
+                          : "bg-yellow-100 text-yellow-800"
+                      }`}
+                    >
+                      {selectedStudentForReminder.paymentStatus || "pending"}
                     </span>
                   </div>
                 </div>
@@ -2989,8 +3443,6 @@ const FeeManagement = () => {
             </div>
           </div>
         )}
-
-
       </div>
     </Layout>
   );

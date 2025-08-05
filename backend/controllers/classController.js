@@ -123,17 +123,28 @@ const updateClass = async (req, res) => {
   try {
     const { classTeacher, maxStudents, classroom, isActive } = req.body;
 
+    // If classTeacher is provided, validate it
+    if (classTeacher) {
+      const teacher = await User.findById(classTeacher);
+      if (!teacher || teacher.role !== "teacher") {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid teacher ID",
+        });
+      }
+    }
+
     const updatedClass = await Class.findByIdAndUpdate(
       req.params.id,
       {
-        classTeacher,
+        classTeacher: classTeacher || null,
         maxStudents,
         classroom,
         isActive,
       },
       { new: true, runValidators: true }
     )
-      .populate("classTeacher", "name email")
+      .populate("classTeacher", "name firstName middleName lastName email")
       .populate("students", "name studentId");
 
     if (!updatedClass) {
@@ -453,15 +464,15 @@ const getTeacherAssignedClasses = async (req, res) => {
 const getTeacherTimetableClasses = async (req, res) => {
   try {
     const Timetable = require("../models/Timetable");
-    
+
     // Find all timetables where the current teacher is assigned to any period
     const timetables = await Timetable.find({
-      "periods.teacher": req.user._id
+      "periods.teacher": req.user._id,
     }).populate("classId", "name grade division");
 
     // Extract unique class IDs from the timetables
-    const classIds = [...new Set(timetables.map(t => t.classId._id.toString()))];
-    
+    const classIds = [...new Set(timetables.map((t) => t.classId._id.toString()))];
+
     // Get detailed class information for each unique class
     const classesWithDetails = await Promise.all(
       classIds.map(async (classId) => {
@@ -499,7 +510,7 @@ const getTeacherTimetableClasses = async (req, res) => {
     );
 
     // Filter out null values and return
-    const validClasses = classesWithDetails.filter(cls => cls !== null);
+    const validClasses = classesWithDetails.filter((cls) => cls !== null);
 
     res.json({
       success: true,
