@@ -184,31 +184,102 @@ const FeeManagement = () => {
     return filtered;
   }, [filteredStudents, feeSlabFilter, classFilter, statusFilter, overdueFilter, overdueStudents]);
 
-  // Sample data
+  // Overview stats data
   const feeStats = [
     {
-      name: "Total Collection",
+      name: "This Month Fees Paid",
       value: overviewData.summaryCards.totalCollection.value,
-      change: overviewData.summaryCards.totalCollection.change,
-      changeType: overviewData.summaryCards.totalCollection.changeType,
       icon: CreditCard,
       color: "success",
     },
     {
-      name: "Pending Fees",
-      value: overviewData.summaryCards.pendingFees.value,
-      change: overviewData.summaryCards.pendingFees.change,
-      changeType: overviewData.summaryCards.pendingFees.changeType,
+      name: "Overdue Fees",
+      value: `₹${overdueStudents
+        .reduce((total, student) => total + (student.totalOverdueAmount || 0), 0)
+        .toLocaleString()}`,
       icon: Clock,
       color: "warning",
     },
     {
-      name: "Students Paid",
-      value: overviewData.summaryCards.studentsPaid.value,
-      change: overviewData.summaryCards.studentsPaid.change,
-      changeType: overviewData.summaryCards.studentsPaid.changeType,
-      icon: CheckCircle,
+      name: "Student Overdue Status",
+      value: (
+        <div className="flex flex-col text-sm">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center">
+              <XCircle className="w-3.5 h-3.5 mr-1.5 text-red-500" />
+              <span className="font-medium">{overdueStudents.length} With Overdue</span>
+            </div>
+            <span className="text-xs text-red-500 font-medium">
+              {allStudents.length > 0 ? ((overdueStudents.length / allStudents.length) * 100).toFixed(0) : 0}%
+            </span>
+          </div>
+          <div className="w-full bg-gray-100 rounded-full h-1.5 mb-2">
+            <div
+              className="bg-red-500 h-1.5 rounded-full"
+              style={{
+                width: `${allStudents.length > 0 ? (overdueStudents.length / allStudents.length) * 100 : 0}%`,
+              }}
+            ></div>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <CheckCircle className="w-3.5 h-3.5 mr-1.5 text-green-500" />
+              <span className="font-medium">{allStudents.length - overdueStudents.length} Without Overdue</span>
+            </div>
+            <span className="text-xs text-green-500 font-medium">
+              {allStudents.length > 0
+                ? (((allStudents.length - overdueStudents.length) / allStudents.length) * 100).toFixed(0)
+                : 0}
+              %
+            </span>
+          </div>
+        </div>
+      ),
+      icon: Users,
       color: "primary",
+    },
+    {
+      name: "Fee Collection Progress",
+      value: (() => {
+        const totalCollected = allStudents.reduce((total, student) => total + (student.feesPaid || 0), 0);
+        const totalExpected = allStudents.reduce((total, student) => total + (student.feeSlabId?.totalAmount || 0), 0);
+        const percentage = totalExpected > 0 ? Math.min(100, (totalCollected / totalExpected) * 100) : 0;
+
+        console.log("Fee Collection Progress Debug:", {
+          totalCollected,
+          totalExpected,
+          percentage,
+          studentsCount: allStudents.length,
+        });
+
+        return (
+          <div className="flex flex-col">
+            <div className="flex justify-between text-sm font-medium">
+              <span>₹{totalCollected.toLocaleString()}</span>
+              <span>of ₹{totalExpected.toLocaleString()}</span>
+            </div>
+            <div className="w-full bg-gray-100 rounded-full h-2.5 mt-2">
+              <div
+                className="bg-indigo-600 h-2.5 rounded-full relative overflow-hidden"
+                style={{
+                  width: `${percentage}%`,
+                }}
+              >
+                {percentage > 30 && (
+                  <div className="absolute inset-0 bg-white bg-opacity-20 overflow-hidden">
+                    <div className="animate-pulse-light w-full h-full"></div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-1 text-right">
+              <span className="text-xs font-medium text-indigo-600">{percentage.toFixed(1)}% Complete</span>
+            </div>
+          </div>
+        );
+      })(),
+      icon: Percent,
+      color: "info",
     },
   ];
 
@@ -218,9 +289,9 @@ const FeeManagement = () => {
 
   // If no payment methods data, use sample data for testing
   const samplePaymentMethods = [
-    { name: "Cash", value: 40, color: "#10B981" },
-    { name: "Online", value: 35, color: "#3B82F6" },
-    { name: "Card", value: 25, color: "#F59E0B" },
+    { name: "Cash", value: 40, color: "#4ade80" }, // Brighter green
+    { name: "Online", value: 35, color: "#60a5fa" }, // Brighter blue
+    { name: "Card", value: 25, color: "#f59e0b" }, // Amber
   ];
 
   // Check if payment methods data is valid (not just "No Payments")
@@ -229,7 +300,13 @@ const FeeManagement = () => {
     paymentMethods.length > 0 &&
     !(paymentMethods.length === 1 && paymentMethods[0].name === "No Payments");
 
-  const displayPaymentMethods = hasValidPaymentMethods ? paymentMethods : samplePaymentMethods;
+  const displayPaymentMethods = hasValidPaymentMethods
+    ? paymentMethods
+    : [
+        { name: "Cash", value: 40, color: "#4ade80" }, // Brighter green
+        { name: "Online", value: 35, color: "#60a5fa" }, // Brighter blue
+        { name: "Card", value: 25, color: "#f59e0b" }, // Amber
+      ];
 
   // Debug logging for payment methods
   console.log("Payment Methods Data:", paymentMethods);
@@ -1047,11 +1124,19 @@ const FeeManagement = () => {
     { id: "reports", name: "Reports", icon: FileText },
   ];
 
+  // Initial data fetch when component mounts
+  useEffect(() => {
+    fetchAllStudents();
+    fetchOverdueStudents();
+    fetchFeeOverview();
+  }, []);
+
+  // Data fetch when tab changes
   useEffect(() => {
     if (activeTab === "slabs") {
       fetchFeeSlabs();
     }
-    if (activeTab === "students") {
+    if (activeTab === "students" || activeTab === "overview") {
       fetchAllStudents();
       fetchOverdueStudents();
     }
@@ -1648,48 +1733,51 @@ const FeeManagement = () => {
                   {overviewLoading ? (
                     <div className="flex items-center justify-center py-12">
                       <div className="text-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
                         <p className="text-gray-600">Loading fee overview data...</p>
+                        <p className="text-xs text-gray-400 mt-2">This won't take long</p>
                       </div>
                     </div>
                   ) : (
                     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
                       {/* Stats Cards */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                         {feeStats.map((stat, index) => (
                           <motion.div
                             key={stat.name}
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: index * 0.1 }}
-                            className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                            className="bg-white rounded-xl shadow-lg overflow-hidden hover:translate-y-[-4px] transition-all duration-300"
                           >
-                            <div className="flex items-center justify-between">
-                              <div>
+                            <div
+                              className={cn(
+                                "h-1",
+                                stat.color === "success" && "bg-green-500",
+                                stat.color === "warning" && "bg-amber-500",
+                                stat.color === "primary" && "bg-blue-500",
+                                stat.color === "error" && "bg-red-500",
+                                stat.color === "info" && "bg-indigo-500"
+                              )}
+                            />
+                            <div className="p-6">
+                              <div className="flex items-start justify-between mb-4">
                                 <p className="text-sm font-medium text-gray-600">{stat.name}</p>
-                                <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
-                                <div className="flex items-center mt-2">
-                                  <span
-                                    className={cn(
-                                      "text-sm font-medium",
-                                      stat.changeType === "increase" ? "text-green-600" : "text-red-600"
-                                    )}
-                                  >
-                                    {stat.change}
-                                  </span>
-                                  <span className="text-sm text-gray-500 ml-1">from last month</span>
+                                <div
+                                  className={cn(
+                                    "p-2 rounded-lg",
+                                    stat.color === "success" && "bg-green-100 text-green-600",
+                                    stat.color === "warning" && "bg-amber-100 text-amber-600",
+                                    stat.color === "primary" && "bg-blue-100 text-blue-600",
+                                    stat.color === "error" && "bg-red-100 text-red-600",
+                                    stat.color === "info" && "bg-indigo-100 text-indigo-600"
+                                  )}
+                                >
+                                  <stat.icon className="w-5 h-5" />
                                 </div>
                               </div>
-                              <div
-                                className={cn(
-                                  "p-3 rounded-full",
-                                  stat.color === "success" && "bg-green-100 text-green-600",
-                                  stat.color === "warning" && "bg-yellow-100 text-yellow-600",
-                                  stat.color === "primary" && "bg-blue-100 text-blue-600",
-                                  stat.color === "error" && "bg-red-100 text-red-600"
-                                )}
-                              >
-                                <stat.icon className="w-6 h-6" />
+                              <div className="mt-2">
+                                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
                               </div>
                             </div>
                           </motion.div>
@@ -1699,65 +1787,128 @@ const FeeManagement = () => {
                       {/* Charts */}
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Monthly Collection Chart */}
-                        <div className="bg-white rounded-lg border border-gray-200 p-6">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Collection</h3>
+                        <motion.div
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.4 }}
+                          className="bg-white rounded-xl shadow-lg p-6 overflow-hidden"
+                        >
+                          <div className="flex items-center justify-between mb-6">
+                            <div>
+                              <h3 className="text-lg font-semibold text-gray-900">Monthly Fees Paid</h3>
+                              <p className="text-sm text-gray-500 mt-1">Collection statistics per month</p>
+                            </div>
+                            <div className="bg-blue-100 text-blue-600 p-2 rounded-lg">
+                              <TrendingUp className="w-5 h-5" />
+                            </div>
+                          </div>
                           {monthlyData && monthlyData.length > 0 ? (
                             <ResponsiveContainer width="100%" height={300}>
-                              <LineChart data={monthlyData}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="month" />
-                                <YAxis />
-                                <Tooltip formatter={(value) => `₹${value.toLocaleString()}`} />
-                                <Legend />
-                                <Line
-                                  type="monotone"
+                              <BarChart data={monthlyData} barSize={30}>
+                                <defs>
+                                  <linearGradient id="colorCollected" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8} />
+                                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.2} />
+                                  </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                                <XAxis dataKey="month" axisLine={false} tickLine={false} />
+                                <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `₹${value}`} />
+                                <Tooltip
+                                  formatter={(value) => `₹${value.toLocaleString()}`}
+                                  contentStyle={{
+                                    borderRadius: "8px",
+                                    border: "none",
+                                    boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
+                                  }}
+                                />
+                                <Legend iconType="circle" />
+                                <Bar
                                   dataKey="collected"
-                                  stroke="#3B82F6"
-                                  strokeWidth={2}
-                                  name="Collected"
+                                  fill="url(#colorCollected)"
+                                  name="Fees Paid"
+                                  radius={[4, 4, 0, 0]}
                                 />
-                                <Line
-                                  type="monotone"
-                                  dataKey="pending"
-                                  stroke="#F59E0B"
-                                  strokeWidth={2}
-                                  name="Pending"
-                                />
-                              </LineChart>
+                              </BarChart>
                             </ResponsiveContainer>
                           ) : (
-                            <div className="flex items-center justify-center h-64 text-gray-500">
-                              <p>No monthly data available</p>
+                            <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+                              <div className="bg-gray-50 p-4 rounded-full mb-3">
+                                <Calendar className="w-10 h-10 text-gray-300" />
+                              </div>
+                              <p className="font-medium">No monthly data available</p>
+                              <p className="text-sm text-gray-400 mt-1">Data will appear here once available</p>
+                              <button
+                                className="mt-4 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 text-sm font-medium rounded-lg transition-colors"
+                                onClick={fetchFeeOverview}
+                              >
+                                Refresh Data
+                              </button>
                             </div>
                           )}
-                        </div>
+                        </motion.div>
 
                         {/* Payment Methods Chart */}
-                        <div className="bg-white rounded-lg border border-gray-200 p-6">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Methods</h3>
-                          <div>
-                            <div className="text-xs text-gray-500 mb-2">
-                              Debug: {displayPaymentMethods.length} payment methods found
+                        <motion.div
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.5 }}
+                          className="bg-white rounded-xl shadow-lg p-6 overflow-hidden"
+                        >
+                          <div className="flex items-center justify-between mb-6">
+                            <div>
+                              <h3 className="text-lg font-semibold text-gray-900">Payment Methods</h3>
+                              <p className="text-sm text-gray-500 mt-1">Distribution by payment type</p>
                             </div>
-                            <ResponsiveContainer width="100%" height={300}>
-                              <PieChart>
-                                <Pie
-                                  data={displayPaymentMethods}
-                                  cx="50%"
-                                  cy="50%"
-                                  outerRadius={80}
-                                  dataKey="value"
-                                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                                >
-                                  {displayPaymentMethods.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color} />
-                                  ))}
-                                </Pie>
-                                <Tooltip formatter={(value) => `${value}%`} />
-                              </PieChart>
-                            </ResponsiveContainer>
+                            <div className="bg-indigo-100 text-indigo-600 p-2 rounded-lg">
+                              <CreditCard className="w-5 h-5" />
+                            </div>
                           </div>
-                        </div>
+                          <div>
+                            {displayPaymentMethods.length > 0 ? (
+                              <ResponsiveContainer width="100%" height={300}>
+                                <PieChart>
+                                  <Pie
+                                    data={displayPaymentMethods}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={60}
+                                    outerRadius={90}
+                                    dataKey="value"
+                                    paddingAngle={2}
+                                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                  >
+                                    {displayPaymentMethods.map((entry, index) => (
+                                      <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+                                    ))}
+                                  </Pie>
+                                  <Tooltip
+                                    formatter={(value) => `${value}%`}
+                                    contentStyle={{
+                                      borderRadius: "8px",
+                                      border: "none",
+                                      boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
+                                    }}
+                                  />
+                                </PieChart>
+                              </ResponsiveContainer>
+                            ) : (
+                              <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+                                <div className="bg-gray-50 p-4 rounded-full mb-3">
+                                  <CreditCard className="w-10 h-10 text-gray-300" />
+                                </div>
+                                <p className="font-medium">No payment methods data available</p>
+                                <p className="text-sm text-gray-400 mt-1">Data will appear here once available</p>
+                                <button
+                                  className="mt-4 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-sm font-medium rounded-lg transition-colors"
+                                  onClick={fetchFeeOverview}
+                                >
+                                  Refresh Data
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
                       </div>
                     </motion.div>
                   )}
