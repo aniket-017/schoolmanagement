@@ -52,7 +52,7 @@ const About = () => {
 
   const leadership = [
     {
-      name: "Dr. Rajesh Sharma",
+      name: "Mrs. Sharda Bade",
       position: "Principal",
       education: "Ph.D. in Education, M.A. in English Literature",
       experience: "25+ years in education",
@@ -66,7 +66,7 @@ const About = () => {
       description: "Committed to innovative teaching methodologies and student development.",
     },
     {
-      name: "Mr. Suresh Kumar",
+      name: "Mr. Vaibhav Pawar",
       position: "Academic Coordinator",
       education: "M.A. in Psychology, B.Ed.",
       experience: "18+ years in education",

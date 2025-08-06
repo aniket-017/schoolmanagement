@@ -17,13 +17,27 @@ import {
   Heart,
   FileText,
   DollarSign,
+  UserCheck,
+  Loader2,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import appConfig from "../config/environment";
+import apiService from "../services/apiService";
 
 const StudentDetailModal = ({ student, isOpen, onClose, onEdit, onRefresh }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [calculatedInstallments, setCalculatedInstallments] = useState([]);
+  const [attendanceData, setAttendanceData] = useState({
+    statistics: {
+      totalDays: 0,
+      presentDays: 0,
+      absentDays: 0,
+      lateDays: 0,
+      attendancePercentage: 0,
+    },
+    attendance: [],
+  });
+  const [loadingAttendance, setLoadingAttendance] = useState(false);
 
   // Calculate installments with concession when component mounts or student changes
   useEffect(() => {
@@ -33,6 +47,38 @@ const StudentDetailModal = ({ student, isOpen, onClose, onEdit, onRefresh }) => 
       setCalculatedInstallments([]);
     }
   }, [student]);
+
+  // Fetch student attendance data when modal opens with a student
+  useEffect(() => {
+    if (isOpen && student?._id) {
+      fetchStudentAttendance(student._id);
+    }
+  }, [isOpen, student]);
+
+  // Function to fetch student attendance data
+  const fetchStudentAttendance = async (studentId) => {
+    try {
+      setLoadingAttendance(true);
+      // Get attendance for current academic year
+      const currentYear = new Date().getFullYear();
+      const startDate = `${currentYear}-01-01`;
+      const endDate = `${currentYear}-12-31`;
+
+      const response = await apiService.attendance.getStudentAttendance(studentId, {
+        startDate,
+        endDate,
+      });
+
+      if (response.success && response.data) {
+        setAttendanceData(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching student attendance:", error);
+      // Don't show toast to avoid disrupting user experience for a non-critical feature
+    } finally {
+      setLoadingAttendance(false);
+    }
+  };
 
   // Calculate installments with concession
   const calculateInstallments = async (slabId, concessionAmount) => {
@@ -295,6 +341,27 @@ const StudentDetailModal = ({ student, isOpen, onClose, onEdit, onRefresh }) => 
                     </span>
                   </div>
                   <div className="flex justify-between">
+                    <span className="text-gray-600">Attendance:</span>
+                    {loadingAttendance ? (
+                      <span className="text-gray-600 flex items-center">
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                        Loading...
+                      </span>
+                    ) : (
+                      <span
+                        className={`font-medium px-2 py-0.5 rounded-full text-sm ${
+                          parseFloat(attendanceData.statistics?.attendancePercentage || 0) >= 90
+                            ? "bg-green-100 text-green-800"
+                            : parseFloat(attendanceData.statistics?.attendancePercentage || 0) >= 75
+                            ? "bg-yellow-100 text-yellow-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {attendanceData.statistics?.attendancePercentage || "0"}%
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex justify-between">
                     <span className="text-gray-600">Fee Category:</span>
                     <span className="font-medium capitalize">{student.feeCategory || "regular"}</span>
                   </div>
@@ -305,6 +372,176 @@ const StudentDetailModal = ({ student, isOpen, onClose, onEdit, onRefresh }) => 
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Attendance Information */}
+              <div className="bg-gray-50 rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <UserCheck className="w-5 h-5 text-blue-600" />
+                  Attendance Details
+                </h3>
+
+                {loadingAttendance ? (
+                  <div className="flex justify-center items-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                    <span className="ml-2 text-gray-600">Loading attendance data...</span>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {/* Attendance gauge */}
+                    <div className="flex justify-center py-2">
+                      <div className="relative w-48 h-48">
+                        {/* Circular background */}
+                        <div className="absolute inset-0 rounded-full border-8 border-gray-200"></div>
+
+                        {/* Progress arc - we'll create a circle with colored border based on percentage */}
+                        <div
+                          className="absolute inset-0 rounded-full border-8 border-transparent"
+                          style={{
+                            borderTopColor:
+                              parseFloat(attendanceData.statistics?.attendancePercentage || 0) >= 90
+                                ? "#10b981" // Green for excellent
+                                : parseFloat(attendanceData.statistics?.attendancePercentage || 0) >= 75
+                                ? "#f59e0b" // Yellow for good
+                                : "#ef4444", // Red for poor
+                            borderRightColor:
+                              parseFloat(attendanceData.statistics?.attendancePercentage || 0) >= 50
+                                ? parseFloat(attendanceData.statistics?.attendancePercentage || 0) >= 90
+                                  ? "#10b981"
+                                  : "#f59e0b"
+                                : "transparent",
+                            borderBottomColor:
+                              parseFloat(attendanceData.statistics?.attendancePercentage || 0) >= 75
+                                ? "#10b981"
+                                : "transparent",
+                            borderLeftColor:
+                              parseFloat(attendanceData.statistics?.attendancePercentage || 0) >= 25
+                                ? parseFloat(attendanceData.statistics?.attendancePercentage || 0) >= 75
+                                  ? "#10b981"
+                                  : "#f59e0b"
+                                : "#ef4444",
+                            transform: "rotate(45deg)",
+                          }}
+                        ></div>
+
+                        {/* Percentage display in the middle */}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="text-center">
+                            <div className="text-3xl font-bold">
+                              {attendanceData.statistics?.attendancePercentage || "0"}%
+                            </div>
+                            <div className="text-sm text-gray-600">Attendance</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Attendance status */}
+                    <div className="mt-4 flex justify-center">
+                      <div
+                        className={`text-center px-4 py-2 rounded-lg font-medium ${
+                          parseFloat(attendanceData.statistics?.attendancePercentage || 0) >= 90
+                            ? "bg-green-100 text-green-800"
+                            : parseFloat(attendanceData.statistics?.attendancePercentage || 0) >= 75
+                            ? "bg-yellow-100 text-yellow-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {parseFloat(attendanceData.statistics?.attendancePercentage || 0) >= 90
+                          ? "Excellent Attendance"
+                          : parseFloat(attendanceData.statistics?.attendancePercentage || 0) >= 75
+                          ? "Good Attendance"
+                          : "Needs Improvement"}
+                      </div>
+                    </div>
+
+                    {/* Attendance statistics */}
+                    <div className="grid grid-cols-2 gap-4 mt-4">
+                      <div className="bg-white p-3 rounded-lg border border-gray-200">
+                        <div className="text-sm text-gray-600">Present Days</div>
+                        <div className="text-lg font-semibold text-green-600">
+                          {attendanceData.statistics?.presentDays || 0} days
+                        </div>
+                      </div>
+                      <div className="bg-white p-3 rounded-lg border border-gray-200">
+                        <div className="text-sm text-gray-600">Absent Days</div>
+                        <div className="text-lg font-semibold text-red-600">
+                          {attendanceData.statistics?.absentDays || 0} days
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Additional Attendance Statistics */}
+                    <div className="grid grid-cols-2 gap-4 mt-2">
+                      <div className="bg-white p-3 rounded-lg border border-gray-200">
+                        <div className="text-sm text-gray-600">Late Days</div>
+                        <div className="text-lg font-semibold text-orange-600">
+                          {attendanceData.statistics?.lateDays || 0} days
+                        </div>
+                      </div>
+                      <div className="bg-white p-3 rounded-lg border border-gray-200">
+                        <div className="text-sm text-gray-600">Total School Days</div>
+                        <div className="text-lg font-semibold text-blue-600">
+                          {attendanceData.statistics?.totalDays || 0} days
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Recent attendance records */}
+                    {attendanceData.attendance && attendanceData.attendance.length > 0 && (
+                      <div className="mt-6">
+                        <h4 className="text-md font-medium mb-3">Recent Attendance Records</h4>
+                        <div className="overflow-hidden rounded-lg border border-gray-200">
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th
+                                  scope="col"
+                                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+                                >
+                                  Date
+                                </th>
+                                <th
+                                  scope="col"
+                                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+                                >
+                                  Status
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {attendanceData.attendance.slice(0, 5).map((record, index) => (
+                                <tr key={index}>
+                                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                                    {new Date(record.date).toLocaleDateString()}
+                                  </td>
+                                  <td className="px-4 py-2 whitespace-nowrap text-sm">
+                                    <span
+                                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                        record.status === "present"
+                                          ? "bg-green-100 text-green-800"
+                                          : record.status === "late"
+                                          ? "bg-yellow-100 text-yellow-800"
+                                          : "bg-red-100 text-red-800"
+                                      }`}
+                                    >
+                                      {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Note about attendance */}
+                    <div className="text-sm text-gray-500 mt-4 text-center">
+                      Attendance calculated for the current academic year
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Fee Slab Information */}
@@ -421,7 +658,7 @@ const StudentDetailModal = ({ student, isOpen, onClose, onEdit, onRefresh }) => 
               </div>
 
               {/* Transport Information */}
-              {student.transportRequired && (
+              {student.transportDetails?.required && (
                 <div className="bg-gray-50 rounded-xl p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <Shield className="w-5 h-5 text-orange-600" />
@@ -432,16 +669,28 @@ const StudentDetailModal = ({ student, isOpen, onClose, onEdit, onRefresh }) => 
                       <span className="text-gray-600">Transport Required:</span>
                       <span className="font-medium">Yes</span>
                     </div>
-                    {student.pickupPoint && (
+                    {student.transportDetails?.route && (
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Pickup Point:</span>
-                        <span className="font-medium">{student.pickupPoint}</span>
+                        <span className="text-gray-600">Route:</span>
+                        <span className="font-medium">{student.transportDetails.route.routeName || "N/A"}</span>
                       </div>
                     )}
-                    {student.dropPoint && (
+                    {student.transportDetails?.pickupPoint && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Pickup Point:</span>
+                        <span className="font-medium">{student.transportDetails.pickupPoint}</span>
+                      </div>
+                    )}
+                    {student.transportDetails?.dropPoint && (
                       <div className="flex justify-between">
                         <span className="text-gray-600">Drop Point:</span>
-                        <span className="font-medium">{student.dropPoint}</span>
+                        <span className="font-medium">{student.transportDetails.dropPoint}</span>
+                      </div>
+                    )}
+                    {student.transportDetails?.busNumber && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Bus Number:</span>
+                        <span className="font-medium">{student.transportDetails.busNumber}</span>
                       </div>
                     )}
                   </div>

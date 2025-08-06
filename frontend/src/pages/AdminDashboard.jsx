@@ -13,6 +13,13 @@ import {
   UserCheck,
   Clock,
   AlertCircle,
+  Search,
+  X,
+  Phone,
+  Mail,
+  Hash,
+  BookOpen as Book,
+  User,
 } from "lucide-react";
 import {
   LineChart,
@@ -31,6 +38,7 @@ import {
 import Layout from "../components/Layout";
 import { cn } from "../utils/cn";
 import apiService from "../services/apiService";
+import StudentDetailModal from "../components/StudentDetailModal";
 
 const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -48,9 +56,51 @@ const AdminDashboard = () => {
     classStats: {},
   });
 
+  // Student search related states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [allStudents, setAllStudents] = useState([]);
+
+  // Student detail modal states
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  // Search students based on query
+  useEffect(() => {
+    if (searchQuery.trim() === "") {
+      setSearchResults([]);
+      return;
+    }
+
+    const query = searchQuery.toLowerCase();
+    const filteredStudents = allStudents.filter((student) => {
+      const fullName = `${student.firstName || ""} ${student.middleName || ""} ${student.lastName || ""}`.toLowerCase();
+      const studentId = student.studentId?.toLowerCase() || "";
+      const rollNumber = student.rollNumber?.toLowerCase() || "";
+      const mobileNumber = student.mobileNumber?.toLowerCase() || "";
+      const email = student.email?.toLowerCase() || "";
+      const admissionNumber = student.admissionNumber?.toLowerCase() || "";
+      const className = student.class?.name?.toLowerCase() || "";
+
+      return (
+        fullName.includes(query) ||
+        studentId.includes(query) ||
+        rollNumber.includes(query) ||
+        mobileNumber.includes(query) ||
+        email.includes(query) ||
+        admissionNumber.includes(query) ||
+        className.includes(query)
+      );
+    });
+
+    setSearchResults(filteredStudents);
+  }, [searchQuery, allStudents]);
 
   const fetchDashboardData = async () => {
     try {
@@ -73,6 +123,9 @@ const AdminDashboard = () => {
       const totalStudents = studentsResponse.data?.length || 0;
       const totalTeachers = teachersResponse.users?.length || 0;
       const totalClasses = classesResponse.data?.length || 0;
+
+      // Save all students for search functionality
+      setAllStudents(studentsResponse.data || []);
 
       // Extract fee data
       const monthlyRevenue = feeOverviewResponse.data?.totalCollection || 0;
@@ -101,6 +154,40 @@ const AdminDashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSearch = (e) => {
+    setSearchQuery(e.target.value);
+    setShowSearchResults(e.target.value.trim() !== "");
+  };
+
+  const clearSearch = () => {
+    setSearchQuery("");
+    setShowSearchResults(false);
+  };
+
+  const handleViewStudentDetails = async (studentId) => {
+    try {
+      setSearchLoading(true);
+      const response = await apiService.students.getById(studentId);
+      if (response.success) {
+        setSelectedStudent(response.data);
+        setIsDetailModalOpen(true);
+      }
+    } catch (error) {
+      console.error("Error fetching student details:", error);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const handleCloseDetailModal = () => {
+    setIsDetailModalOpen(false);
+    setSelectedStudent(null);
+  };
+
+  const handleRefreshData = () => {
+    fetchDashboardData();
   };
 
   const dashboardStats = [
@@ -252,6 +339,95 @@ const AdminDashboard = () => {
                   </div>
                 </div>
               </div>
+            </div>
+          </motion.div>
+
+          {/* Student Search Bar */}
+          <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Student Search</h3>
+              <p className="text-sm text-gray-600">Search for students by name, mobile, class, roll number, etc.</p>
+            </div>
+            <div className="relative">
+              <div className="flex items-center relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  <Search className="w-5 h-5" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search students by name, mobile number, roll number, class..."
+                  value={searchQuery}
+                  onChange={handleSearch}
+                  className="w-full pl-10 pr-10 py-3 rounded-xl border border-gray-200 focus:border-blue-400 focus:ring focus:ring-blue-100 transition-all outline-none text-gray-700"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={clearSearch}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Search Results */}
+              {showSearchResults && (
+                <div className="mt-4">
+                  <h4 className="font-medium text-gray-700 mb-2">Search Results ({searchResults.length})</h4>
+                  {searchLoading ? (
+                    <div className="flex justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    </div>
+                  ) : searchResults.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {searchResults.map((student) => (
+                        <div
+                          key={student._id}
+                          className="bg-gray-50 p-4 rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-md transition-all"
+                        >
+                          <div className="flex items-start">
+                            <div className="bg-blue-100 p-2 rounded-lg mr-4">
+                              <User className="w-8 h-8 text-blue-600" />
+                            </div>
+                            <div>
+                              <h5 className="font-bold text-gray-900">
+                                {student.firstName} {student.middleName} {student.lastName}
+                              </h5>
+                              <div className="grid grid-cols-1 gap-1 mt-2 text-sm">
+                                <div className="flex items-center text-gray-600">
+                                  <Hash className="w-3.5 h-3.5 mr-1" />
+                                  <span>Roll No: {student.rollNumber || "N/A"}</span>
+                                </div>
+                                <div className="flex items-center text-gray-600">
+                                  <Phone className="w-3.5 h-3.5 mr-1" />
+                                  <span>{student.mobileNumber || "N/A"}</span>
+                                </div>
+                                <div className="flex items-center text-gray-600">
+                                  <Book className="w-3.5 h-3.5 mr-1" />
+                                  <span>Class: {student.class?.name || "N/A"}</span>
+                                </div>
+                              </div>
+                              <div className="mt-3">
+                                <button
+                                  onClick={() => handleViewStudentDetails(student._id)}
+                                  className="text-sm text-blue-600 font-medium hover:text-blue-800 transition-colors"
+                                >
+                                  View Details →
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 rounded-xl p-8 text-center">
+                      <Users className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                      <p className="text-gray-500">No students found matching your search criteria</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </motion.div>
 
@@ -456,6 +632,14 @@ const AdminDashboard = () => {
             </div>
           </motion.div>
         </motion.div>
+
+        {/* Student Detail Modal */}
+        <StudentDetailModal
+          student={selectedStudent}
+          isOpen={isDetailModalOpen}
+          onClose={handleCloseDetailModal}
+          onRefresh={handleRefreshData}
+        />
       </div>
     </Layout>
   );

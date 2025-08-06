@@ -79,27 +79,39 @@ const Admission = () => {
   const feeStructure = [
     {
       category: "Nursery - UKG",
-      admission: "₹5,000",
-      annual: "₹45,000",
-      monthly: "₹4,000",
+      admission: "₹200",
+      annual: "15,000",
+      installment: "₹5,000",
     },
     {
-      category: "Class I - V",
-      admission: "₹8,000",
-      annual: "₹55,000",
-      monthly: "₹5,000",
+      category: "Class I - IV",
+      admission: "200",
+      annual: "15,000",
+      installment: "₹5,000",
     },
     {
-      category: "Class VI - X",
-      admission: "₹10,000",
-      annual: "₹65,000",
-      monthly: "₹6,000",
+      category: "Class V - VIII",
+      admission: "₹200",
+      annual: "20,000",
+      installment: "₹6,000",
+    },
+    {
+      category: "Class IX",
+      admission: "₹200",
+      annual: "25,000",
+      installment: "₹6,000",
+    },
+    {
+      category: "Class X",
+      admission: "₹200",
+      annual: "25,000",
+      installment: "₹6,000",
     },
     {
       category: "Class XI - XII",
-      admission: "₹15,000",
-      annual: "₹75,000",
-      monthly: "₹7,000",
+      admission: "₹0",
+      annual: "₹7,200",
+      installment: "₹3,000",
     },
   ];
 
@@ -268,9 +280,9 @@ const Admission = () => {
               <thead className="bg-blue-600 text-white">
                 <tr>
                   <th className="px-6 py-4 text-left font-semibold">Class</th>
-                  <th className="px-6 py-4 text-left font-semibold">Admission Fee</th>
+                  <th className="px-6 py-4 text-left font-semibold">Registration Fee</th>
                   <th className="px-6 py-4 text-left font-semibold">Annual Fee</th>
-                  <th className="px-6 py-4 text-left font-semibold">Monthly Fee</th>
+                  <th className="px-6 py-4 text-left font-semibold">Installment Fee</th>
                 </tr>
               </thead>
               <tbody>
@@ -279,7 +291,7 @@ const Admission = () => {
                     <td className="px-6 py-4 font-medium text-gray-900">{fee.category}</td>
                     <td className="px-6 py-4 text-gray-700">{fee.admission}</td>
                     <td className="px-6 py-4 text-gray-700">{fee.annual}</td>
-                    <td className="px-6 py-4 text-gray-700">{fee.monthly}</td>
+                    <td className="px-6 py-4 text-gray-700">{fee.installment}</td>
                   </tr>
                 ))}
               </tbody>

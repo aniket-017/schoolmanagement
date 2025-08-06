@@ -9,7 +9,7 @@ router.get("/", auth, teacherOrAdmin, async (req, res) => {
   try {
     const Student = require("../models/Student");
     const User = require("../models/User");
-    
+
     const students = await Student.find({ isActive: true })
       .populate("class", "name grade division")
       .populate("feeSlabId", "slabName totalAmount installments")
@@ -19,30 +19,30 @@ router.get("/", auth, teacherOrAdmin, async (req, res) => {
     const studentsWithUserIds = await Promise.all(
       students.map(async (student) => {
         const studentData = student.toObject();
-        
+
         // Try to find corresponding User record
         let userRecord = null;
-        
+
         // First try by studentId
         if (student.studentId) {
           userRecord = await User.findOne({ studentId: student.studentId });
         }
-        
+
         // If not found, try by email
         if (!userRecord && student.email) {
           userRecord = await User.findOne({ email: student.email });
         }
-        
+
         // If not found, try by rollNumber
         if (!userRecord && student.rollNumber) {
           userRecord = await User.findOne({ studentId: student.rollNumber });
         }
-        
+
         // Add the User ID if found
         if (userRecord) {
           studentData.userId = userRecord._id;
         }
-        
+
         return studentData;
       })
     );
@@ -68,11 +68,11 @@ router.get("/:id", auth, teacherOrAdmin, async (req, res) => {
   try {
     const Student = require("../models/Student");
     const User = require("../models/User");
-    
+
     const student = await Student.findById(req.params.id)
       .populate("class", "name grade division")
       .populate("feeSlabId", "slabName totalAmount installments")
-      .populate("transportRoute", "routeName vehicleNumber");
+      .populate("transportDetails.route", "routeName vehicleNumber");
 
     if (!student) {
       return res.status(404).json({
@@ -83,25 +83,25 @@ router.get("/:id", auth, teacherOrAdmin, async (req, res) => {
 
     // Add corresponding User ID
     const studentData = student.toObject();
-    
+
     // Try to find corresponding User record
     let userRecord = null;
-    
+
     // First try by studentId
     if (student.studentId) {
       userRecord = await User.findOne({ studentId: student.studentId });
     }
-    
+
     // If not found, try by email
     if (!userRecord && student.email) {
       userRecord = await User.findOne({ email: student.email });
     }
-    
+
     // If not found, try by rollNumber
     if (!userRecord && student.rollNumber) {
       userRecord = await User.findOne({ studentId: student.rollNumber });
     }
-    
+
     // Add the User ID if found
     if (userRecord) {
       studentData.userId = userRecord._id;
@@ -175,9 +175,9 @@ router.put("/:id", auth, adminOnly, async (req, res) => {
 
     // Check if email is already taken by another student
     if (email && email !== existingStudent.email) {
-      const emailExists = await Student.findOne({ 
-        email, 
-        _id: { $ne: req.params.id } 
+      const emailExists = await Student.findOne({
+        email,
+        _id: { $ne: req.params.id },
       });
       if (emailExists) {
         return res.status(400).json({
@@ -186,8 +186,6 @@ router.put("/:id", auth, adminOnly, async (req, res) => {
         });
       }
     }
-
-
 
     // Check if fee slab is being assigned/changed
     const isFeeSlabChanged = feeSlabId && feeSlabId !== existingStudent.feeSlabId?.toString();
@@ -233,7 +231,8 @@ router.put("/:id", auth, adminOnly, async (req, res) => {
         updatedBy: req.user.id,
       },
       { new: true, runValidators: true }
-    ).populate("class", "name grade division")
+    )
+      .populate("class", "name grade division")
       .populate("feeSlabId", "slabName totalAmount installments");
 
     // Auto-generate fee records if fee slab was assigned/changed
@@ -315,8 +314,6 @@ router.delete("/:id", auth, adminOnly, async (req, res) => {
       });
     }
 
-
-
     // Remove student from class
     if (student.class) {
       await Class.findByIdAndUpdate(student.class, {
@@ -354,7 +351,8 @@ router.patch("/:id/status", auth, adminOnly, async (req, res) => {
       req.params.id,
       { status, isActive, updatedBy: req.user.id },
       { new: true, runValidators: true }
-    ).populate("class", "name grade division")
+    )
+      .populate("class", "name grade division")
       .populate("feeSlabId", "slabName totalAmount installments");
 
     if (!student) {
@@ -379,4 +377,4 @@ router.patch("/:id/status", auth, adminOnly, async (req, res) => {
   }
 });
 
-module.exports = router; 
+module.exports = router;

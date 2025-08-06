@@ -128,6 +128,16 @@ const FeeManagement = () => {
   });
   const [sendingReminder, setSendingReminder] = useState(false);
 
+  // Batch notification states
+  const [selectedStudents, setSelectedStudents] = useState([]);
+  const [showBatchReminderModal, setShowBatchReminderModal] = useState(false);
+  const [batchReminderData, setBatchReminderData] = useState({
+    subject: "Fee Reminder",
+    message:
+      "Dear {studentName},\n\nThis is a reminder that you have ₹{remainingAmount} remaining in your fee payment.\n\nPlease ensure timely payment to avoid any inconvenience.\n\nBest regards,\nSchool Administration",
+    priority: "medium",
+  });
+
   // Remove sortBy/sortOrder and add filter states
   const [feeSlabFilter, setFeeSlabFilter] = useState("");
   const [classFilter, setClassFilter] = useState("");
@@ -1560,6 +1570,72 @@ const FeeManagement = () => {
     }
   };
 
+  // Handle sending batch reminders to multiple students
+  const handleSendBatchReminders = async () => {
+    if (selectedStudents.length === 0) return;
+
+    try {
+      setSendingReminder(true);
+
+      let successCount = 0;
+      let failCount = 0;
+
+      // Process each student in sequence
+      for (const studentId of selectedStudents) {
+        const student = filteredAndSortedStudents.find((s) => s._id === studentId);
+        if (!student) continue;
+
+        const studentName = student.name || `${student.firstName || ""} ${student.lastName || ""}`.trim();
+        const totalAmount = student.feeSlabId?.totalAmount || 0;
+        const paidAmount = student.feesPaid || 0;
+        const remainingAmount = totalAmount - paidAmount;
+
+        // Skip students with no remaining fees
+        if (remainingAmount <= 0) continue;
+
+        // Replace placeholders with actual values
+        let personalizedMessage = batchReminderData.message
+          .replace(/{studentName}/g, studentName)
+          .replace(/{remainingAmount}/g, remainingAmount.toLocaleString())
+          .replace(/{totalAmount}/g, totalAmount.toLocaleString())
+          .replace(/{paidAmount}/g, paidAmount.toLocaleString());
+
+        const messageData = {
+          studentId: student._id,
+          subject: batchReminderData.subject,
+          message: personalizedMessage,
+          feeAmount: totalAmount,
+          feeType: student.feeSlabId?.slabName || "General",
+          remainingAmount: remainingAmount,
+          priority: batchReminderData.priority,
+        };
+
+        try {
+          await apiService.messages.sendFeeReminder(messageData);
+          successCount++;
+        } catch (error) {
+          console.error(`Error sending reminder to ${studentName}:`, error);
+          failCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`Successfully sent ${successCount} reminder${successCount !== 1 ? "s" : ""}!`);
+      }
+
+      if (failCount > 0) {
+        toast.error(`Failed to send ${failCount} reminder${failCount !== 1 ? "s" : ""}`);
+      }
+
+      setShowBatchReminderModal(false);
+    } catch (error) {
+      console.error("Error in batch reminder process:", error);
+      toast.error("An error occurred during the batch reminder process");
+    } finally {
+      setSendingReminder(false);
+    }
+  };
+
   return (
     <Layout>
       <div className="min-h-screen bg-gray-50">
@@ -1998,11 +2074,45 @@ const FeeManagement = () => {
                   {/* Students List */}
                   <div className="bg-white rounded-lg border border-gray-200 p-6">
                     <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        Students ({filteredAndSortedStudents.length})
-                      </h3>
+                      <div className="flex items-center space-x-2">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          Students ({filteredAndSortedStudents.length})
+                        </h3>
+                        {selectedStudents.length > 0 && (
+                          <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                            {selectedStudents.length} selected
+                          </span>
+                        )}
+                      </div>
+
                       <div className="flex space-x-2">
-                        <span className="text-sm text-gray-600">Individual messaging enabled</span>
+                        {selectedStudents.length > 0 ? (
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => {
+                                setBatchReminderData({
+                                  subject: "Fee Reminder",
+                                  message:
+                                    "Dear {studentName},\n\nThis is a reminder that you have ₹{remainingAmount} remaining in your fee payment.\n\nPlease ensure timely payment to avoid any inconvenience.\n\nBest regards,\nSchool Administration",
+                                  priority: "medium",
+                                });
+                                setShowBatchReminderModal(true);
+                              }}
+                              className="inline-flex items-center px-3 py-1.5 text-sm bg-orange-500 text-white rounded hover:bg-orange-600"
+                            >
+                              <Bell className="w-4 h-4 mr-1" />
+                              Send Reminders
+                            </button>
+                            <button
+                              onClick={() => setSelectedStudents([])}
+                              className="inline-flex items-center px-3 py-1.5 text-sm text-gray-700 bg-gray-200 rounded hover:bg-gray-300"
+                            >
+                              Clear Selection
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-gray-600 italic">Select students for batch actions</span>
+                        )}
                       </div>
                     </div>
                     {loadingStudents ? (
@@ -2015,6 +2125,25 @@ const FeeManagement = () => {
                         <table className="min-w-full divide-y divide-gray-200">
                           <thead className="bg-gray-50">
                             <tr>
+                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <div className="flex items-center">
+                                  <input
+                                    type="checkbox"
+                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                    checked={
+                                      selectedStudents.length === filteredAndSortedStudents.length &&
+                                      filteredAndSortedStudents.length > 0
+                                    }
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setSelectedStudents(filteredAndSortedStudents.map((student) => student._id));
+                                      } else {
+                                        setSelectedStudents([]);
+                                      }
+                                    }}
+                                  />
+                                </div>
+                              </th>
                               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Student
                               </th>
@@ -2047,6 +2176,22 @@ const FeeManagement = () => {
                           <tbody className="bg-white divide-y divide-gray-200">
                             {filteredAndSortedStudents.map((student) => (
                               <tr key={student._id} className="hover:bg-gray-50">
+                                <td className="px-3 py-4 whitespace-nowrap">
+                                  <div className="flex items-center">
+                                    <input
+                                      type="checkbox"
+                                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                      checked={selectedStudents.includes(student._id)}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setSelectedStudents([...selectedStudents, student._id]);
+                                        } else {
+                                          setSelectedStudents(selectedStudents.filter((id) => id !== student._id));
+                                        }
+                                      }}
+                                    />
+                                  </div>
+                                </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <div>
                                     <div className="text-sm font-medium text-gray-900">
@@ -3466,7 +3611,171 @@ const FeeManagement = () => {
           </div>
         )}
 
-        {/* Fee Reminder Modal */}
+        {/* Batch Fee Reminder Modal */}
+        {showBatchReminderModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Send Batch Fee Reminders</h3>
+                <button onClick={() => setShowBatchReminderModal(false)} className="text-gray-400 hover:text-gray-600">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <h4 className="font-medium text-gray-900 mb-2">Selected Students: {selectedStudents.length}</h4>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => {
+                        // Select only students with overdue fees
+                        const overdueIds = overdueStudents.map((student) => student._id);
+                        setSelectedStudents(overdueIds);
+                      }}
+                      className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded"
+                    >
+                      Select Overdue Only
+                    </button>
+                    <button
+                      onClick={() => {
+                        // Select all students with remaining fees
+                        const withRemainingFees = filteredAndSortedStudents
+                          .filter((student) => (student.feeSlabId?.totalAmount || 0) - (student.feesPaid || 0) > 0)
+                          .map((student) => student._id);
+                        setSelectedStudents(withRemainingFees);
+                      }}
+                      className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded"
+                    >
+                      Select All With Dues
+                    </button>
+                  </div>
+                </div>
+
+                {selectedStudents.length > 0 && (
+                  <div className="mt-3 max-h-32 overflow-y-auto p-2 border border-gray-200 rounded bg-white">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-1">
+                      {selectedStudents.map((studentId) => {
+                        const student = filteredAndSortedStudents.find((s) => s._id === studentId);
+                        if (!student) return null;
+                        return (
+                          <div key={studentId} className="flex items-center text-xs p-1">
+                            <div className="flex-1 truncate">
+                              {student.name || `${student.firstName || ""} ${student.lastName || ""}`.trim()}
+                            </div>
+                            <button
+                              onClick={() => setSelectedStudents(selectedStudents.filter((id) => id !== studentId))}
+                              className="ml-1 text-gray-400 hover:text-gray-600"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M6 18L18 6M6 6l12 12"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="mb-4">
+                <h4 className="font-medium text-gray-900 mb-2">Message Template</h4>
+                <div className="p-3 bg-blue-50 text-blue-800 rounded-lg mb-3 text-sm">
+                  <div className="font-medium">Available Variables:</div>
+                  <ul className="list-disc pl-5 mt-1 space-y-1">
+                    <li>{"{studentName}"} - The full name of the student</li>
+                    <li>{"{remainingAmount}"} - The remaining fee amount</li>
+                    <li>{"{totalAmount}"} - The total fee amount</li>
+                    <li>{"{paidAmount}"} - The amount already paid</li>
+                  </ul>
+                </div>
+              </div>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSendBatchReminders();
+                }}
+                className="space-y-4"
+              >
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                  <input
+                    type="text"
+                    value={batchReminderData.subject}
+                    onChange={(e) => setBatchReminderData({ ...batchReminderData, subject: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter message subject..."
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Message Template</label>
+                  <textarea
+                    value={batchReminderData.message}
+                    onChange={(e) => setBatchReminderData({ ...batchReminderData, message: e.target.value })}
+                    rows={8}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter your message template..."
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                  <select
+                    value={batchReminderData.priority}
+                    onChange={(e) => setBatchReminderData({ ...batchReminderData, priority: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
+                </div>
+
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowBatchReminderModal(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                    disabled={sendingReminder}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={sendingReminder || selectedStudents.length === 0}
+                  >
+                    {sendingReminder ? (
+                      <div className="flex items-center">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                        Sending...
+                      </div>
+                    ) : (
+                      <div className="flex items-center">
+                        <Bell className="w-4 h-4 mr-2" />
+                        Send to {selectedStudents.length} Student{selectedStudents.length !== 1 ? "s" : ""}
+                      </div>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Individual Fee Reminder Modal */}
         {showFeeReminderModal && selectedStudentForReminder && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
