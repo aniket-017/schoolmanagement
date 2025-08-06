@@ -103,7 +103,7 @@ router.get("/teacher/timetable", auth, teacherOnly, getTeacherTimetableClasses);
 router.get("/:id/students", auth, teacherOrAdmin, async (req, res) => {
   try {
     console.log("Getting students for class:", req.params.id);
-    
+
     // Validate class ID
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({
@@ -111,11 +111,11 @@ router.get("/:id/students", auth, teacherOrAdmin, async (req, res) => {
         message: "Invalid class ID format",
       });
     }
-    
+
     const User = require("../models/User");
     const Student = require("../models/Student");
     const Class = require("../models/Class");
-    
+
     // Check if class exists
     const classData = await Class.findById(req.params.id);
     if (!classData) {
@@ -124,16 +124,15 @@ router.get("/:id/students", auth, teacherOrAdmin, async (req, res) => {
         message: "Class not found",
       });
     }
-    
+
     // Get the class with populated students
-    const classWithStudents = await Class.findById(req.params.id)
-      .populate({
-        path: "students",
-        populate: {
-          path: "feeSlabId",
-          select: "slabName totalAmount installments"
-        }
-      });
+    const classWithStudents = await Class.findById(req.params.id).populate({
+      path: "students",
+      populate: {
+        path: "feeSlabId",
+        select: "slabName totalAmount installments",
+      },
+    });
 
     if (!classWithStudents) {
       return res.status(404).json({
@@ -148,19 +147,28 @@ router.get("/:id/students", auth, teacherOrAdmin, async (req, res) => {
     // Use the students from the class's students array
     let students = classWithStudents.students || [];
 
+    // Sort students by roll number
+    students.sort((a, b) => {
+      // Convert roll numbers to numbers if they are numeric
+      const rollA = a.rollNumber ? parseInt(a.rollNumber) : Infinity;
+      const rollB = b.rollNumber ? parseInt(b.rollNumber) : Infinity;
+
+      // If both roll numbers are valid numbers, sort numerically
+      if (!isNaN(rollA) && !isNaN(rollB)) {
+        return rollA - rollB;
+      }
+
+      // If roll numbers are not numeric or one is missing, fall back to string comparison
+      const strA = a.rollNumber || "";
+      const strB = b.rollNumber || "";
+      return strA.localeCompare(strB);
+    });
+
     // Debug: Check if students are properly associated with the class
     console.log("Class ID:", req.params.id);
     console.log("Total students found:", students.length);
-    students.forEach((student, index) => {
-      console.log(`Student ${index + 1}:`, {
-        id: student._id,
-        name: student.name || `${student.firstName || ''} ${student.lastName || ''}`.trim(),
-        class: student.class,
-        isActive: student.isActive
-      });
-    });
+    console.log("Students sorted by roll number");
 
-    console.log("Total students found:", students.length);
     res.json({
       success: true,
       data: students || [],
@@ -236,14 +244,14 @@ router.post("/:id/students", auth, adminOnly, async (req, res) => {
     const studentId = generateStudentId();
     // Clean otherFields to handle optional category
     const cleanedOtherFields = { ...otherFields };
-    
+
     // Handle category field - only set if it's not empty
     if (cleanedOtherFields.category !== undefined) {
-      if (!cleanedOtherFields.category || String(cleanedOtherFields.category).trim() === '') {
+      if (!cleanedOtherFields.category || String(cleanedOtherFields.category).trim() === "") {
         delete cleanedOtherFields.category; // Don't set empty category
       }
     }
-    
+
     // Compose the student data
     const studentData = {
       firstName,
@@ -618,7 +626,7 @@ router.post("/:id/students/bulk", auth, adminOnly, upload.single("file"), async 
 
         // Validate and clean student data
         const validationResult = await validateAndCleanStudentData(row, req.params.id);
-        
+
         if (!validationResult.isValid) {
           results.failed.push({
             row: rowNumber,

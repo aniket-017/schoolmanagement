@@ -12,6 +12,7 @@ const {
   getTeacherClasses,
   getClassStudents,
   getClassAttendanceByDate,
+  getClassAttendanceSummary,
 } = require("../controllers/attendanceController");
 
 // @route   POST /api/attendance
@@ -63,5 +64,10 @@ router.get("/teacher/classes", auth, getTeacherClasses);
 // @desc    Get class attendance by date (for mobile app compatibility)
 // @access  Private (Teacher/Admin)
 router.get("/class-attendance/:classId/:date", auth, getClassAttendanceByDate);
+
+// @route   GET /api/attendance/class-summary/:classId
+// @desc    Get class attendance summary for week, month, or year
+// @access  Private (Teacher/Admin)
+router.get("/class-summary/:classId", auth, getClassAttendanceSummary);
 
 module.exports = router;

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
   ArrowLeftIcon,
   AcademicCapIcon,
@@ -13,9 +13,9 @@ import {
   PhoneIcon,
   EnvelopeIcon,
   ChevronLeftIcon,
-} from '@heroicons/react/24/outline';
-import { useTeacherAuth } from '../context/TeacherAuthContext';
-import apiService from '../services/apiService';
+} from "@heroicons/react/24/outline";
+import { useTeacherAuth } from "../context/TeacherAuthContext";
+import apiService from "../services/apiService";
 
 const TeacherClassDetails = () => {
   const { classId } = useParams();
@@ -24,28 +24,28 @@ const TeacherClassDetails = () => {
   const [classData, setClassData] = useState(null);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('students');
+  const [activeTab, setActiveTab] = useState("students");
 
   useEffect(() => {
     loadClassDetails();
   }, [classId]);
 
   useEffect(() => {
-    console.log('Students state updated:', students);
-    console.log('Students length:', students.length);
+    console.log("Students state updated:", students);
+    console.log("Students length:", students.length);
   }, [students]);
 
   const loadClassDetails = async () => {
     try {
       setLoading(true);
-      console.log('Loading class details for:', classId);
-      console.log('apiService.classes:', apiService.classes);
-      
+      console.log("Loading class details for:", classId);
+      console.log("apiService.classes:", apiService.classes);
+
       let classResponse, studentsResponse;
-      
+
       // Load class details
       if (!apiService.classes) {
-        console.error('apiService.classes is undefined!');
+        console.error("apiService.classes is undefined!");
         // Fallback: try direct fetch
         const fetchResponse = await fetch(`${apiService.baseURL}/classes/${classId}`, {
           headers: apiService.getAuthHeaders(),
@@ -54,8 +54,8 @@ const TeacherClassDetails = () => {
       } else {
         classResponse = await apiService.classes.getById(classId);
       }
-      console.log('Class Response:', classResponse);
-      
+      console.log("Class Response:", classResponse);
+
       if (classResponse.success) {
         setClassData(classResponse.data);
       }
@@ -70,16 +70,16 @@ const TeacherClassDetails = () => {
       } else {
         studentsResponse = await apiService.classes.getClassStudents(classId);
       }
-      console.log('Students Response:', studentsResponse);
-      console.log('Students data:', studentsResponse.data);
-      console.log('Students array length:', studentsResponse.data?.length);
-      
+      console.log("Students Response:", studentsResponse);
+      console.log("Students data:", studentsResponse.data);
+      console.log("Students array length:", studentsResponse.data?.length);
+
       if (studentsResponse.success) {
         setStudents(studentsResponse.data || []);
-        console.log('Set students state to:', studentsResponse.data || []);
+        console.log("Set students state to:", studentsResponse.data || []);
       }
     } catch (error) {
-      console.error('Error loading class details:', error);
+      console.error("Error loading class details:", error);
     } finally {
       setLoading(false);
     }
@@ -96,13 +96,13 @@ const TeacherClassDetails = () => {
 
   const formatStudentName = (student) => {
     if (student.firstName && student.lastName) {
-      return `${student.firstName} ${student.middleName ? student.middleName + ' ' : ''}${student.lastName}`.trim();
+      return `${student.firstName} ${student.middleName ? student.middleName + " " : ""}${student.lastName}`.trim();
     }
-    return student.name || student.email || 'Unknown Student';
+    return student.name || student.email || "Unknown Student";
   };
 
   const handleBack = () => {
-    navigate('/teacher/dashboard');
+    navigate("/teacher/dashboard");
   };
 
   if (loading) {
@@ -122,9 +122,11 @@ const TeacherClassDetails = () => {
         <div className="text-center">
           <AcademicCapIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">Class Not Found</h3>
-          <p className="text-gray-600 mb-4">The class you're looking for doesn't exist or you don't have access to it.</p>
+          <p className="text-gray-600 mb-4">
+            The class you're looking for doesn't exist or you don't have access to it.
+          </p>
           <button
-            onClick={() => navigate('/teacher/classes')}
+            onClick={() => navigate("/teacher/classes")}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             Back to Classes
@@ -141,14 +143,11 @@ const TeacherClassDetails = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <button
-                onClick={handleBack}
-                className="text-blue-100 hover:text-white transition-colors sm:hidden"
-              >
+              <button onClick={handleBack} className="text-blue-100 hover:text-white transition-colors sm:hidden">
                 <ChevronLeftIcon className="w-5 h-5" />
               </button>
               <button
-                onClick={() => navigate('/teacher/classes')}
+                onClick={() => navigate("/teacher/classes")}
                 className="text-blue-100 hover:text-white transition-colors hidden sm:block"
               >
                 <ArrowLeftIcon className="w-5 h-5" />
@@ -156,7 +155,8 @@ const TeacherClassDetails = () => {
             </div>
             <div className="text-center">
               <h1 className="text-2xl font-bold mb-1">
-                {classData.grade}{getOrdinalSuffix(classData.grade)} Class - {classData.division}
+                {classData.grade}
+                {getOrdinalSuffix(classData.grade)} Class - {classData.division}
               </h1>
               <p className="text-blue-100 text-sm">Class Details & Management</p>
             </div>
@@ -167,11 +167,7 @@ const TeacherClassDetails = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-4"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
           {/* Class Overview Card - Mobile Style */}
           <div className="bg-white rounded-xl shadow-sm p-4">
             <div className="flex items-center justify-center space-x-4">
@@ -197,32 +193,47 @@ const TeacherClassDetails = () => {
             <div className="p-4">
               {students.length > 0 ? (
                 <div className="space-y-3">
-                  {students.map((student, index) => (
-                    <motion.div
-                      key={student._id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                            <span className="text-sm font-bold text-white">{student.rollNumber || 'N/A'}</span>
+                  {[...students]
+                    .sort((a, b) => {
+                      // Sort by roll number numerically if possible
+                      const rollA = a.rollNumber ? parseInt(a.rollNumber) : Infinity;
+                      const rollB = b.rollNumber ? parseInt(b.rollNumber) : Infinity;
+
+                      if (!isNaN(rollA) && !isNaN(rollB)) {
+                        return rollA - rollB;
+                      }
+
+                      // Fall back to string comparison for non-numeric roll numbers
+                      const strA = a.rollNumber || "";
+                      const strB = b.rollNumber || "";
+                      return strA.localeCompare(strB);
+                    })
+                    .map((student, index) => (
+                      <motion.div
+                        key={student._id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                              <span className="text-sm font-bold text-white">{student.rollNumber || "N/A"}</span>
+                            </div>
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-gray-900 text-sm">{formatStudentName(student)}</h4>
+                              <p className="text-xs text-gray-500">Roll No: {student.rollNumber || "N/A"}</p>
+                            </div>
                           </div>
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-gray-900 text-sm">{formatStudentName(student)}</h4>
-                            <p className="text-xs text-gray-500">Roll No: {student.rollNumber || 'N/A'}</p>
+                          <div className="text-gray-400">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
                           </div>
                         </div>
-                        <div className="text-gray-400">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
+                      </motion.div>
+                    ))}
                 </div>
               ) : (
                 <div className="text-center py-8">
@@ -239,4 +250,4 @@ const TeacherClassDetails = () => {
   );
 };
 
-export default TeacherClassDetails; 
+export default TeacherClassDetails;

@@ -105,7 +105,7 @@ const getStudentAttendance = async (req, res) => {
             _id: student._id,
             name: student.name,
             studentId: student.studentId,
-            rollNumber: student.rollNumber
+            rollNumber: student.rollNumber,
           },
           class: student.class || null,
           attendance: [],
@@ -196,7 +196,7 @@ const getClassAttendance = async (req, res) => {
     });
 
     // Build complete attendance list including unmarked students
-    const completeAttendance = classData.students.map((student) => {
+    let completeAttendance = classData.students.map((student) => {
       const studentAttendance = attendanceMap.get(student._id.toString());
       return {
         student: {
@@ -543,8 +543,8 @@ const getClassStudents = async (req, res) => {
         path: "students",
         populate: {
           path: "feeSlabId",
-          select: "slabName totalAmount installments"
-        }
+          select: "slabName totalAmount installments",
+        },
         // Do not limit select, return all fields
       })
       .select("name grade division students");
@@ -557,10 +557,27 @@ const getClassStudents = async (req, res) => {
     }
 
     // Ensure students have the name field
-    const studentsWithName = classData.students.map((student) => ({
+    let studentsWithName = classData.students.map((student) => ({
       ...student.toObject(),
       name: student.name || `${student.firstName || ""} ${student.middleName || ""} ${student.lastName || ""}`.trim(),
     }));
+
+    // Sort students by roll number
+    studentsWithName.sort((a, b) => {
+      // Convert roll numbers to numbers if they are numeric
+      const rollA = a.rollNumber ? parseInt(a.rollNumber) : Infinity;
+      const rollB = b.rollNumber ? parseInt(b.rollNumber) : Infinity;
+
+      // If both roll numbers are valid numbers, sort numerically
+      if (!isNaN(rollA) && !isNaN(rollB)) {
+        return rollA - rollB;
+      }
+
+      // If roll numbers are not numeric or one is missing, fall back to string comparison
+      const strA = a.rollNumber || "";
+      const strB = b.rollNumber || "";
+      return strA.localeCompare(strB);
+    });
 
     const response = {
       success: true,
@@ -617,7 +634,7 @@ const getClassAttendanceByDate = async (req, res) => {
     });
 
     // Build complete attendance list including unmarked students
-    const completeAttendance = classData.students.map((student) => {
+    let completeAttendance = classData.students.map((student) => {
       const studentAttendance = attendanceMap.get(student._id.toString());
       return {
         student: {
@@ -658,6 +675,182 @@ const getClassAttendanceByDate = async (req, res) => {
   }
 };
 
+// @desc    Get class attendance summary for week, month, or year
+// @route   GET /api/attendance/class-summary/:classId
+// @access  Private (Teacher/Admin)
+const getClassAttendanceSummary = async (req, res) => {
+  try {
+    const { classId } = req.params;
+    const { period, startDate, endDate, year, month, week } = req.query;
+
+    // Get all students in the class
+    const classData = await Class.findById(classId).populate(
+      "students",
+      "firstName lastName middleName name studentId rollNumber"
+    );
+
+    if (!classData) {
+      return res.status(404).json({
+        success: false,
+        message: "Class not found",
+      });
+    }
+
+    let dateFilter = {};
+    let periodName = "";
+
+    // Calculate date range based on period type
+    if (period === "week" && week) {
+      const [year, weekNum] = week.split("-W");
+      const firstDayOfYear = new Date(year, 0, 1);
+      const startOfWeek = new Date(firstDayOfYear.getTime() + (weekNum - 1) * 7 * 24 * 60 * 60 * 1000);
+      const endOfWeek = new Date(startOfWeek.getTime() + 6 * 24 * 60 * 60 * 1000);
+      dateFilter = { $gte: startOfWeek, $lte: endOfWeek };
+      periodName = `Week ${weekNum}, ${year}`;
+    } else if (period === "month" && year && month) {
+      const startOfMonth = new Date(year, month - 1, 1);
+      const endOfMonth = new Date(year, month, 0);
+      dateFilter = { $gte: startOfMonth, $lte: endOfMonth };
+      periodName = `${new Date(year, month - 1).toLocaleString("default", { month: "long" })} ${year}`;
+    } else if (period === "year" && year) {
+      const startOfYear = new Date(year, 0, 1);
+      const endOfYear = new Date(year, 11, 31);
+      dateFilter = { $gte: startOfYear, $lte: endOfYear };
+      periodName = `Year ${year}`;
+    } else if (startDate && endDate) {
+      dateFilter = { $gte: new Date(startDate), $lte: new Date(endDate) };
+      periodName = `${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}`;
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid period parameters. Provide either period with specific values or startDate/endDate.",
+      });
+    }
+
+    // Get attendance records for all students in the date range
+    const studentAttendanceRecords = await StudentAttendance.find({
+      classId,
+      "attendanceRecords.date": dateFilter,
+    }).populate("studentId", "firstName lastName middleName name studentId rollNumber");
+
+    // Calculate summary statistics
+    const studentsData = [];
+    let totalPresent = 0;
+    let totalAbsent = 0;
+    let totalLate = 0;
+    let totalLeave = 0;
+    let totalDays = 0;
+
+    // Get unique dates in the period for calculating working days
+    const uniqueDates = new Set();
+    studentAttendanceRecords.forEach((record) => {
+      record.attendanceRecords.forEach((attendance) => {
+        const attendanceDate = new Date(attendance.date);
+        if (
+          attendanceDate >= new Date(Object.values(dateFilter)[0]) &&
+          attendanceDate <= new Date(Object.values(dateFilter)[1])
+        ) {
+          uniqueDates.add(attendanceDate.toDateString());
+        }
+      });
+    });
+
+    const workingDays = uniqueDates.size;
+
+    classData.students.forEach((student) => {
+      const studentRecord = studentAttendanceRecords.find(
+        (record) => record.studentId._id.toString() === student._id.toString()
+      );
+
+      let present = 0,
+        absent = 0,
+        late = 0,
+        leave = 0;
+
+      if (studentRecord) {
+        studentRecord.attendanceRecords.forEach((attendance) => {
+          const attendanceDate = new Date(attendance.date);
+          if (
+            attendanceDate >= new Date(Object.values(dateFilter)[0]) &&
+            attendanceDate <= new Date(Object.values(dateFilter)[1])
+          ) {
+            switch (attendance.status) {
+              case "present":
+                present++;
+                break;
+              case "absent":
+                absent++;
+                break;
+              case "late":
+                late++;
+                break;
+              case "leave":
+                leave++;
+                break;
+            }
+          }
+        });
+      }
+
+      const attendancePercentage = workingDays > 0 ? Math.round((present / workingDays) * 100) : 0;
+
+      studentsData.push({
+        student: {
+          _id: student._id,
+          name:
+            student.name || `${student.firstName || ""} ${student.middleName || ""} ${student.lastName || ""}`.trim(),
+          rollNumber: student.rollNumber,
+        },
+        present,
+        absent,
+        late,
+        leave,
+        total: present + absent + late + leave,
+        attendancePercentage,
+        workingDays,
+      });
+
+      totalPresent += present;
+      totalAbsent += absent;
+      totalLate += late;
+      totalLeave += leave;
+    });
+
+    totalDays = totalPresent + totalAbsent + totalLate + totalLeave;
+    const overallAttendancePercentage = totalDays > 0 ? Math.round((totalPresent / totalDays) * 100) : 0;
+
+    res.json({
+      success: true,
+      data: {
+        period: periodName,
+        workingDays,
+        summary: {
+          totalStudents: classData.students.length,
+          totalPresent,
+          totalAbsent,
+          totalLate,
+          totalLeave,
+          totalDays,
+          overallAttendancePercentage,
+        },
+        students: studentsData,
+        class: {
+          _id: classData._id,
+          name: classData.name,
+          grade: classData.grade,
+          section: classData.section,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Get class attendance summary error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching attendance summary",
+    });
+  }
+};
+
 // Helper function to get ordinal suffix
 const getOrdinalSuffix = (num) => {
   const j = num % 10;
@@ -685,4 +878,5 @@ module.exports = {
   getTeacherClasses,
   getClassStudents,
   getClassAttendanceByDate,
+  getClassAttendanceSummary,
 };
