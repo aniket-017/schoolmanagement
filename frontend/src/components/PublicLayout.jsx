@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import logo from "../assets/logo.jpeg";
+import logo from "../assets/logo.png";
 import {
   Bars3Icon,
   XMarkIcon,

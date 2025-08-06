@@ -11,7 +11,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useAuth } from "../context/AuthContext";
 import apiService from "../services/apiService";
-import logo from "../assets/logo.jpeg";
+import logo from "../assets/logo.png";
 
 const StudentAnnouncements = () => {
   const [announcements, setAnnouncements] = useState([]);

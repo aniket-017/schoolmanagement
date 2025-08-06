@@ -23,7 +23,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useTeacherAuth } from "../context/TeacherAuthContext";
 import apiService from "../services/apiService";
-import logo from "../assets/logo.jpeg";
+import logo from "../assets/logo.png";
 import HomeworkCard from "../components/HomeworkCard";
 import HomeworkStats from "../components/HomeworkStats";
 
@@ -482,7 +482,7 @@ const StudentDashboard = () => {
             </button>
 
             <div className="flex items-center space-x-3">
-              <img src={logo} alt="Logo" className="h-8 w-auto" />
+              <img src={logo} alt="Logo" className="h-14 w-auto" />
             </div>
 
             <button onClick={handleLogout} className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors">

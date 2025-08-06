@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import { UserIcon, AcademicCapIcon, EyeIcon, EyeSlashIcon, ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useTeacherAuth } from "../context/TeacherAuthContext";
-import logo from "../assets/logo.jpeg";
+import logo from "../assets/logo.png";
 
 const StudentTeacherLogin = () => {
   const [selectedRole, setSelectedRole] = useState("");
