@@ -121,7 +121,7 @@ const AdminDashboard = () => {
 
       // Calculate statistics
       const totalStudents = studentsResponse.data?.length || 0;
-      const totalTeachers = teachersResponse.users?.length || 0;
+      const totalTeachers = teachersResponse.pagination?.totalUsers || teachersResponse.users?.length || 0;
       const totalClasses = classesResponse.data?.length || 0;
 
       // Save all students for search functionality
