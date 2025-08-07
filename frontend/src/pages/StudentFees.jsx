@@ -24,6 +24,34 @@ const StudentFees = () => {
   const [showMessageModal, setShowMessageModal] = useState(false);
   const { user } = useTeacherAuth();
 
+  // Helper function to calculate installments with concession applied
+  const calculateInstallmentsWithConcession = (feeSlab, concessionAmount) => {
+    if (!feeSlab?.installments || !concessionAmount || concessionAmount <= 0) {
+      return feeSlab?.installments || [];
+    }
+
+    const totalAmount = feeSlab.totalAmount;
+    const discountedTotal = totalAmount - concessionAmount;
+
+    return feeSlab.installments.map((installment) => ({
+      ...installment,
+      amount: Math.round((installment.percentage / 100) * discountedTotal),
+      originalAmount: installment.amount,
+      discountAmount: Math.round((installment.percentage / 100) * concessionAmount),
+    }));
+  };
+
+  // Helper function to calculate adjusted statistics
+  const getAdjustedStatistics = (stats, concessionAmount = 0) => {
+    if (!stats || concessionAmount <= 0) return stats;
+
+    return {
+      ...stats,
+      totalAmount: (stats.totalAmount || 0) - concessionAmount,
+      pendingAmount: (stats.totalAmount || 0) - concessionAmount - (stats.paidAmount || 0),
+    };
+  };
+
   useEffect(() => {
     if (user) {
       loadFeesData();
@@ -45,7 +73,7 @@ const StudentFees = () => {
   const loadFeesData = async () => {
     try {
       setLoading(true);
-      const feesResponse = await apiService.fees.getStudentFees(user.id);
+      const feesResponse = await apiService.fees.getStudentFeeInfo(user.id);
 
       if (feesResponse.success) {
         setFeesData(feesResponse.data);
@@ -62,7 +90,7 @@ const StudentFees = () => {
       setLoadingMessages(true);
       const messagesResponse = await apiService.messages.getUserMessages({
         messageType: "fee_reminder",
-        limit: 50
+        limit: 50,
       });
 
       if (messagesResponse.success) {
@@ -78,7 +106,7 @@ const StudentFees = () => {
   // Refresh fees data
   const refreshFeesData = async () => {
     try {
-      const feesResponse = await apiService.fees.getStudentFees(user.id);
+      const feesResponse = await apiService.fees.getStudentFeeInfo(user.id);
       if (feesResponse.success) {
         setFeesData(feesResponse.data);
       }
@@ -100,16 +128,14 @@ const StudentFees = () => {
   const handleMessageClick = async (message) => {
     setSelectedMessage(message);
     setShowMessageModal(true);
-    
+
     // Mark message as read if it's not already read
     if (!message.isRead) {
       try {
         await apiService.messages.markAsRead(message._id);
         // Update the message in the local state
-        setMessages(prevMessages => 
-          prevMessages.map(msg => 
-            msg._id === message._id ? { ...msg, isRead: true } : msg
-          )
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) => (msg._id === message._id ? { ...msg, isRead: true } : msg))
         );
       } catch (error) {
         console.error("Error marking message as read:", error);
@@ -224,59 +250,87 @@ const StudentFees = () => {
                 Refresh
               </button>
             </div>
-            
+
+            {/* Concession Notice */}
+            {feesData.student?.concessionAmount > 0 && (
+              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <CheckCircleIcon className="w-5 h-5 text-green-600" />
+                  <span className="text-green-800 font-medium">
+                    Concession Applied: ₹{feesData.student.concessionAmount.toLocaleString()}
+                  </span>
+                </div>
+                <p className="text-green-700 text-sm mt-1">Your fee amounts below reflect the applied concession.</p>
+              </div>
+            )}
+
             {/* Statistics Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="bg-white rounded-lg shadow-sm border border-gray-200 p-4"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">Total Amount</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      ₹{feesData.statistics.totalAmount?.toLocaleString() || "0"}
-                    </p>
-                  </div>
-                  <CurrencyDollarIcon className="w-8 h-8 text-blue-600" />
-                </div>
-              </motion.div>
+              {(() => {
+                const adjustedStats = getAdjustedStatistics(
+                  feesData.statistics,
+                  feesData.student?.concessionAmount || 0
+                );
+                return (
+                  <>
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 }}
+                      className="bg-white rounded-lg shadow-sm border border-gray-200 p-4"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-600">Total Amount</p>
+                          <p className="text-2xl font-bold text-gray-900">
+                            ₹{adjustedStats.totalAmount?.toLocaleString() || "0"}
+                          </p>
+                          {feesData.student?.concessionAmount > 0 && (
+                            <p className="text-xs text-green-600">
+                              (₹{feesData.student.concessionAmount.toLocaleString()} concession applied)
+                            </p>
+                          )}
+                        </div>
+                        <CurrencyDollarIcon className="w-8 h-8 text-blue-600" />
+                      </div>
+                    </motion.div>
 
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="bg-white rounded-lg shadow-sm border border-gray-200 p-4"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">Paid Amount</p>
-                    <p className="text-2xl font-bold text-green-600">
-                      ₹{feesData.statistics.paidAmount?.toLocaleString() || "0"}
-                    </p>
-                  </div>
-                  <CheckCircleIcon className="w-8 h-8 text-green-600" />
-                </div>
-              </motion.div>
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                      className="bg-white rounded-lg shadow-sm border border-gray-200 p-4"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-600">Paid Amount</p>
+                          <p className="text-2xl font-bold text-green-600">
+                            ₹{adjustedStats.paidAmount?.toLocaleString() || "0"}
+                          </p>
+                        </div>
+                        <CheckCircleIcon className="w-8 h-8 text-green-600" />
+                      </div>
+                    </motion.div>
 
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="bg-white rounded-lg shadow-sm border border-gray-200 p-4"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">Remaining Amount</p>
-                    <p className="text-2xl font-bold text-yellow-600">
-                      ₹{feesData.statistics.pendingAmount?.toLocaleString() || "0"}
-                    </p>
-                  </div>
-                  <ClockIcon className="w-8 h-8 text-yellow-600" />
-                </div>
-              </motion.div>
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 }}
+                      className="bg-white rounded-lg shadow-sm border border-gray-200 p-4"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-600">Remaining Amount</p>
+                          <p className="text-2xl font-bold text-yellow-600">
+                            ₹{adjustedStats.pendingAmount?.toLocaleString() || "0"}
+                          </p>
+                        </div>
+                        <ClockIcon className="w-8 h-8 text-yellow-600" />
+                      </div>
+                    </motion.div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         )}
@@ -286,7 +340,12 @@ const StudentFees = () => {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900 flex items-center">
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                />
               </svg>
               Messages from Admin
             </h2>
@@ -298,7 +357,7 @@ const StudentFees = () => {
               Refresh
             </button>
           </div>
-          
+
           {loadingMessages ? (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="animate-pulse">
@@ -320,41 +379,41 @@ const StudentFees = () => {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
-                        message.isRead 
-                          ? 'bg-gray-50 border-gray-200' 
-                          : 'bg-blue-50 border-blue-200'
+                        message.isRead ? "bg-gray-50 border-gray-200" : "bg-blue-50 border-blue-200"
                       }`}
                       onClick={() => handleMessageClick(message)}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-2">
-                            <h4 className="font-medium text-gray-900">
-                              {message.subject}
-                            </h4>
+                            <h4 className="font-medium text-gray-900">{message.subject}</h4>
                             {!message.isRead && (
                               <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
                                 New
                               </span>
                             )}
-                            <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${
-                              message.priority === 'urgent' ? 'bg-red-100 text-red-800' :
-                              message.priority === 'high' ? 'bg-orange-100 text-orange-800' :
-                              message.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
+                            <span
+                              className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${
+                                message.priority === "urgent"
+                                  ? "bg-red-100 text-red-800"
+                                  : message.priority === "high"
+                                  ? "bg-orange-100 text-orange-800"
+                                  : message.priority === "medium"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-gray-100 text-gray-800"
+                              }`}
+                            >
                               {message.priority}
                             </span>
                           </div>
-                          <p className="text-sm text-gray-600 line-clamp-2">
-                            {message.message}
-                          </p>
+                          <p className="text-sm text-gray-600 line-clamp-2">{message.message}</p>
                           {message.feeAmount && (
                             <div className="mt-2 text-xs text-gray-500">
                               <span className="font-medium">Fee Amount:</span> ₹{message.feeAmount.toLocaleString()}
                               {message.remainingAmount && (
                                 <span className="ml-2">
-                                  <span className="font-medium">Remaining:</span> ₹{message.remainingAmount.toLocaleString()}
+                                  <span className="font-medium">Remaining:</span> ₹
+                                  {message.remainingAmount.toLocaleString()}
                                 </span>
                               )}
                             </div>
@@ -373,8 +432,18 @@ const StudentFees = () => {
           ) : (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="text-center">
-                <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                <svg
+                  className="w-12 h-12 text-gray-400 mx-auto mb-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                  />
                 </svg>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No Messages</h3>
                 <p className="text-gray-600">You don't have any fee reminder messages from admin yet.</p>
@@ -392,56 +461,104 @@ const StudentFees = () => {
                 Fee Slab Details
               </h2>
             </div>
-            
+
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">
               <div className="border-b border-gray-200">
                 <div className="px-6 py-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {feesData.feeSlab.slabName || "Fee Slab"}
-                  </h3>
+                  <h3 className="text-lg font-semibold text-gray-900">{feesData.feeSlab.slabName || "Fee Slab"}</h3>
                   <p className="text-sm text-gray-600">
-                    Total Amount: ₹{feesData.feeSlab.totalAmount?.toLocaleString() || "0"}
+                    Total Amount: ₹{(feesData.summary?.totalAmount || 0).toLocaleString()}
+                    {feesData.summary?.concessionAmount > 0 && (
+                      <span className="text-green-600 ml-2">
+                        (Original: ₹
+                        {(feesData.summary.totalAmount + feesData.summary.concessionAmount).toLocaleString()})
+                      </span>
+                    )}
                   </p>
+                  {feesData.summary?.concessionAmount > 0 && (
+                    <p className="text-sm text-green-600 mt-1">
+                      Concession Applied: ₹{feesData.summary.concessionAmount.toLocaleString()}
+                    </p>
+                  )}
                 </div>
               </div>
 
               {feesData.feeSlab.installments && feesData.feeSlab.installments.length > 0 && (
                 <div className="p-6">
                   <h4 className="font-medium text-gray-900 mb-4">Installment Schedule</h4>
+                  {feesData.summary?.concessionAmount > 0 && (
+                    <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-green-800 text-sm">
+                        ✓ Installment amounts below are adjusted for your ₹
+                        {feesData.summary.concessionAmount.toLocaleString()} concession
+                      </p>
+                    </div>
+                  )}
                   <div className="space-y-4">
-                    {feesData.feeSlab.installments.map((installment, index) => (
+                    {feesData.installments?.map((installment, index) => (
                       <motion.div
                         key={index}
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.1 }}
-                        className="p-4 bg-gray-50 rounded-lg border border-gray-200"
+                        className={`p-4 rounded-lg border ${
+                          installment.status === "paid"
+                            ? "bg-green-50 border-green-200"
+                            : installment.status === "partial"
+                            ? "bg-yellow-50 border-yellow-200"
+                            : "bg-gray-50 border-gray-200"
+                        }`}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
                             <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                              <span className="text-sm font-medium text-blue-600">{index + 1}</span>
+                              <span className="text-sm font-medium text-blue-600">{installment.installmentNumber}</span>
                             </div>
                             <div>
-                              <h4 className="font-medium text-gray-900">
-                                Installment {index + 1}
-                              </h4>
+                              <h4 className="font-medium text-gray-900">Installment {installment.installmentNumber}</h4>
                               <p className="text-sm text-gray-600">
                                 Due: {installment.dueDate ? new Date(installment.dueDate).toLocaleDateString() : "N/A"}
                               </p>
                               {installment.description && (
-                                <p className="text-xs text-gray-500">
-                                  {installment.description}
+                                <p className="text-xs text-gray-500">{installment.description}</p>
+                              )}
+                              {installment.discountAmount > 0 && (
+                                <p className="text-xs text-green-600 mt-1">
+                                  Discount: ₹{installment.discountAmount.toLocaleString()}
+                                  {installment.originalAmount && (
+                                    <span className="text-gray-400 line-through ml-1">
+                                      (was ₹{installment.originalAmount.toLocaleString()})
+                                    </span>
+                                  )}
+                                </p>
+                              )}
+                              {installment.paidAmount > 0 && (
+                                <p className="text-xs text-blue-600 mt-1">
+                                  Paid: ₹{installment.paidAmount.toLocaleString()}
+                                  {installment.remainingAmount > 0 && (
+                                    <span className="text-gray-500 ml-1">
+                                      (Remaining: ₹{installment.remainingAmount.toLocaleString()})
+                                    </span>
+                                  )}
                                 </p>
                               )}
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="font-medium text-gray-900">
-                              ₹{installment.amount?.toLocaleString() || "0"}
-                            </p>
+                            <p className="font-medium text-gray-900">₹{installment.amount?.toLocaleString() || "0"}</p>
                             <p className="text-xs text-gray-500">
-                              {installment.percentage}% of total
+                              {installment.percentage ? `${installment.percentage}% of total` : "N/A"}
+                            </p>
+                            <p
+                              className={`text-xs mt-1 ${
+                                installment.status === "paid"
+                                  ? "text-green-600"
+                                  : installment.status === "partial"
+                                  ? "text-yellow-600"
+                                  : "text-gray-500"
+                              }`}
+                            >
+                              {installment.status?.charAt(0).toUpperCase() + installment.status?.slice(1) || "Pending"}
                             </p>
                           </div>
                         </div>
@@ -470,15 +587,10 @@ const StudentFees = () => {
                     <h3 className="text-lg font-semibold text-gray-900 capitalize">
                       {selectedFee.feeType || "Fee"} Details
                     </h3>
-                    <p className="text-sm text-gray-500">
-                      Fee ID: {selectedFee._id}
-                    </p>
+                    <p className="text-sm text-gray-500">Fee ID: {selectedFee._id}</p>
                   </div>
                 </div>
-                <button
-                  onClick={closeFeeModal}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                >
+                <button onClick={closeFeeModal} className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
                   <XMarkIcon className="w-6 h-6 text-gray-500" />
                 </button>
               </div>
@@ -489,16 +601,18 @@ const StudentFees = () => {
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="font-medium text-gray-900">Payment Status</h4>
-                    <span className={`px-3 py-1 text-sm font-medium rounded-full border ${getStatusColor(selectedFee.status)}`}>
+                    <span
+                      className={`px-3 py-1 text-sm font-medium rounded-full border ${getStatusColor(
+                        selectedFee.status
+                      )}`}
+                    >
                       {getStatusText(selectedFee.status)}
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-gray-600">Total Amount</p>
-                      <p className="text-xl font-bold text-gray-900">
-                        ₹{selectedFee.amount?.toLocaleString() || "0"}
-                      </p>
+                      <p className="text-xl font-bold text-gray-900">₹{selectedFee.amount?.toLocaleString() || "0"}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Paid Amount</p>
@@ -509,15 +623,18 @@ const StudentFees = () => {
                     {selectedFee.discount > 0 && (
                       <div>
                         <p className="text-sm text-gray-600">Discount</p>
-                        <p className="text-xl font-bold text-blue-600">
-                          ₹{selectedFee.discount.toLocaleString()}
-                        </p>
+                        <p className="text-xl font-bold text-blue-600">₹{selectedFee.discount.toLocaleString()}</p>
                       </div>
                     )}
                     <div>
                       <p className="text-sm text-gray-600">Remaining</p>
                       <p className="text-xl font-bold text-yellow-600">
-                        ₹{((selectedFee.amount || 0) - (selectedFee.paidAmount || 0) - (selectedFee.discount || 0)).toLocaleString()}
+                        ₹
+                        {(
+                          (selectedFee.amount || 0) -
+                          (selectedFee.paidAmount || 0) -
+                          (selectedFee.discount || 0)
+                        ).toLocaleString()}
                       </p>
                     </div>
                   </div>
@@ -570,9 +687,7 @@ const StudentFees = () => {
                       {selectedFee.paidDate && (
                         <div className="flex justify-between">
                           <span className="text-gray-600">Paid Date:</span>
-                          <span className="font-medium">
-                            {new Date(selectedFee.paidDate).toLocaleDateString()}
-                          </span>
+                          <span className="font-medium">{new Date(selectedFee.paidDate).toLocaleDateString()}</span>
                         </div>
                       )}
                       {selectedFee.paymentMethod && (
@@ -630,22 +745,23 @@ const StudentFees = () => {
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                     <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                      />
                     </svg>
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      Message from Admin
-                    </h3>
+                    <h3 className="text-lg font-semibold text-gray-900">Message from Admin</h3>
                     <p className="text-sm text-gray-500">
-                      {new Date(selectedMessage.sentAt).toLocaleDateString()} at {new Date(selectedMessage.sentAt).toLocaleTimeString()}
+                      {new Date(selectedMessage.sentAt).toLocaleDateString()} at{" "}
+                      {new Date(selectedMessage.sentAt).toLocaleTimeString()}
                     </p>
                   </div>
                 </div>
-                <button
-                  onClick={closeMessageModal}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                >
+                <button onClick={closeMessageModal} className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
                   <XMarkIcon className="w-6 h-6 text-gray-500" />
                 </button>
               </div>
@@ -656,27 +772,28 @@ const StudentFees = () => {
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="font-medium text-gray-900">Subject</h4>
-                    <span className={`px-3 py-1 text-sm font-medium rounded-full ${
-                      selectedMessage.priority === 'urgent' ? 'bg-red-100 text-red-800' :
-                      selectedMessage.priority === 'high' ? 'bg-orange-100 text-orange-800' :
-                      selectedMessage.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span
+                      className={`px-3 py-1 text-sm font-medium rounded-full ${
+                        selectedMessage.priority === "urgent"
+                          ? "bg-red-100 text-red-800"
+                          : selectedMessage.priority === "high"
+                          ? "bg-orange-100 text-orange-800"
+                          : selectedMessage.priority === "medium"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
                       {selectedMessage.priority} Priority
                     </span>
                   </div>
-                  <p className="text-lg font-medium text-gray-900">
-                    {selectedMessage.subject}
-                  </p>
+                  <p className="text-lg font-medium text-gray-900">{selectedMessage.subject}</p>
                 </div>
 
                 {/* Message Body */}
                 <div className="bg-white rounded-lg p-4 border border-gray-200">
                   <h4 className="font-medium text-gray-900 mb-4">Message</h4>
                   <div className="prose max-w-none">
-                    <p className="text-gray-700 whitespace-pre-wrap">
-                      {selectedMessage.message}
-                    </p>
+                    <p className="text-gray-700 whitespace-pre-wrap">{selectedMessage.message}</p>
                   </div>
                 </div>
 
@@ -694,7 +811,9 @@ const StudentFees = () => {
                       {selectedMessage.remainingAmount && (
                         <div className="flex justify-between">
                           <span className="text-gray-600">Remaining Amount:</span>
-                          <span className="font-medium text-red-600">₹{selectedMessage.remainingAmount.toLocaleString()}</span>
+                          <span className="font-medium text-red-600">
+                            ₹{selectedMessage.remainingAmount.toLocaleString()}
+                          </span>
                         </div>
                       )}
                       {selectedMessage.feeType && (
@@ -716,9 +835,7 @@ const StudentFees = () => {
                 {/* Sender Information */}
                 <div className="bg-green-50 rounded-lg p-4 border border-green-200">
                   <h4 className="font-medium text-gray-900 mb-2">Sent by</h4>
-                  <p className="text-gray-700">
-                    {selectedMessage.senderId?.name || 'School Administration'}
-                  </p>
+                  <p className="text-gray-700">{selectedMessage.senderId?.name || "School Administration"}</p>
                 </div>
               </div>
 
@@ -739,4 +856,4 @@ const StudentFees = () => {
   );
 };
 
-export default StudentFees; 
+export default StudentFees;

@@ -194,6 +194,72 @@ const FeeManagement = () => {
     return filtered;
   }, [filteredStudents, feeSlabFilter, classFilter, statusFilter, overdueFilter, overdueStudents]);
 
+  // Helper function to calculate correct overdue amounts with concessions
+  const calculateCorrectedOverdueAmount = (student) => {
+    const overdueStudent = overdueStudents.find((s) => s._id === student._id);
+    if (!overdueStudent) return null;
+
+    // If student has no concessions, return original overdue amount
+    if (!student.concessionAmount || student.concessionAmount <= 0) {
+      return {
+        totalOverdueAmount: overdueStudent.totalOverdueAmount,
+        overdueCount: overdueStudent.overdueCount,
+      };
+    }
+
+    // Calculate overdue with concessions applied and partial payments considered
+    const adjustedInstallments = calculateInstallmentsWithConcession(student);
+    const currentDate = new Date();
+    const paidAmount = student.feesPaid || 0;
+
+    let adjustedOverdueAmount = 0;
+    let overdueCount = 0;
+    let remainingPaidAmount = paidAmount;
+
+    // Sort installments by due date to apply payments chronologically
+    const sortedInstallments = [...adjustedInstallments].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+
+    sortedInstallments.forEach((installment) => {
+      const dueDate = new Date(installment.dueDate);
+      if (dueDate < currentDate) {
+        // Calculate how much of this installment is paid
+        const installmentPaidAmount = Math.min(remainingPaidAmount, installment.amount);
+        const installmentRemainingAmount = Math.max(0, installment.amount - installmentPaidAmount);
+
+        if (installmentRemainingAmount > 0) {
+          adjustedOverdueAmount += installmentRemainingAmount;
+          overdueCount++;
+        }
+
+        // Update remaining paid amount
+        remainingPaidAmount = Math.max(0, remainingPaidAmount - installment.amount);
+      }
+    });
+
+    return {
+      totalOverdueAmount: adjustedOverdueAmount,
+      overdueCount: overdueCount,
+    };
+  };
+
+  // Helper function to calculate installments with concession applied
+  const calculateInstallmentsWithConcession = (student) => {
+    if (!student.feeSlabId?.installments || !student.concessionAmount || student.concessionAmount <= 0) {
+      return student.feeSlabId?.installments || [];
+    }
+
+    const concessionAmount = student.concessionAmount;
+    const totalAmount = student.feeSlabId.totalAmount;
+    const discountedTotal = totalAmount - concessionAmount;
+
+    return student.feeSlabId.installments.map((installment) => ({
+      ...installment,
+      amount: Math.round((installment.percentage / 100) * discountedTotal),
+      originalAmount: installment.amount,
+      discountAmount: Math.round((installment.percentage / 100) * concessionAmount),
+    }));
+  };
+
   // Overview stats data
   const feeStats = [
     {
@@ -204,47 +270,21 @@ const FeeManagement = () => {
     },
     {
       name: "Overdue Fees",
-      value: `₹${overdueStudents
-        .reduce((total, student) => total + (student.totalOverdueAmount || 0), 0)
+      value: `₹${allStudents
+        .map((student) => {
+          const correctedOverdue = calculateCorrectedOverdueAmount(student);
+          return correctedOverdue ? correctedOverdue.totalOverdueAmount : 0;
+        })
+        .reduce((total, amount) => total + (amount || 0), 0)
         .toLocaleString()}`,
       icon: Clock,
       color: "warning",
     },
     {
       name: "Student Overdue Status",
-      value: (
-        <div className="flex flex-col text-sm">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center">
-              <XCircle className="w-3.5 h-3.5 mr-1.5 text-red-500" />
-              <span className="font-medium">{overdueStudents.length} With Overdue</span>
-            </div>
-            <span className="text-xs text-red-500 font-medium">
-              {allStudents.length > 0 ? ((overdueStudents.length / allStudents.length) * 100).toFixed(0) : 0}%
-            </span>
-          </div>
-          <div className="w-full bg-gray-100 rounded-full h-1.5 mb-2">
-            <div
-              className="bg-red-500 h-1.5 rounded-full"
-              style={{
-                width: `${allStudents.length > 0 ? (overdueStudents.length / allStudents.length) * 100 : 0}%`,
-              }}
-            ></div>
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <CheckCircle className="w-3.5 h-3.5 mr-1.5 text-green-500" />
-              <span className="font-medium">{allStudents.length - overdueStudents.length} Without Overdue</span>
-            </div>
-            <span className="text-xs text-green-500 font-medium">
-              {allStudents.length > 0
-                ? (((allStudents.length - overdueStudents.length) / allStudents.length) * 100).toFixed(0)
-                : 0}
-              %
-            </span>
-          </div>
-        </div>
-      ),
+      value: `${overdueStudents.length} with overdue (${
+        allStudents.length > 0 ? ((overdueStudents.length / allStudents.length) * 100).toFixed(0) : 0
+      }%)`,
       icon: Users,
       color: "primary",
     },
@@ -275,11 +315,11 @@ const FeeManagement = () => {
                   width: `${percentage}%`,
                 }}
               >
-                {percentage > 30 && (
+                {/* {percentage > 30 && (
                   <div className="absolute inset-0 bg-white bg-opacity-20 overflow-hidden">
                     <div className="animate-pulse-light w-full h-full"></div>
                   </div>
-                )}
+                )} */}
               </div>
             </div>
             <div className="mt-1 text-right">
@@ -416,6 +456,7 @@ const FeeManagement = () => {
       const response = await apiService.fees.getFeeOverview();
       if (response.success) {
         const monthlyData = response.data.monthlyData;
+
         const summaryCards = response.data.summaryCards;
 
         const reportData = {
@@ -627,12 +668,14 @@ const FeeManagement = () => {
             const studentPaidAmount = student.feesPaid || 0;
             const balance = studentTotalAmount - studentPaidAmount;
 
-            // Check if payment was made in this month
-            if (student.paymentDate) {
-              const paymentDate = new Date(student.paymentDate);
-              if (paymentDate >= monthDate && paymentDate < nextMonthDate) {
-                monthlyCollected += studentPaidAmount;
-              }
+            // Check payment history for this month
+            if (student.paymentHistory && student.paymentHistory.length > 0) {
+              student.paymentHistory.forEach((payment) => {
+                const paymentDate = new Date(payment.paymentDate);
+                if (paymentDate >= monthDate && paymentDate < nextMonthDate) {
+                  monthlyCollected += payment.amount || 0;
+                }
+              });
             }
 
             // Calculate pending for this month based on fee structure
@@ -1254,6 +1297,31 @@ const FeeManagement = () => {
     }
   };
 
+  // Fetch student fee information with correct installment data
+  const fetchStudentFeeInfo = async (studentId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${appConfig.API_BASE_URL}/fees/student/${studentId}/info`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        return data.data;
+      } else {
+        throw new Error(data.message || "Failed to fetch student fee information");
+      }
+    } catch (error) {
+      console.error("Error fetching student fee info:", error);
+      toast.error("Error fetching student fee information");
+      return null;
+    }
+  };
+
   // Search students
   const handleSearch = (searchTerm) => {
     setSearchTerm(searchTerm);
@@ -1373,7 +1441,7 @@ const FeeManagement = () => {
   };
 
   // Handle student view
-  const handleStudentView = (student) => {
+  const handleStudentView = async (student) => {
     if (!student || !student._id) {
       toast.error("Invalid student data");
       return;
@@ -1381,8 +1449,18 @@ const FeeManagement = () => {
 
     setSelectedStudent(student);
     setShowStudentViewModal(true);
+
     // Fetch payment history for the student
     fetchPaymentHistory(student._id);
+
+    // Fetch correct fee information with installment data from actual fee records
+    const feeInfo = await fetchStudentFeeInfo(student._id);
+    if (feeInfo) {
+      setSelectedStudent((prev) => ({
+        ...prev,
+        feeInfo: feeInfo,
+      }));
+    }
   };
 
   // Handle update status
@@ -1437,80 +1515,31 @@ const FeeManagement = () => {
     try {
       const token = localStorage.getItem("token");
 
-      // Calculate the new total fees paid by adding current payment to existing fees paid
-      const newFeesPaid = (selectedStudent.feesPaid || 0) + (feeEditData.feesPaid || 0);
-
-      // First, find the student's active fees
-      const feesResponse = await fetch(`${appConfig.API_BASE_URL}/fees/student/${selectedStudent._id}`, {
+      // Use the new student payment processing endpoint
+      const paymentResponse = await fetch(`${appConfig.API_BASE_URL}/fees/student/${selectedStudent._id}/pay`, {
+        method: "PUT",
         headers: {
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
+        body: JSON.stringify({
+          paidAmount: feeEditData.feesPaid,
+          paymentMethod: feeEditData.paymentMethod,
+          transactionId: feeEditData.transactionId || "",
+          remarks: feeEditData.remarks || "",
+          paymentDate: feeEditData.paymentDate || new Date().toISOString().split("T")[0],
+        }),
       });
 
-      const feesData = await feesResponse.json();
-      console.log("Student fees data:", feesData);
+      const paymentData = await paymentResponse.json();
+      console.log("Payment processing response:", paymentData);
 
-      if (feesData.success && feesData.data && feesData.data.fees && feesData.data.fees.length > 0) {
-        // Get the first active fee
-        const fee = feesData.data.fees[0];
-        console.log("Found active fee for payment processing:", fee);
-
-        // Process the payment using the fee payment endpoint
-        const paymentResponse = await fetch(`${appConfig.API_BASE_URL}/fees/${fee._id}/pay`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            paidAmount: feeEditData.feesPaid,
-            paymentMethod: feeEditData.paymentMethod,
-            transactionId: feeEditData.transactionId || "",
-            remarks: feeEditData.remarks || "",
-          }),
-        });
-
-        const paymentData = await paymentResponse.json();
-        console.log("Payment processing response:", paymentData);
-
-        if (paymentData.success) {
-          toast.success("Payment processed successfully and added to payment history");
-          setShowStudentEditModal(false);
-          fetchAllStudents(); // Refresh the student list
-        } else {
-          // If payment processing fails, fall back to the old method
-          fallbackToStudentUpdate();
-        }
+      if (paymentData.success) {
+        toast.success("Payment processed successfully across installments");
+        setShowStudentEditModal(false);
+        fetchAllStudents(); // Refresh the student list
       } else {
-        // If no active fees found, fall back to the old method
-        console.log("No active fees found, falling back to direct student update");
-        fallbackToStudentUpdate();
-      }
-
-      // Function to fall back to the old method of updating student directly
-      async function fallbackToStudentUpdate() {
-        console.log("Using fallback method to update student payment info");
-        const studentResponse = await fetch(`${appConfig.API_BASE_URL}/students/${selectedStudent._id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            ...feeEditData,
-            feesPaid: newFeesPaid, // Update the total fees paid
-            paymentDate: feeEditData.paymentDate || new Date().toISOString().split("T")[0],
-          }),
-        });
-
-        const studentData = await studentResponse.json();
-        if (studentData.success) {
-          toast.success("Fee payment updated successfully (legacy method)");
-          setShowStudentEditModal(false);
-          fetchAllStudents(); // Refresh the student list
-        } else {
-          toast.error(studentData.message || "Error updating fee payment");
-        }
+        toast.error(paymentData.message || "Error processing payment");
       }
     } catch (error) {
       console.error("Error processing payment:", error);
@@ -1521,7 +1550,8 @@ const FeeManagement = () => {
   // Fee Reminder Functions
   const handleSendFeeReminder = (student) => {
     setSelectedStudentForReminder(student);
-    const remainingAmount = (student.feeSlabId?.totalAmount || 0) - (student.feesPaid || 0);
+    const remainingAmount =
+      (student.feeSlabId?.totalAmount || 0) - (student.concessionAmount || 0) - (student.feesPaid || 0);
 
     setFeeReminderData({
       subject: `Fee Reminder - ₹${remainingAmount.toLocaleString()} Remaining`,
@@ -1540,7 +1570,9 @@ const FeeManagement = () => {
     try {
       setSendingReminder(true);
       const remainingAmount =
-        (selectedStudentForReminder.feeSlabId?.totalAmount || 0) - (selectedStudentForReminder.feesPaid || 0);
+        (selectedStudentForReminder.feeSlabId?.totalAmount || 0) -
+        (selectedStudentForReminder.concessionAmount || 0) -
+        (selectedStudentForReminder.feesPaid || 0);
 
       const messageData = {
         studentId: selectedStudentForReminder._id,
@@ -2213,20 +2245,28 @@ const FeeManagement = () => {
                                   ₹{student.feesPaid?.toLocaleString() || "0"}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  ₹{((student.feeSlabId?.totalAmount || 0) - (student.feesPaid || 0)).toLocaleString()}
+                                  ₹
+                                  {(
+                                    (student.feeSlabId?.totalAmount || 0) -
+                                    (student.concessionAmount || 0) -
+                                    (student.feesPaid || 0)
+                                  ).toLocaleString()}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                   {(() => {
-                                    const overdueStudent = overdueStudents.find((s) => s._id === student._id);
-                                    if (overdueStudent) {
+                                    const correctedOverdue = calculateCorrectedOverdueAmount(student);
+                                    if (correctedOverdue) {
                                       return (
                                         <div>
                                           <span className="text-red-600 font-medium">
-                                            ₹{overdueStudent.totalOverdueAmount?.toLocaleString() || "0"}
+                                            ₹{correctedOverdue.totalOverdueAmount?.toLocaleString() || "0"}
                                           </span>
                                           <div className="text-xs text-gray-500">
-                                            {overdueStudent.overdueCount} installment(s)
+                                            {correctedOverdue.overdueCount} installment(s)
                                           </div>
+                                          {student.concessionAmount > 0 && (
+                                            <div className="text-xs text-green-600">(adjusted for concession)</div>
+                                          )}
                                         </div>
                                       );
                                     }
@@ -3068,16 +3108,30 @@ const FeeManagement = () => {
                   </p>
                   <p className="text-sm text-gray-600">
                     <strong>Remaining Fees:</strong> ₹
-                    {((selectedStudent.feeSlabId?.totalAmount || 0) - (selectedStudent.feesPaid || 0)).toLocaleString()}
+                    {(
+                      (selectedStudent.feeSlabId?.totalAmount || 0) -
+                      (selectedStudent.concessionAmount || 0) -
+                      (selectedStudent.feesPaid || 0)
+                    ).toLocaleString()}
                   </p>
                   {selectedStudent.feeSlabId?.installments && selectedStudent.feeSlabId.installments.length > 0 && (
                     <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                       <h4 className="text-sm font-medium text-gray-900 mb-2">Installment Schedule</h4>
+                      {selectedStudent.concessionAmount > 0 && (
+                        <div className="text-xs text-green-600 mb-2">
+                          * Amounts adjusted for concession of ₹{selectedStudent.concessionAmount.toLocaleString()}
+                        </div>
+                      )}
                       <div className="space-y-2">
-                        {selectedStudent.feeSlabId.installments.map((installment, index) => (
+                        {calculateInstallmentsWithConcession(selectedStudent).map((installment, index) => (
                           <div key={index} className="flex justify-between text-sm">
                             <span className="text-gray-600">
                               Installment {installment.installmentNumber}: ₹{installment.amount.toLocaleString()}
+                              {installment.discountAmount > 0 && (
+                                <span className="text-green-600 text-xs ml-1">
+                                  (₹{installment.discountAmount.toLocaleString()} off)
+                                </span>
+                              )}
                             </span>
                             <span className="text-gray-500">
                               Due: {new Date(installment.dueDate).toLocaleDateString()}
@@ -3090,18 +3144,6 @@ const FeeManagement = () => {
                 </div>
 
                 <form onSubmit={handleFeeEdit} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Payment Type</label>
-                    <select
-                      value={feeEditData.paymentType || "full"}
-                      onChange={(e) => setFeeEditData({ ...feeEditData, paymentType: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="full">Full Payment</option>
-                      <option value="installment">Installment Payment</option>
-                    </select>
-                  </div>
-
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Payment Date</label>
                     <input
@@ -3145,11 +3187,13 @@ const FeeManagement = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Current Payment (₹)</label>
                     <input
                       type="number"
-                      value={feeEditData.feesPaid}
+                      value={feeEditData.feesPaid || ""}
                       onChange={(e) => {
                         const value = parseFloat(e.target.value) || 0;
                         const maxAmount =
-                          (selectedStudent.feeSlabId?.totalAmount || 0) - (selectedStudent.feesPaid || 0);
+                          (selectedStudent.feeSlabId?.totalAmount || 0) -
+                          (selectedStudent.concessionAmount || 0) -
+                          (selectedStudent.feesPaid || 0);
                         if (value <= maxAmount) {
                           setFeeEditData({ ...feeEditData, feesPaid: value });
                         }
@@ -3253,26 +3297,25 @@ const FeeManagement = () => {
                     <div>
                       <span className="text-gray-600">Fee Slab:</span>
                       <span className="font-medium ml-2">
-                        {selectedStudent.feeSlabId?.slabName || selectedStudent.feeStructure || "N/A"}
+                        {selectedStudent.feeInfo?.feeSlab?.slabName || selectedStudent.feeStructure || "N/A"}
                       </span>
                     </div>
                     <div>
                       <span className="text-gray-600">Total Amount:</span>
                       <span className="font-medium ml-2">
-                        ₹{(selectedStudent.feeSlabId?.totalAmount || 0).toLocaleString()}
+                        ₹{(selectedStudent.feeInfo?.summary?.totalAmount || 0).toLocaleString()}
                       </span>
                     </div>
                     <div>
                       <span className="text-gray-600">Fees Paid:</span>
-                      <span className="font-medium ml-2">₹{selectedStudent.feesPaid?.toLocaleString() || "0"}</span>
+                      <span className="font-medium ml-2">
+                        ₹{(selectedStudent.feeInfo?.summary?.paidAmount || 0).toLocaleString()}
+                      </span>
                     </div>
                     <div>
                       <span className="text-gray-600">Remaining Amount:</span>
                       <span className="font-medium ml-2">
-                        ₹
-                        {(
-                          (selectedStudent.feeSlabId?.totalAmount || 0) - (selectedStudent.feesPaid || 0)
-                        ).toLocaleString()}
+                        ₹{(selectedStudent.feeInfo?.summary?.pendingAmount || 0).toLocaleString()}
                       </span>
                     </div>
                     <div>
@@ -3289,10 +3332,12 @@ const FeeManagement = () => {
                         {selectedStudent.paymentStatus || "pending"}
                       </span>
                     </div>
-                    {selectedStudent.concessionAmount > 0 && (
+                    {selectedStudent.feeInfo?.summary?.concessionAmount > 0 && (
                       <div>
                         <span className="text-gray-600">Concession Amount:</span>
-                        <span className="font-medium ml-2">₹{selectedStudent.concessionAmount.toLocaleString()}</span>
+                        <span className="font-medium ml-2">
+                          ₹{selectedStudent.feeInfo.summary.concessionAmount.toLocaleString()}
+                        </span>
                       </div>
                     )}
                     {selectedStudent.lateFees > 0 && (
@@ -3307,30 +3352,86 @@ const FeeManagement = () => {
                 </div>
 
                 {/* Installment Information */}
-                {selectedStudent.feeSlabId?.installments && selectedStudent.feeSlabId.installments.length > 0 && (
+                {selectedStudent.feeInfo?.installments && selectedStudent.feeInfo.installments.length > 0 && (
                   <div className="bg-gray-50 rounded-lg p-4">
                     <h4 className="font-semibold text-gray-900 mb-3">Installment Schedule</h4>
+                    {selectedStudent.feeInfo.summary.concessionAmount > 0 && (
+                      <div className="text-sm text-green-600 mb-3 flex items-center">
+                        <CheckCircle className="w-4 h-4 mr-1" />
+                        Concession of ₹{selectedStudent.feeInfo.summary.concessionAmount.toLocaleString()} applied to
+                        all installments
+                      </div>
+                    )}
                     <div className="space-y-3">
-                      {selectedStudent.feeSlabId.installments.map((installment, index) => (
-                        <div
-                          key={index}
-                          className="flex justify-between items-center p-3 bg-white rounded-lg border border-gray-200"
-                        >
-                          <div className="flex-1">
-                            <div className="font-medium text-gray-900">Installment {installment.installmentNumber}</div>
-                            <div className="text-sm text-gray-600">
-                              Due: {new Date(installment.dueDate).toLocaleDateString()}
+                      {selectedStudent.feeInfo.installments.map((installment, index) => {
+                        const paymentStatus = installment.status || "pending";
+                        const paidAmount = installment.paidAmount || 0;
+                        const remainingAmount = installment.remainingAmount || installment.amount;
+
+                        return (
+                          <div
+                            key={index}
+                            className={`flex justify-between items-center p-3 bg-white rounded-lg border ${
+                              paymentStatus === "paid"
+                                ? "border-green-200 bg-green-50"
+                                : paymentStatus === "partial"
+                                ? "border-yellow-200 bg-yellow-50"
+                                : "border-gray-200"
+                            }`}
+                          >
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-900 flex items-center">
+                                Installment {installment.installmentNumber}
+                                {paymentStatus === "paid" && <CheckCircle className="w-4 h-4 ml-2 text-green-600" />}
+                                {paymentStatus === "partial" && <Clock className="w-4 h-4 ml-2 text-yellow-600" />}
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                Due: {new Date(installment.dueDate).toLocaleDateString()}
+                              </div>
+                              {installment.description && (
+                                <div className="text-sm text-gray-500">{installment.description}</div>
+                              )}
+                              {installment.discountAmount > 0 && (
+                                <div className="text-xs text-green-600 mt-1">
+                                  Discount: ₹{installment.discountAmount.toLocaleString()}
+                                  {installment.originalAmount && (
+                                    <span className="text-gray-400 line-through ml-1">
+                                      (was ₹{installment.originalAmount.toLocaleString()})
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                              {paidAmount > 0 && (
+                                <div className="text-xs text-blue-600 mt-1">
+                                  Paid: ₹{paidAmount.toLocaleString()}
+                                  {remainingAmount > 0 && (
+                                    <span className="text-gray-500 ml-1">
+                                      (Remaining: ₹{remainingAmount.toLocaleString()})
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </div>
-                            {installment.description && (
-                              <div className="text-sm text-gray-500">{installment.description}</div>
-                            )}
+                            <div className="text-right">
+                              <div className="font-semibold text-gray-900">₹{installment.amount.toLocaleString()}</div>
+                              <div className="text-sm text-gray-600">
+                                {installment.percentage ? `${installment.percentage}%` : "N/A"}
+                              </div>
+                              <div
+                                className={`text-xs mt-1 ${
+                                  paymentStatus === "paid"
+                                    ? "text-green-600"
+                                    : paymentStatus === "partial"
+                                    ? "text-yellow-600"
+                                    : "text-gray-500"
+                                }`}
+                              >
+                                {paymentStatus.charAt(0).toUpperCase() + paymentStatus.slice(1)}
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <div className="font-semibold text-gray-900">₹{installment.amount.toLocaleString()}</div>
-                            <div className="text-sm text-gray-600">{installment.percentage}%</div>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -3547,7 +3648,11 @@ const FeeManagement = () => {
                 </p>
                 <p className="text-sm text-gray-600 mb-2">
                   <strong>Remaining Fees:</strong> ₹
-                  {((selectedStudent.feeSlabId?.totalAmount || 0) - (selectedStudent.feesPaid || 0)).toLocaleString()}
+                  {(
+                    (selectedStudent.feeSlabId?.totalAmount || 0) -
+                    (selectedStudent.concessionAmount || 0) -
+                    (selectedStudent.feesPaid || 0)
+                  ).toLocaleString()}
                 </p>
                 <p className="text-sm text-gray-600">
                   <strong>Current Status:</strong>
@@ -3642,7 +3747,13 @@ const FeeManagement = () => {
                       onClick={() => {
                         // Select all students with remaining fees
                         const withRemainingFees = filteredAndSortedStudents
-                          .filter((student) => (student.feeSlabId?.totalAmount || 0) - (student.feesPaid || 0) > 0)
+                          .filter(
+                            (student) =>
+                              (student.feeSlabId?.totalAmount || 0) -
+                                (student.concessionAmount || 0) -
+                                (student.feesPaid || 0) >
+                              0
+                          )
                           .map((student) => student._id);
                         setSelectedStudents(withRemainingFees);
                       }}

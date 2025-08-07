@@ -546,6 +546,13 @@ class ApiService {
       return this.handleResponse(response);
     },
 
+    getStudentFeeInfo: async (studentId) => {
+      const response = await fetch(`${this.baseURL}/fees/student/${studentId}/info`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
     getAllFees: async (params = {}) => {
       const queryString = new URLSearchParams(params).toString();
       const response = await fetch(`${this.baseURL}/fees?${queryString}`, {

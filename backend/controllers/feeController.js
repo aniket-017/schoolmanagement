@@ -238,6 +238,13 @@ const getStudentFees = async (req, res) => {
           pendingAmount,
         },
         feeSlab: student?.feeSlabId || null,
+        student: {
+          _id: student._id,
+          name: student.name || `${student.firstName || ""} ${student.lastName || ""}`.trim(),
+          concessionAmount: student.concessionAmount || 0,
+          paymentStatus: student.paymentStatus,
+          feeStructure: student.feeStructure,
+        },
       },
     });
   } catch (error) {
@@ -289,21 +296,24 @@ const processFeePayment = async (req, res) => {
       });
     }
 
-    // Calculate remaining balance
+    // Calculate remaining balance for this specific fee
     const remainingBalance = fee.amount - fee.paidAmount + fee.penalty - fee.discount;
     console.log("Payment validation:");
-    console.log("- Remaining balance:", remainingBalance);
+    console.log("- Remaining balance for this fee:", remainingBalance);
     console.log("- Payment amount:", paidAmount);
 
     if (paidAmount > remainingBalance) {
-      console.log("❌ Payment amount exceeds remaining balance");
+      console.log("❌ Payment amount exceeds remaining balance for this fee");
       return res.status(400).json({
         success: false,
-        message: "Payment amount exceeds remaining balance",
+        message: "Payment amount exceeds remaining balance for this fee",
       });
     }
 
     console.log("✅ Payment amount validated");
+
+    // Get the payment date from request body or use current date as fallback
+    const paymentDate = req.body.paymentDate ? new Date(req.body.paymentDate) : new Date();
 
     // Update fee record
     console.log("Updating fee record...");
@@ -313,9 +323,15 @@ const processFeePayment = async (req, res) => {
     fee.remarks = remarks;
     fee.processedBy = req.user.id;
 
+    // Update fee status based on payment
     if (fee.paidAmount >= fee.amount) {
-      fee.paidDate = new Date();
-      console.log("✅ Fee fully paid, setting paidDate");
+      fee.status = "paid";
+      fee.paidDate = paymentDate;
+      console.log("✅ Fee fully paid, setting status to paid");
+    } else if (fee.paidAmount > 0) {
+      fee.status = "partial";
+      fee.paidDate = paymentDate;
+      console.log("✅ Fee partially paid, setting status to partial");
     }
 
     await fee.save();
@@ -339,7 +355,7 @@ const processFeePayment = async (req, res) => {
       );
 
       const paymentRecord = {
-        paymentDate: new Date(),
+        paymentDate: paymentDate,
         amount: paidAmount,
         paymentMethod,
         transactionId,
@@ -380,9 +396,14 @@ const processFeePayment = async (req, res) => {
       const allStudentFees = await Fee.find({ studentId: fee.studentId });
       const totalPaidAmount = allStudentFees.reduce((sum, f) => sum + (f.paidAmount || 0), 0);
 
+      // Get the fee slab to calculate total expected amount
+      const FeeSlab = require("../models/FeeSlab");
+      const feeSlab = student.feeSlabId ? await FeeSlab.findById(student.feeSlabId) : null;
+      const totalExpectedAmount = feeSlab ? feeSlab.totalAmount : 0;
+
       // Determine overall payment status
       let overallStatus = "pending";
-      if (totalPaidAmount >= (student.feeSlabId?.totalAmount || 0)) {
+      if (totalPaidAmount >= totalExpectedAmount) {
         overallStatus = "paid";
       } else if (totalPaidAmount > 0) {
         overallStatus = "partial";
@@ -396,10 +417,15 @@ const processFeePayment = async (req, res) => {
       await Student.findByIdAndUpdate(fee.studentId, {
         paymentStatus: overallStatus,
         feesPaid: totalPaidAmount,
-        paymentDate: new Date(),
+        paymentDate: paymentDate,
         paymentMethod: paymentMethod || student.paymentMethod,
         transactionId: transactionId || student.transactionId,
       });
+
+      console.log("✅ Student payment status updated:");
+      console.log("- Total paid amount:", totalPaidAmount);
+      console.log("- Total expected amount:", totalExpectedAmount);
+      console.log("- Overall status:", overallStatus);
     }
 
     res.json({
@@ -752,7 +778,7 @@ const createClassFees = async (req, res) => {
 const updateFeeStatus = async (req, res) => {
   try {
     const { feeId } = req.params;
-    const { status, paidAmount, paymentMethod, transactionId, remarks } = req.body;
+    const { status, paidAmount, paymentMethod, transactionId, remarks, paymentDate } = req.body;
 
     const fee = await Fee.findById(feeId);
     if (!fee) {
@@ -762,16 +788,19 @@ const updateFeeStatus = async (req, res) => {
       });
     }
 
+    // Get the payment date from request body or use current date as fallback
+    const selectedPaymentDate = paymentDate ? new Date(paymentDate) : new Date();
+
     const updateData = { status };
 
     if (status === "paid") {
       updateData.paidAmount = paidAmount || fee.amount;
-      updateData.paidDate = new Date();
+      updateData.paidDate = selectedPaymentDate;
       updateData.paymentMethod = paymentMethod;
       updateData.transactionId = transactionId;
     } else if (status === "partial") {
       updateData.paidAmount = paidAmount || 0;
-      updateData.paidDate = new Date();
+      updateData.paidDate = selectedPaymentDate;
       updateData.paymentMethod = paymentMethod;
       updateData.transactionId = transactionId;
     }
@@ -810,7 +839,7 @@ const updateFeeStatus = async (req, res) => {
       await Student.findByIdAndUpdate(fee.studentId, {
         paymentStatus: overallStatus,
         feesPaid: totalPaidAmount,
-        paymentDate: status === "paid" ? new Date() : student.paymentDate,
+        paymentDate: status === "paid" ? selectedPaymentDate : student.paymentDate,
         paymentMethod: paymentMethod || student.paymentMethod,
         transactionId: transactionId || student.transactionId,
       });
@@ -951,44 +980,47 @@ const getFeeOverview = async (req, res) => {
       const nextMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - i + 1, 1);
       const monthName = months[monthDate.getMonth()];
 
-      // Get actual payments made in this month
-      const monthPayments = await Fee.find({
-        paidDate: {
-          $gte: monthDate,
-          $lt: nextMonthDate,
-        },
-        status: { $in: ["paid", "partial"] },
-        paidAmount: { $gt: 0 },
-      });
-
-      // Calculate real monthly totals from Fee collection
-      const monthlyCollectedFromFees = monthPayments.reduce((sum, fee) => sum + (fee.paidAmount || 0), 0);
-
-      // Also check student payment data for this month
-      let monthlyCollectedFromStudents = 0;
+      // Calculate monthly collection from Student payment history
+      let monthlyCollected = 0;
       let monthlyPending = 0;
 
-      // Get the current month's data from student records
+      // Aggregate payment history from all students for this month
       students.forEach((student) => {
         const studentTotalAmount = student.feeSlabId?.totalAmount || 0;
         const studentPaidAmount = student.feesPaid || 0;
         const balance = studentTotalAmount - studentPaidAmount;
 
-        // Check if payment was made in this month
-        if (student.paymentDate) {
-          const paymentDate = new Date(student.paymentDate);
-          if (paymentDate >= monthDate && paymentDate < nextMonthDate) {
-            monthlyCollectedFromStudents += studentPaidAmount;
-          }
+        // Check payment history for this month
+        if (student.paymentHistory && student.paymentHistory.length > 0) {
+          student.paymentHistory.forEach((payment) => {
+            const paymentDate = new Date(payment.paymentDate);
+            if (paymentDate >= monthDate && paymentDate < nextMonthDate) {
+              monthlyCollected += payment.amount || 0;
+            }
+          });
         }
 
-        if (balance > 0) {
+        // Calculate pending for this month based on fee structure
+        if (student.feeSlabId && student.feeSlabId.installments) {
+          for (const installment of student.feeSlabId.installments) {
+            if (installment.dueDate) {
+              const dueDate = new Date(installment.dueDate);
+              if (dueDate >= monthDate && dueDate < nextMonthDate) {
+                // This installment is due in this month
+                const installmentAmount = installment.amount || 0;
+                const installmentPaid = installment.paidAmount || 0;
+                const installmentPending = installmentAmount - installmentPaid;
+                if (installmentPending > 0) {
+                  monthlyPending += installmentPending;
+                }
+              }
+            }
+          }
+        } else if (balance > 0) {
+          // If no installments, use overall balance
           monthlyPending += balance;
         }
       });
-
-      // Combine both sources of collection data
-      const monthlyCollected = monthlyCollectedFromFees + monthlyCollectedFromStudents;
 
       monthlyData.push({
         month: monthName,
@@ -996,6 +1028,22 @@ const getFeeOverview = async (req, res) => {
         pending: monthlyPending,
       });
     }
+
+    // Calculate current month's collection
+    const currentMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const nextMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+    let currentMonthCollection = 0;
+
+    students.forEach((student) => {
+      if (student.paymentHistory && student.paymentHistory.length > 0) {
+        student.paymentHistory.forEach((payment) => {
+          const paymentDate = new Date(payment.paymentDate);
+          if (paymentDate >= currentMonthDate && paymentDate < nextMonthDate) {
+            currentMonthCollection += payment.amount || 0;
+          }
+        });
+      }
+    });
 
     // Process students with async support
     for (const student of students) {
@@ -1030,8 +1078,15 @@ const getFeeOverview = async (req, res) => {
           totalCollection += studentPaidAmount; // Add actual amount paid
       }
 
-      // Count payment methods
-      if (student.paymentMethod) {
+      // Count payment methods from payment history
+      if (student.paymentHistory && student.paymentHistory.length > 0) {
+        student.paymentHistory.forEach((payment) => {
+          if (payment.paymentMethod) {
+            paymentMethods[payment.paymentMethod] = (paymentMethods[payment.paymentMethod] || 0) + 1;
+          }
+        });
+      } else if (student.paymentMethod) {
+        // Fallback to student's payment method if no payment history
         paymentMethods[student.paymentMethod] = (paymentMethods[student.paymentMethod] || 0) + 1;
       }
     }
@@ -1042,49 +1097,37 @@ const getFeeOverview = async (req, res) => {
     const pendingFeesChange = pendingFees > 0 ? "-8.2%" : "0%";
     const studentsPaidChange = studentsPaid > 0 ? `+${studentsPaid}` : "0";
 
-    // Get real payment methods data from Fee collection
-    const realPaymentMethods = await Fee.aggregate([
-      {
-        $match: {
-          status: { $in: ["paid", "partial"] },
-          paymentMethod: {
-            $exists: true,
-            $ne: null,
-            $ne: "",
-            $in: ["cash", "online", "cheque", "card", "bank_transfer", "other"],
-          },
-        },
-      },
-      {
-        $group: {
-          _id: "$paymentMethod",
-          count: { $sum: 1 },
-          totalAmount: { $sum: "$paidAmount" },
-        },
-      },
-      {
-        $sort: { totalAmount: -1 },
-      },
-    ]);
-
-    // Also get payment methods from Student collection
+    // Get payment methods from Student payment history
     const studentPaymentMethods = await Student.aggregate([
       {
         $match: {
-          paymentMethod: {
+          "paymentHistory.paymentMethod": {
             $exists: true,
             $ne: null,
             $ne: "",
             $in: ["cash", "online", "cheque", "card", "bank_transfer", "other"],
           },
-          feesPaid: { $gt: 0 },
+        },
+      },
+      {
+        $unwind: "$paymentHistory",
+      },
+      {
+        $match: {
+          "paymentHistory.paymentMethod": {
+            $exists: true,
+            $ne: null,
+            $ne: "",
+            $in: ["cash", "online", "cheque", "card", "bank_transfer", "other"],
+          },
+          "paymentHistory.amount": { $gt: 0 },
         },
       },
       {
         $group: {
-          _id: "$paymentMethod",
+          _id: "$paymentHistory.paymentMethod",
           count: { $sum: 1 },
-          totalAmount: { $sum: "$feesPaid" },
+          totalAmount: { $sum: "$paymentHistory.amount" },
         },
       },
       {
@@ -1092,17 +1135,8 @@ const getFeeOverview = async (req, res) => {
       },
     ]);
 
-    // Combine both sources of payment methods data
+    // Use only Student payment history data
     const combinedPaymentMethods = {};
-
-    // Add Fee collection data
-    realPaymentMethods.forEach((method) => {
-      if (!combinedPaymentMethods[method._id]) {
-        combinedPaymentMethods[method._id] = { count: 0, totalAmount: 0 };
-      }
-      combinedPaymentMethods[method._id].count += method.count;
-      combinedPaymentMethods[method._id].totalAmount += method.totalAmount;
-    });
 
     // Add Student collection data
     studentPaymentMethods.forEach((method) => {
@@ -1118,7 +1152,6 @@ const getFeeOverview = async (req, res) => {
     const paymentMethodsData = [];
 
     console.log("Payment Methods Debug:", {
-      feePaymentMethods: realPaymentMethods,
       studentPaymentMethods: studentPaymentMethods,
       combinedPaymentMethods,
       totalPayments,
@@ -1186,7 +1219,7 @@ const getFeeOverview = async (req, res) => {
     const overviewData = {
       summaryCards: {
         totalCollection: {
-          value: `₹${totalCollection.toLocaleString()}`,
+          value: `₹${currentMonthCollection.toLocaleString()}`,
           change: totalCollectionChange,
           changeType: "increase",
         },
@@ -1456,6 +1489,455 @@ const getStudentPaymentHistory = async (req, res) => {
   }
 };
 
+// @desc    Process payment across multiple installments
+// @route   PUT /api/fees/student/:studentId/pay
+// @access  Private
+const processStudentPayment = async (req, res) => {
+  try {
+    console.log("=== STUDENT PAYMENT PROCESSING STARTED ===");
+    console.log("Student ID:", req.params.studentId);
+    console.log("Request body:", req.body);
+
+    const { paidAmount, paymentMethod, transactionId, remarks, installmentNumber } = req.body;
+
+    // Find the student
+    const student = await Student.findById(req.params.studentId);
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found",
+      });
+    }
+
+    // Get the payment date from request body or use current date as fallback
+    const paymentDate = req.body.paymentDate ? new Date(req.body.paymentDate) : new Date();
+
+    // Get all pending fees for this student
+    const pendingFees = await Fee.find({
+      studentId: req.params.studentId,
+      status: { $in: ["pending", "partial", "overdue"] },
+    }).sort({ installmentNumber: 1, dueDate: 1 });
+
+    if (pendingFees.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No pending fees found for this student",
+      });
+    }
+
+    console.log(`Found ${pendingFees.length} pending fees for student`);
+
+    let remainingPaymentAmount = paidAmount;
+    const processedFees = [];
+    const paymentRecords = [];
+
+    // If a specific installment is specified, pay that one first
+    if (installmentNumber) {
+      const targetFee = pendingFees.find((fee) => fee.installmentNumber === installmentNumber);
+      if (targetFee) {
+        const feeBalance = targetFee.amount - targetFee.paidAmount + targetFee.penalty - targetFee.discount;
+        const paymentForThisFee = Math.min(remainingPaymentAmount, feeBalance);
+
+        if (paymentForThisFee > 0) {
+          targetFee.paidAmount += paymentForThisFee;
+          targetFee.paymentMethod = paymentMethod;
+          targetFee.transactionId = transactionId;
+          targetFee.remarks = remarks;
+          targetFee.processedBy = req.user.id;
+
+          if (targetFee.paidAmount >= targetFee.amount) {
+            targetFee.status = "paid";
+            targetFee.paidDate = paymentDate;
+          } else if (targetFee.paidAmount > 0) {
+            targetFee.status = "partial";
+            targetFee.paidDate = paymentDate;
+          }
+
+          await targetFee.save();
+          processedFees.push(targetFee);
+          remainingPaymentAmount -= paymentForThisFee;
+
+          paymentRecords.push({
+            paymentDate: paymentDate,
+            amount: paymentForThisFee,
+            paymentMethod,
+            transactionId,
+            receiptNumber: targetFee.receiptNumber,
+            feeType: targetFee.feeType,
+            installmentNumber: targetFee.installmentNumber,
+            academicYear: targetFee.academicYear,
+            semester: targetFee.semester,
+            month: targetFee.month,
+            remarks,
+            processedBy: req.user.id,
+            status: "completed",
+          });
+        }
+      }
+    }
+
+    // Distribute remaining payment across other pending fees
+    for (const fee of pendingFees) {
+      if (remainingPaymentAmount <= 0) break;
+
+      // Skip if this fee was already processed (specific installment case)
+      if (installmentNumber && fee.installmentNumber === installmentNumber) continue;
+
+      const feeBalance = fee.amount - fee.paidAmount + fee.penalty - fee.discount;
+      const paymentForThisFee = Math.min(remainingPaymentAmount, feeBalance);
+
+      if (paymentForThisFee > 0) {
+        fee.paidAmount += paymentForThisFee;
+        fee.paymentMethod = paymentMethod;
+        fee.transactionId = transactionId;
+        fee.remarks = remarks;
+        fee.processedBy = req.user.id;
+
+        if (fee.paidAmount >= fee.amount) {
+          fee.status = "paid";
+          fee.paidDate = paymentDate;
+        } else if (fee.paidAmount > 0) {
+          fee.status = "partial";
+          fee.paidDate = paymentDate;
+        }
+
+        await fee.save();
+        processedFees.push(fee);
+        remainingPaymentAmount -= paymentForThisFee;
+
+        paymentRecords.push({
+          paymentDate: paymentDate,
+          amount: paymentForThisFee,
+          paymentMethod,
+          transactionId,
+          receiptNumber: fee.receiptNumber,
+          feeType: fee.feeType,
+          installmentNumber: fee.installmentNumber,
+          academicYear: fee.academicYear,
+          semester: fee.semester,
+          month: fee.month,
+          remarks,
+          processedBy: req.user.id,
+          status: "completed",
+        });
+      }
+    }
+
+    // Update student's payment history
+    if (paymentRecords.length > 0) {
+      student.paymentHistory.push(...paymentRecords);
+      await student.save();
+    }
+
+    // Update student's overall payment status
+    const allStudentFees = await Fee.find({ studentId: req.params.studentId });
+    const totalPaidAmount = allStudentFees.reduce((sum, f) => sum + (f.paidAmount || 0), 0);
+
+    // Get the fee slab to calculate total expected amount
+    const FeeSlab = require("../models/FeeSlab");
+    const feeSlab = student.feeSlabId ? await FeeSlab.findById(student.feeSlabId) : null;
+    const totalExpectedAmount = feeSlab ? feeSlab.totalAmount : 0;
+
+    // Determine overall payment status
+    let overallStatus = "pending";
+    if (totalPaidAmount >= totalExpectedAmount) {
+      overallStatus = "paid";
+    } else if (totalPaidAmount > 0) {
+      overallStatus = "partial";
+    } else {
+      const hasOverdueFees = allStudentFees.some((f) => f.status === "overdue");
+      overallStatus = hasOverdueFees ? "overdue" : "pending";
+    }
+
+    // Update student's fee information
+    await Student.findByIdAndUpdate(req.params.studentId, {
+      paymentStatus: overallStatus,
+      feesPaid: totalPaidAmount,
+      paymentDate: paymentDate,
+      paymentMethod: paymentMethod || student.paymentMethod,
+      transactionId: transactionId || student.transactionId,
+    });
+
+    // Update installment amounts in fee slab
+    if (feeSlab && processedFees.length > 0) {
+      const remainingAmount = totalExpectedAmount - totalPaidAmount;
+
+      // Update installment amounts based on payments
+      const updatedInstallments = feeSlab.installments.map((installment) => {
+        // Find the corresponding fee record
+        const feeRecord = allStudentFees.find((fee) => fee.installmentNumber === installment.installmentNumber);
+
+        if (feeRecord) {
+          const paidAmount = feeRecord.paidAmount || 0;
+          const remainingInstallmentAmount = Math.max(0, installment.amount - paidAmount);
+
+          return {
+            ...installment,
+            paidAmount: paidAmount,
+            remainingAmount: remainingInstallmentAmount,
+            status: paidAmount >= installment.amount ? "paid" : paidAmount > 0 ? "partial" : "pending",
+          };
+        }
+
+        return {
+          ...installment,
+          paidAmount: 0,
+          remainingAmount: installment.amount,
+          status: "pending",
+        };
+      });
+
+      // Update the fee slab with new installment information
+      feeSlab.installments = updatedInstallments;
+      feeSlab.totalPaidAmount = totalPaidAmount;
+      feeSlab.remainingAmount = remainingAmount;
+
+      await feeSlab.save();
+    }
+
+    console.log("✅ Student payment processing completed:");
+    console.log("- Total payment amount:", paidAmount);
+    console.log("- Processed fees count:", processedFees.length);
+    console.log("- Total paid amount:", totalPaidAmount);
+    console.log("- Overall status:", overallStatus);
+
+    res.json({
+      success: true,
+      message: "Payment processed successfully across installments",
+      data: {
+        processedFees,
+        totalPaidAmount,
+        overallStatus,
+        remainingPaymentAmount,
+      },
+    });
+  } catch (error) {
+    console.error("Process student payment error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while processing payment",
+    });
+  }
+};
+
+// @desc    Update installment amounts in fee slab based on payments
+// @route   PUT /api/fees/update-installments/:studentId
+// @access  Private (Admin only)
+const updateInstallmentAmounts = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+
+    // Find the student
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found",
+      });
+    }
+
+    // Get the fee slab
+    const FeeSlab = require("../models/FeeSlab");
+    const feeSlab = student.feeSlabId ? await FeeSlab.findById(student.feeSlabId) : null;
+    if (!feeSlab) {
+      return res.status(404).json({
+        success: false,
+        message: "Fee slab not found for this student",
+      });
+    }
+
+    // Get all fees for this student
+    const studentFees = await Fee.find({ studentId });
+
+    // Calculate total paid amount
+    const totalPaidAmount = studentFees.reduce((sum, fee) => sum + (fee.paidAmount || 0), 0);
+
+    // Calculate remaining amount
+    const remainingAmount = feeSlab.totalAmount - totalPaidAmount;
+
+    // Update installment amounts based on payments
+    const updatedInstallments = feeSlab.installments.map((installment, index) => {
+      // Find the corresponding fee record
+      const feeRecord = studentFees.find((fee) => fee.installmentNumber === installment.installmentNumber);
+
+      if (feeRecord) {
+        const paidAmount = feeRecord.paidAmount || 0;
+        const remainingInstallmentAmount = Math.max(0, installment.amount - paidAmount);
+
+        return {
+          ...installment,
+          paidAmount: paidAmount,
+          remainingAmount: remainingInstallmentAmount,
+          status: paidAmount >= installment.amount ? "paid" : paidAmount > 0 ? "partial" : "pending",
+        };
+      }
+
+      return {
+        ...installment,
+        paidAmount: 0,
+        remainingAmount: installment.amount,
+        status: "pending",
+      };
+    });
+
+    // Update the fee slab with new installment information
+    feeSlab.installments = updatedInstallments;
+    feeSlab.totalPaidAmount = totalPaidAmount;
+    feeSlab.remainingAmount = remainingAmount;
+
+    await feeSlab.save();
+
+    res.json({
+      success: true,
+      message: "Installment amounts updated successfully",
+      data: {
+        feeSlab,
+        totalPaidAmount,
+        remainingAmount,
+        updatedInstallments,
+      },
+    });
+  } catch (error) {
+    console.error("Update installment amounts error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while updating installment amounts",
+    });
+  }
+};
+
+// @desc    Get student fee information with correct installment data
+// @route   GET /api/fees/student/:studentId/info
+// @access  Private
+const getStudentFeeInfo = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+
+    // Check if user is authorized to view this student's fees
+    if (req.user.role === "student" && req.user.id !== studentId) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied",
+      });
+    }
+
+    // Get student information
+    const Student = require("../models/Student");
+    const student = await Student.findById(studentId)
+      .populate("feeSlabId", "slabName totalAmount installments")
+      .populate("class", "name grade division");
+
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found",
+      });
+    }
+
+    // Get all fee records for this student
+    const feeRecords = await Fee.find({ studentId })
+      .populate("processedBy", "name")
+      .sort({ installmentNumber: 1, dueDate: 1 });
+
+    // Calculate total amounts from actual fee records
+    const totalAmount = feeRecords.reduce((sum, fee) => sum + fee.amount, 0);
+    const totalPaidAmount = feeRecords.reduce((sum, fee) => sum + (fee.paidAmount || 0), 0);
+    const totalPendingAmount = totalAmount - totalPaidAmount;
+
+    // Create installment data from actual fee records
+    const installments = feeRecords.map((fee) => {
+      const installmentAmount = fee.amount;
+      const paidAmount = fee.paidAmount || 0;
+      const remainingAmount = installmentAmount - paidAmount;
+
+      let status = "pending";
+      if (paidAmount >= installmentAmount) {
+        status = "paid";
+      } else if (paidAmount > 0) {
+        status = "partial";
+      }
+
+      // Check if overdue
+      const dueDate = new Date(fee.dueDate);
+      const currentDate = new Date();
+      if (dueDate < currentDate && remainingAmount > 0) {
+        status = "overdue";
+      }
+
+      return {
+        installmentNumber: fee.installmentNumber,
+        amount: installmentAmount,
+        paidAmount: paidAmount,
+        remainingAmount: remainingAmount,
+        dueDate: fee.dueDate,
+        status: status,
+        description: fee.remarks || `Installment ${fee.installmentNumber}`,
+        feeType: fee.feeType,
+        academicYear: fee.academicYear,
+        paymentMethod: fee.paymentMethod,
+        transactionId: fee.transactionId,
+        paidDate: fee.paidDate,
+        processedBy: fee.processedBy,
+      };
+    });
+
+    // Calculate concession-adjusted amounts if concession is applied
+    let adjustedInstallments = installments;
+    let concessionAmount = student.concessionAmount || 0;
+
+    if (concessionAmount > 0 && student.feeSlabId) {
+      const totalOriginalAmount = student.feeSlabId.totalAmount;
+      const discountRatio = concessionAmount / totalOriginalAmount;
+
+      adjustedInstallments = installments.map((installment) => {
+        const originalAmount = installment.amount;
+        const discountAmount = Math.round(originalAmount * discountRatio);
+        const adjustedAmount = originalAmount - discountAmount;
+
+        return {
+          ...installment,
+          originalAmount: originalAmount,
+          discountAmount: discountAmount,
+          amount: adjustedAmount,
+          remainingAmount: Math.max(0, adjustedAmount - installment.paidAmount),
+        };
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        student: {
+          _id: student._id,
+          name:
+            student.name || `${student.firstName || ""} ${student.middleName || ""} ${student.lastName || ""}`.trim(),
+          studentId: student.studentId,
+          class: student.class,
+          concessionAmount: student.concessionAmount || 0,
+          paymentStatus: student.paymentStatus,
+          feeStructure: student.feeStructure,
+        },
+        feeSlab: student.feeSlabId,
+        installments: adjustedInstallments,
+        summary: {
+          totalAmount: totalAmount,
+          paidAmount: totalPaidAmount,
+          pendingAmount: totalPendingAmount,
+          concessionAmount: concessionAmount,
+          adjustedTotalAmount: totalAmount - concessionAmount,
+          adjustedPendingAmount: totalPendingAmount - concessionAmount,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Get student fee info error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching student fee information",
+    });
+  }
+};
+
 module.exports = {
   createFee,
   getAllFees,
@@ -1472,4 +1954,7 @@ module.exports = {
   getFeeOverview,
   getOverdueStudents,
   getStudentPaymentHistory,
+  processStudentPayment,
+  updateInstallmentAmounts,
+  getStudentFeeInfo,
 };

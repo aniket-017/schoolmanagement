@@ -25,6 +25,22 @@ const installmentSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
+  // Payment tracking fields
+  paidAmount: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
+  remainingAmount: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
+  status: {
+    type: String,
+    enum: ["pending", "partial", "paid", "overdue"],
+    default: "pending",
+  },
 });
 
 const classGradeSchema = new mongoose.Schema({
@@ -34,11 +50,13 @@ const classGradeSchema = new mongoose.Schema({
     min: 1,
     max: 12,
   },
-  divisions: [{
-    type: String,
-    enum: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'],
-    required: true
-  }]
+  divisions: [
+    {
+      type: String,
+      enum: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"],
+      required: true,
+    },
+  ],
 });
 
 const feeSlabSchema = new mongoose.Schema(
@@ -62,6 +80,18 @@ const feeSlabSchema = new mongoose.Schema(
 
     // Installments
     installments: [installmentSchema],
+
+    // Payment tracking
+    totalPaidAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    remainingAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
 
     // Status
     isActive: {
@@ -93,11 +123,16 @@ feeSlabSchema.pre("save", function (next) {
       return next(new Error("Installment percentages must add up to 100%"));
     }
 
-    // Validate that installment amounts match percentages
-    const totalAmount = this.installments.reduce((sum, installment) => sum + installment.amount, 0);
-    if (Math.abs(totalAmount - this.totalAmount) > 0.01) {
-      return next(new Error("Sum of installment amounts must equal total amount"));
+    // Validate that installment amounts match percentages (only for new fee slabs)
+    if (!this.totalPaidAmount || this.totalPaidAmount === 0) {
+      const totalAmount = this.installments.reduce((sum, installment) => sum + installment.amount, 0);
+      if (Math.abs(totalAmount - this.totalAmount) > 0.01) {
+        return next(new Error("Sum of installment amounts must equal total amount"));
+      }
     }
+
+    // Update remaining amount based on total paid amount
+    this.remainingAmount = Math.max(0, this.totalAmount - this.totalPaidAmount);
   }
   next();
 });

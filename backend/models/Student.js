@@ -255,7 +255,7 @@ const studentSchema = new mongoose.Schema(
     },
     paymentStatus: {
       type: String,
-      enum: ["paid", "pending", "overdue"],
+      enum: ["paid", "pending", "overdue", "partial"],
       default: "pending",
     },
     lateFees: {

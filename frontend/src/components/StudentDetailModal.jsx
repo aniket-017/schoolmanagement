@@ -600,7 +600,12 @@ const StudentDetailModal = ({ student, isOpen, onClose, onEdit, onRefresh }) => 
                   <div className="flex justify-between">
                     <span className="text-gray-600">Remaining Amount:</span>
                     <span className="font-medium">
-                      ₹{((student.feeSlabId?.totalAmount || 0) - (student.feesPaid || 0)).toLocaleString()}
+                      ₹
+                      {(
+                        (student.feeSlabId?.totalAmount || 0) -
+                        (student.concessionAmount || 0) -
+                        (student.feesPaid || 0)
+                      ).toLocaleString()}
                     </span>
                   </div>
                   {student.paymentDate && (

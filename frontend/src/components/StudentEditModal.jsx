@@ -785,7 +785,11 @@ const StudentEditModal = ({ student, isOpen, onClose, onSave, onRefresh }) => {
                       <label className="block text-sm font-medium text-gray-700 mb-1">Remaining Amount (₹)</label>
                       <input
                         type="text"
-                        value={((formData.feeSlabId?.totalAmount || 0) - (formData.feesPaid || 0)).toLocaleString()}
+                        value={(
+                          (formData.feeSlabId?.totalAmount || 0) -
+                          (formData.concessionAmount || 0) -
+                          (formData.feesPaid || 0)
+                        ).toLocaleString()}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100"
                         disabled
                         readOnly

@@ -78,6 +78,17 @@ const StudentDashboard = () => {
 
   const { user, logout } = useTeacherAuth();
 
+  // Helper function to calculate adjusted statistics
+  const getAdjustedStatistics = (stats, concessionAmount = 0) => {
+    if (!stats || concessionAmount <= 0) return stats;
+
+    return {
+      ...stats,
+      totalAmount: (stats.totalAmount || 0) - concessionAmount,
+      pendingAmount: (stats.totalAmount || 0) - concessionAmount - (stats.paidAmount || 0),
+    };
+  };
+
   useEffect(() => {
     const handleResize = () => {
       setMobileView(window.innerWidth < 768);
@@ -104,9 +115,10 @@ const StudentDashboard = () => {
       if (user?.class?._id || user?.class) {
         const classId = user.class._id || user.class;
         promises.push(
-          apiService.timetable.getClassTimetable(classId)
-            .then(response => response.success ? response.data : null)
-            .catch(error => {
+          apiService.timetable
+            .getClassTimetable(classId)
+            .then((response) => (response.success ? response.data : null))
+            .catch((error) => {
               console.log("Timetable not available:", error.message);
               return null;
             })
@@ -120,11 +132,12 @@ const StudentDashboard = () => {
         const today = new Date();
         const studentId = user._id || user.id;
         promises.push(
-          apiService.attendance.getStudentAttendance(studentId, {
-            startDate: today.toISOString().split("T")[0],
-            endDate: today.toISOString().split("T")[0],
-          })
-            .then(response => {
+          apiService.attendance
+            .getStudentAttendance(studentId, {
+              startDate: today.toISOString().split("T")[0],
+              endDate: today.toISOString().split("T")[0],
+            })
+            .then((response) => {
               if (response.success && response.data?.attendance?.length > 0) {
                 return response.data.attendance[0];
               }
@@ -134,10 +147,10 @@ const StudentDashboard = () => {
                 date: today.toISOString().split("T")[0],
                 timeIn: null,
                 timeOut: null,
-                remarks: "Attendance not marked yet"
+                remarks: "Attendance not marked yet",
               };
             })
-            .catch(error => {
+            .catch((error) => {
               console.log("Today's attendance not available:", error.message);
               // Return default attendance data on error
               return {
@@ -145,7 +158,7 @@ const StudentDashboard = () => {
                 date: today.toISOString().split("T")[0],
                 timeIn: null,
                 timeOut: null,
-                remarks: "Attendance not marked yet"
+                remarks: "Attendance not marked yet",
               };
             })
         );
@@ -157,20 +170,22 @@ const StudentDashboard = () => {
       const userId = user?._id || user?.id;
       if (userId) {
         promises.push(
-          apiService.announcements.getAnnouncementsForStudent(userId, {
-            activeOnly: true,
-            limit: 5,
-          })
-            .then(response => response.success ? response.data || [] : [])
-            .catch(error => {
+          apiService.announcements
+            .getAnnouncementsForStudent(userId, {
+              activeOnly: true,
+              limit: 5,
+            })
+            .then((response) => (response.success ? response.data || [] : []))
+            .catch((error) => {
               console.log("Announcements not available:", error.message);
               // Fallback to regular announcements
-              return apiService.announcements.getTeacherAnnouncements({
-                activeOnly: true,
-                limit: 5,
-              })
-                .then(response => response.success ? response.data || [] : [])
-                .catch(fallbackError => {
+              return apiService.announcements
+                .getTeacherAnnouncements({
+                  activeOnly: true,
+                  limit: 5,
+                })
+                .then((response) => (response.success ? response.data || [] : []))
+                .catch((fallbackError) => {
                   console.log("General announcements not available:", fallbackError.message);
                   return [];
                 });
@@ -184,11 +199,12 @@ const StudentDashboard = () => {
       if (user?._id || user?.id) {
         const today = new Date();
         promises.push(
-          apiService.attendance.getStudentAttendance(user._id || user.id, {
-            month: today.getMonth() + 1,
-            year: today.getFullYear(),
-          })
-            .then(response => {
+          apiService.attendance
+            .getStudentAttendance(user._id || user.id, {
+              month: today.getMonth() + 1,
+              year: today.getFullYear(),
+            })
+            .then((response) => {
               if (response.success && response.data?.statistics) {
                 return {
                   attendanceRate: (response.data.statistics.attendancePercentage || 0) + "%",
@@ -208,7 +224,7 @@ const StudentDashboard = () => {
                 };
               }
             })
-            .catch(error => {
+            .catch((error) => {
               console.log("Monthly stats not available:", error.message);
               // Return default stats on error
               return {
@@ -221,20 +237,23 @@ const StudentDashboard = () => {
             })
         );
       } else {
-        promises.push(Promise.resolve({
-          attendanceRate: "0%",
-          presentDays: 0,
-          absentDays: 0,
-          lateDays: 0,
-          totalDays: 0,
-        }));
+        promises.push(
+          Promise.resolve({
+            attendanceRate: "0%",
+            presentDays: 0,
+            absentDays: 0,
+            lateDays: 0,
+            totalDays: 0,
+          })
+        );
       }
 
       // Load homework for student
       promises.push(
-        apiService.homework.getAll({ limit: 5 })
-          .then(response => response.success ? response.data || [] : [])
-          .catch(error => {
+        apiService.homework
+          .getAll({ limit: 5 })
+          .then((response) => (response.success ? response.data || [] : []))
+          .catch((error) => {
             console.log("Homework not available:", error.message);
             return [];
           })
@@ -242,9 +261,10 @@ const StudentDashboard = () => {
 
       // Load homework stats for student
       promises.push(
-        apiService.homework.getStats()
-          .then(response => response.success ? response.data || {} : {})
-          .catch(error => {
+        apiService.homework
+          .getStats()
+          .then((response) => (response.success ? response.data || {} : {}))
+          .catch((error) => {
             console.log("Homework stats not available:", error.message);
             return {};
           })
@@ -253,9 +273,10 @@ const StudentDashboard = () => {
       // Load student fees data
       if (user?._id || user?.id) {
         promises.push(
-          apiService.fees.getStudentFees(user._id || user.id)
-            .then(response => response.success ? response.data : null)
-            .catch(error => {
+          apiService.fees
+            .getStudentFees(user._id || user.id)
+            .then((response) => (response.success ? response.data : null))
+            .catch((error) => {
               console.log("Fees data not available:", error.message);
               return null;
             })
@@ -265,7 +286,8 @@ const StudentDashboard = () => {
       }
 
       // Wait for all promises to resolve
-      const [timetableData, todayAttendance, announcements, studentStats, homework, homeworkStats, feesData] = await Promise.all(promises);
+      const [timetableData, todayAttendance, announcements, studentStats, homework, homeworkStats, feesData] =
+        await Promise.all(promises);
 
       // Set state with all data at once
       setTimetableData(timetableData);
@@ -275,7 +297,6 @@ const StudentDashboard = () => {
       setHomework(homework);
       setHomeworkStats(homeworkStats);
       setFeesData(feesData);
-
     } catch (error) {
       console.error("Error loading dashboard data:", error);
       // Set default values on complete failure
@@ -285,7 +306,7 @@ const StudentDashboard = () => {
         date: new Date().toISOString().split("T")[0],
         timeIn: null,
         timeOut: null,
-        remarks: "Unable to load attendance data"
+        remarks: "Unable to load attendance data",
       });
       setAnnouncements([]);
       setStudentStats({
@@ -395,15 +416,18 @@ const StudentDashboard = () => {
 
   // Homework progress update handler
   const handleHomeworkProgressUpdate = (homeworkId, newStatus) => {
-    setHomework(prev => prev.map(hw => 
-      hw._id === homeworkId 
-        ? { ...hw, studentProgress: hw.studentProgress?.map(p => 
-            p.studentId === (user?._id || user?.id) 
-              ? { ...p, status: newStatus }
-              : p
-          ) || [{ studentId: user?._id || user?.id, status: newStatus }] }
-        : hw
-    ));
+    setHomework((prev) =>
+      prev.map((hw) =>
+        hw._id === homeworkId
+          ? {
+              ...hw,
+              studentProgress: hw.studentProgress?.map((p) =>
+                p.studentId === (user?._id || user?.id) ? { ...p, status: newStatus } : p
+              ) || [{ studentId: user?._id || user?.id, status: newStatus }],
+            }
+          : hw
+      )
+    );
   };
 
   const handleViewHomeworkDetails = (homework) => {
@@ -422,12 +446,11 @@ const StudentDashboard = () => {
   ];
 
   const bottomNavItems = [
-    { title: 'Home', icon: HomeIcon, href: '/student/dashboard', active: true },
-    { title: 'Attendance', icon: CalendarIcon, href: '/student/attendance' },
-    { title: 'Homework', icon: BookOpenIcon, href: '/student/homework' },
-    { title: 'Fees', icon: CurrencyDollarIcon, href: '/student/fees' }
+    { title: "Home", icon: HomeIcon, href: "/student/dashboard", active: true },
+    { title: "Attendance", icon: CalendarIcon, href: "/student/attendance" },
+    { title: "Homework", icon: BookOpenIcon, href: "/student/homework" },
+    { title: "Fees", icon: CurrencyDollarIcon, href: "/student/fees" },
   ];
-
 
   if (loading) {
     return (
@@ -516,7 +539,7 @@ const StudentDashboard = () => {
               <h3 className="text-lg font-semibold text-gray-900">Today's Schedule</h3>
               <button
                 className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm"
-                onClick={() => window.location.href = '/student/timetable'}
+                onClick={() => (window.location.href = "/student/timetable")}
               >
                 View Full
               </button>
@@ -538,9 +561,13 @@ const StudentDashboard = () => {
                     <div key={period.id || index} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
                       <div className="text-center min-w-[80px]">
                         <p className="text-blue-600 font-semibold text-sm">
-                          {period.startTime && period.endTime ? `${period.startTime} - ${period.endTime}` : period.timeSlot || `${9 + index}:00 - ${10 + index}:00`}
+                          {period.startTime && period.endTime
+                            ? `${period.startTime} - ${period.endTime}`
+                            : period.timeSlot || `${9 + index}:00 - ${10 + index}:00`}
                         </p>
-                        <p className="text-gray-500 text-xs">Period {period.periodNumber || period.period || index + 1}</p>
+                        <p className="text-gray-500 text-xs">
+                          Period {period.periodNumber || period.period || index + 1}
+                        </p>
                       </div>
 
                       <div className="flex-1">
@@ -574,7 +601,10 @@ const StudentDashboard = () => {
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Recent Announcements</h3>
-              <button className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm flex items-center space-x-1" onClick={() => window.location.href = '/student/announcements'}>
+              <button
+                className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm flex items-center space-x-1"
+                onClick={() => (window.location.href = "/student/announcements")}
+              >
                 <MegaphoneIcon className="w-4 h-4" />
                 <span>View All</span>
               </button>
@@ -594,15 +624,13 @@ const StudentDashboard = () => {
                       <BellIcon className="w-4 h-4 text-blue-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-gray-900 text-sm line-clamp-1">
-                        {announcement.title}
-                      </h4>
-                      <p className="text-gray-600 text-xs line-clamp-2 mt-1">
-                        {announcement.content}
-                      </p>
+                      <h4 className="font-medium text-gray-900 text-sm line-clamp-1">{announcement.title}</h4>
+                      <p className="text-gray-600 text-xs line-clamp-2 mt-1">{announcement.content}</p>
                       <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
                         <span>{announcement.createdBy?.name || "Class Teacher"}</span>
-                        <span>{announcement.createdAt ? new Date(announcement.createdAt).toLocaleDateString() : ""}</span>
+                        <span>
+                          {announcement.createdAt ? new Date(announcement.createdAt).toLocaleDateString() : ""}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -620,7 +648,10 @@ const StudentDashboard = () => {
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Fees Information</h3>
-              <button className="bg-yellow-500 text-white px-3 py-1 rounded-lg text-sm flex items-center space-x-1" onClick={() => window.location.href = '/student/fees'}>
+              <button
+                className="bg-yellow-500 text-white px-3 py-1 rounded-lg text-sm flex items-center space-x-1"
+                onClick={() => (window.location.href = "/student/fees")}
+              >
                 <CurrencyDollarIcon className="w-4 h-4" />
                 <span>View Details</span>
               </button>
@@ -628,19 +659,32 @@ const StudentDashboard = () => {
 
             {feesData ? (
               <div className="space-y-4">
+                {feesData.student?.concessionAmount > 0 && (
+                  <div className="p-2 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-green-800 text-xs">
+                      ✓ Concession of ₹{feesData.student.concessionAmount.toLocaleString()} applied
+                    </p>
+                  </div>
+                )}
                 <div className="flex items-center space-x-3 p-4 bg-yellow-50 rounded-lg">
                   <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
                     <CurrencyDollarIcon className="w-4 h-4 text-yellow-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-gray-900 text-sm">
-                      Fee Overview
-                    </h4>
-                    <p className="text-gray-600 text-xs mt-1">
-                      Total: ₹{feesData.statistics?.totalAmount?.toLocaleString() || "0"} | 
-                      Paid: ₹{feesData.statistics?.paidAmount?.toLocaleString() || "0"} | 
-                      Remaining: ₹{feesData.statistics?.pendingAmount?.toLocaleString() || "0"}
-                    </p>
+                    <h4 className="font-medium text-gray-900 text-sm">Fee Overview</h4>
+                    {(() => {
+                      const adjustedStats = getAdjustedStatistics(
+                        feesData.statistics,
+                        feesData.student?.concessionAmount || 0
+                      );
+                      return (
+                        <p className="text-gray-600 text-xs mt-1">
+                          Total: ₹{adjustedStats.totalAmount?.toLocaleString() || "0"} | Paid: ₹
+                          {adjustedStats.paidAmount?.toLocaleString() || "0"} | Remaining: ₹
+                          {adjustedStats.pendingAmount?.toLocaleString() || "0"}
+                        </p>
+                      );
+                    })()}
                     <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
                       <span>Total Fees: {feesData.statistics?.totalFees || "0"}</span>
                       <span>Pending: {feesData.statistics?.pendingFees || "0"}</span>
@@ -666,7 +710,10 @@ const StudentDashboard = () => {
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Recent Homework</h3>
-              <button className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm flex items-center space-x-1" onClick={() => window.location.href = '/student/homework'}>
+              <button
+                className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm flex items-center space-x-1"
+                onClick={() => (window.location.href = "/student/homework")}
+              >
                 <BookOpenIcon className="w-4 h-4" />
                 <span>View All</span>
               </button>
@@ -703,7 +750,10 @@ const StudentDashboard = () => {
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Today's Attendance</h3>
-              <button className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm flex items-center space-x-1" onClick={() => window.location.href = '/student/attendance'}>
+              <button
+                className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm flex items-center space-x-1"
+                onClick={() => (window.location.href = "/student/attendance")}
+              >
                 <CalendarIcon className="w-4 h-4" />
                 <span>View Details</span>
               </button>
@@ -737,7 +787,9 @@ const StudentDashboard = () => {
                     {todayAttendance.status}
                   </p>
                   <p className="text-gray-600 text-sm">Time In: {todayAttendance.timeIn || "N/A"}</p>
-                  {todayAttendance.remarks && <p className="text-gray-500 text-xs">Remarks: {todayAttendance.remarks}</p>}
+                  {todayAttendance.remarks && (
+                    <p className="text-gray-500 text-xs">Remarks: {todayAttendance.remarks}</p>
+                  )}
                 </div>
               </div>
             ) : (
@@ -779,8 +831,6 @@ const StudentDashboard = () => {
           {/* Recent Attendance Section - REMOVED */}
         </div>
 
-
-
         {/* Bottom Navigation - Mobile only */}
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 z-40">
           <div className="flex justify-around">
@@ -789,9 +839,7 @@ const StudentDashboard = () => {
                 key={item.title}
                 to={item.href}
                 className={`flex flex-col items-center py-2 px-3 rounded-lg ${
-                  item.active 
-                    ? 'text-blue-600 bg-blue-50' 
-                    : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
+                  item.active ? "text-blue-600 bg-blue-50" : "text-gray-600 hover:text-blue-600 hover:bg-gray-50"
                 }`}
               >
                 <item.icon className="w-6 h-6 mb-1" />
@@ -829,7 +877,10 @@ const StudentDashboard = () => {
                   <Link to="/student/homework" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
                     Homework
                   </Link>
-                  <Link to="/student/announcements" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
+                  <Link
+                    to="/student/announcements"
+                    className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700"
+                  >
                     Announcements
                   </Link>
                   <Link to="/student/fees" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
@@ -838,13 +889,16 @@ const StudentDashboard = () => {
                   <Link to="/student/timetable" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
                     Timetable
                   </Link>
-                  <Link to="/student/annual-calendar" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
+                  <Link
+                    to="/student/annual-calendar"
+                    className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700"
+                  >
                     Annual Calendar
                   </Link>
                   <Link to="/student/profile" className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-700">
                     Profile
                   </Link>
-                  
+
                   {/* Logout Button */}
                   <div className="pt-4 border-t border-gray-200">
                     <button
@@ -949,9 +1003,13 @@ const StudentDashboard = () => {
                     <div className="flex items-center space-x-4">
                       <div className="text-center">
                         <p className="text-sm font-semibold text-blue-600">
-                          {period.startTime && period.endTime ? `${period.startTime}-${period.endTime}` : period.timeSlot || `${9 + index}:00-${10 + index}:00`}
+                          {period.startTime && period.endTime
+                            ? `${period.startTime}-${period.endTime}`
+                            : period.timeSlot || `${9 + index}:00-${10 + index}:00`}
                         </p>
-                        <p className="text-xs text-gray-500">Period {period.periodNumber || period.period || index + 1}</p>
+                        <p className="text-xs text-gray-500">
+                          Period {period.periodNumber || period.period || index + 1}
+                        </p>
                       </div>
                       <div>
                         <h4 className="font-medium text-gray-900">{period.subject?.name || `Subject ${index + 1}`}</h4>
@@ -1084,18 +1142,33 @@ const StudentDashboard = () => {
                   <CurrencyDollarIcon className="w-6 h-6 text-yellow-600" />
                   <h4 className="font-medium text-gray-900">Fee Overview</h4>
                 </div>
-                <p className="text-sm text-gray-600 mb-3">
-                  Total Amount: ₹{feesData.statistics?.totalAmount?.toLocaleString() || "0"} | 
-                  Paid: ₹{feesData.statistics?.paidAmount?.toLocaleString() || "0"}
-                </p>
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>Remaining: ₹{feesData.statistics?.pendingAmount?.toLocaleString() || "0"}</span>
-                  <span>Total Fees: {feesData.statistics?.totalFees || "0"}</span>
-                </div>
-                {feesData.statistics?.overdueFees > 0 && (
-                  <div className="mt-2 text-xs text-red-600">
-                    Overdue Fees: {feesData.statistics.overdueFees}
+                {feesData.student?.concessionAmount > 0 && (
+                  <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded">
+                    <p className="text-green-800 text-xs">
+                      ✓ Concession: ₹{feesData.student.concessionAmount.toLocaleString()}
+                    </p>
                   </div>
+                )}
+                {(() => {
+                  const adjustedStats = getAdjustedStatistics(
+                    feesData.statistics,
+                    feesData.student?.concessionAmount || 0
+                  );
+                  return (
+                    <>
+                      <p className="text-sm text-gray-600 mb-3">
+                        Total Amount: ₹{adjustedStats.totalAmount?.toLocaleString() || "0"} | Paid: ₹
+                        {adjustedStats.paidAmount?.toLocaleString() || "0"}
+                      </p>
+                      <div className="flex items-center justify-between text-xs text-gray-500">
+                        <span>Remaining: ₹{adjustedStats.pendingAmount?.toLocaleString() || "0"}</span>
+                        <span>Total Fees: {feesData.statistics?.totalFees || "0"}</span>
+                      </div>
+                    </>
+                  );
+                })()}
+                {feesData.statistics?.overdueFees > 0 && (
+                  <div className="mt-2 text-xs text-red-600">Overdue Fees: {feesData.statistics.overdueFees}</div>
                 )}
               </div>
             ) : (

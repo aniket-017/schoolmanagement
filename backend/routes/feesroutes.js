@@ -4,7 +4,10 @@ const {
   createFee,
   getAllFees,
   getStudentFees,
+  getStudentFeeInfo,
   processFeePayment,
+  processStudentPayment,
+  updateInstallmentAmounts,
   updateFee,
   deleteFee,
   getFeeStats,
@@ -44,6 +47,11 @@ router.get("/class/:classId/status", auth, authorize("admin"), getClassFeeStatus
 // @access  Private
 router.get("/student/:studentId", auth, getStudentFees);
 
+// @route   GET /api/fees/student/:studentId/info
+// @desc    Get student fee information with correct installment data
+// @access  Private
+router.get("/student/:studentId/info", auth, getStudentFeeInfo);
+
 // @route   POST /api/fees/student/:studentId/from-slab
 // @desc    Create fees from fee slab for a student
 // @access  Private (Admin only)
@@ -58,6 +66,16 @@ router.post("/student/:studentId/generate", auth, authorize("admin"), generateFe
 // @desc    Process fee payment
 // @access  Private
 router.put("/:id/pay", auth, processFeePayment);
+
+// @route   PUT /api/fees/student/:studentId/pay
+// @desc    Process payment across multiple installments for a student
+// @access  Private (Admin only)
+router.put("/student/:studentId/pay", auth, authorize("admin"), processStudentPayment);
+
+// @route   PUT /api/fees/update-installments/:studentId
+// @desc    Update installment amounts in fee slab based on payments
+// @access  Private (Admin only)
+router.put("/update-installments/:studentId", auth, authorize("admin"), updateInstallmentAmounts);
 
 // @route   PUT /api/fees/:id
 // @desc    Update fee record
