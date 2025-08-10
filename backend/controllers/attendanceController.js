@@ -347,7 +347,7 @@ const getAttendanceStats = async (req, res) => {
 
     const studentAttendances = await StudentAttendance.find(filter)
       .populate("studentId", "name studentId rollNumber")
-      .populate("classId", "name grade section");
+      .populate("classId", "name grade division");
 
     let filteredAttendances = studentAttendances;
 
@@ -392,6 +392,7 @@ const getAttendanceStats = async (req, res) => {
     const classStats = {};
     filteredAttendances.forEach((sa) => {
       const className = sa.classId ? `${sa.classId.grade}${sa.classId.division}` : "Unknown";
+      console.log(className);
       if (!classStats[className]) {
         classStats[className] = {
           totalStudents: 0,

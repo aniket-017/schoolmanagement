@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import {
   Users,
   GraduationCap,
-  DollarSign,
+  IndianRupee,
   TrendingUp,
   Calendar,
   BookOpen,
@@ -119,6 +119,7 @@ const AdminDashboard = () => {
             .catch((err) => ({ data: { overall: { attendancePercentage: 0, totalStudents: 0 }, classStats: {} } })),
         ]);
 
+    
       // Calculate statistics
       const totalStudents = studentsResponse.data?.length || 0;
       const totalTeachers = teachersResponse.pagination?.totalUsers || teachersResponse.users?.length || 0;
@@ -194,8 +195,6 @@ const AdminDashboard = () => {
     {
       name: "Total Students",
       value: stats.totalStudents.toLocaleString(),
-      change: "+0%",
-      changeType: "increase",
       icon: Users,
       color: "primary",
       description: "Active enrolled students",
@@ -203,8 +202,6 @@ const AdminDashboard = () => {
     {
       name: "Total Teachers",
       value: stats.totalTeachers.toLocaleString(),
-      change: "+0%",
-      changeType: "increase",
       icon: GraduationCap,
       color: "success",
       description: "Faculty members",
@@ -212,17 +209,13 @@ const AdminDashboard = () => {
     {
       name: "Monthly Revenue",
       value: `₹${stats.monthlyRevenue.toLocaleString()}`,
-      change: "+0%",
-      changeType: "increase",
-      icon: DollarSign,
+      icon: IndianRupee,
       color: "warning",
       description: "This month's collection",
     },
     {
       name: "Attendance Rate",
       value: `${stats.attendancePercentage}%`,
-      change: "+0%",
-      changeType: "increase",
       icon: UserCheck,
       color: "info",
       description: "Overall attendance",
@@ -461,15 +454,6 @@ const AdminDashboard = () => {
                         )}
                       />
                     </div>
-                    <div
-                      className={cn(
-                        "flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium",
-                        stat.changeType === "increase" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                      )}
-                    >
-                      <TrendingUp className={cn("w-3 h-3", stat.changeType === "decrease" && "rotate-180")} />
-                      <span>{stat.change}</span>
-                    </div>
                   </div>
                   <div>
                     <p className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</p>
@@ -487,7 +471,7 @@ const AdminDashboard = () => {
               <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">Fee Collection</h3>
-                  <p className="text-sm text-gray-600">Monthly collection vs pending amounts</p>
+                  <p className="text-sm text-gray-600">Monthly collection amounts</p>
                 </div>
                 <ResponsiveContainer width="100%" height={300}>
                   <AreaChart data={feeData}>
@@ -506,20 +490,10 @@ const AdminDashboard = () => {
                     <Area
                       type="monotone"
                       dataKey="collected"
-                      stackId="1"
                       stroke="#10b981"
                       fill="#10b981"
                       fillOpacity={0.6}
                       name="Collected"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="pending"
-                      stackId="1"
-                      stroke="#f59e0b"
-                      fill="#f59e0b"
-                      fillOpacity={0.6}
-                      name="Pending"
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -528,11 +502,11 @@ const AdminDashboard = () => {
               <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">Fee Collection</h3>
-                  <p className="text-sm text-gray-600">Monthly collection vs pending amounts</p>
+                  <p className="text-sm text-gray-600">Monthly collection amounts</p>
                 </div>
                 <div className="flex items-center justify-center h-64">
                   <div className="text-center">
-                    <DollarSign className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <IndianRupee className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-500">No fee data available</p>
                   </div>
                 </div>
@@ -584,7 +558,7 @@ const AdminDashboard = () => {
           </div>
 
           {/* Quick Actions */}
-          <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+          {/* <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Quick Actions</h3>
               <p className="text-sm text-gray-600">Commonly used features</p>
@@ -630,7 +604,7 @@ const AdminDashboard = () => {
                 );
               })}
             </div>
-          </motion.div>
+          </motion.div> */}
         </motion.div>
 
         {/* Student Detail Modal */}

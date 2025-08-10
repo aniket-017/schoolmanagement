@@ -447,6 +447,7 @@ class ApiService {
       const response = await fetch(`${this.baseURL}/attendances/stats?${queryString}`, {
         headers: this.getAuthHeaders(),
       });
+    
       return this.handleResponse(response);
     },
   };
