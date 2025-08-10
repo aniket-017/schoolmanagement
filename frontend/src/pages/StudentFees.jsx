@@ -24,33 +24,7 @@ const StudentFees = () => {
   const [showMessageModal, setShowMessageModal] = useState(false);
   const { user } = useTeacherAuth();
 
-  // Helper function to calculate installments with concession applied
-  const calculateInstallmentsWithConcession = (feeSlab, concessionAmount) => {
-    if (!feeSlab?.installments || !concessionAmount || concessionAmount <= 0) {
-      return feeSlab?.installments || [];
-    }
-
-    const totalAmount = feeSlab.totalAmount;
-    const discountedTotal = totalAmount - concessionAmount;
-
-    return feeSlab.installments.map((installment) => ({
-      ...installment,
-      amount: Math.round((installment.percentage / 100) * discountedTotal),
-      originalAmount: installment.amount,
-      discountAmount: Math.round((installment.percentage / 100) * concessionAmount),
-    }));
-  };
-
-  // Helper function to calculate adjusted statistics
-  const getAdjustedStatistics = (stats, concessionAmount = 0) => {
-    if (!stats || concessionAmount <= 0) return stats;
-
-    return {
-      ...stats,
-      totalAmount: (stats.totalAmount || 0) - concessionAmount,
-      pendingAmount: (stats.totalAmount || 0) - concessionAmount - (stats.paidAmount || 0),
-    };
-  };
+  // No helper functions needed; backend returns summary with adjusted totals
 
   useEffect(() => {
     if (user) {
@@ -235,7 +209,7 @@ const StudentFees = () => {
         </div>
 
         {/* Fee Overview Section */}
-        {feesData && feesData.statistics && (
+        {feesData && feesData.summary && (
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900 flex items-center">
@@ -267,10 +241,12 @@ const StudentFees = () => {
             {/* Statistics Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               {(() => {
-                const adjustedStats = getAdjustedStatistics(
-                  feesData.statistics,
-                  feesData.student?.concessionAmount || 0
-                );
+                const summary = feesData.summary || {};
+                const totalAmount = summary.adjustedTotalAmount ?? summary.totalAmount ?? 0;
+                const paidAmount = summary.paidAmount ?? 0;
+                const pendingAmount =
+                  summary.adjustedPendingAmount ?? summary.pendingAmount ?? Math.max(0, totalAmount - paidAmount);
+
                 return (
                   <>
                     <motion.div
@@ -282,12 +258,10 @@ const StudentFees = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-gray-600">Total Amount</p>
-                          <p className="text-2xl font-bold text-gray-900">
-                            ₹{adjustedStats.totalAmount?.toLocaleString() || "0"}
-                          </p>
-                          {feesData.student?.concessionAmount > 0 && (
+                          <p className="text-2xl font-bold text-gray-900">₹{totalAmount.toLocaleString()}</p>
+                          {feesData.summary?.concessionAmount > 0 && (
                             <p className="text-xs text-green-600">
-                              (₹{feesData.student.concessionAmount.toLocaleString()} concession applied)
+                              (₹{feesData.summary.concessionAmount.toLocaleString()} concession applied)
                             </p>
                           )}
                         </div>
@@ -304,9 +278,7 @@ const StudentFees = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-gray-600">Paid Amount</p>
-                          <p className="text-2xl font-bold text-green-600">
-                            ₹{adjustedStats.paidAmount?.toLocaleString() || "0"}
-                          </p>
+                          <p className="text-2xl font-bold text-green-600">₹{paidAmount.toLocaleString()}</p>
                         </div>
                         <CheckCircleIcon className="w-8 h-8 text-green-600" />
                       </div>
@@ -321,9 +293,7 @@ const StudentFees = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-gray-600">Remaining Amount</p>
-                          <p className="text-2xl font-bold text-yellow-600">
-                            ₹{adjustedStats.pendingAmount?.toLocaleString() || "0"}
-                          </p>
+                          <p className="text-2xl font-bold text-yellow-600">₹{pendingAmount.toLocaleString()}</p>
                         </div>
                         <ClockIcon className="w-8 h-8 text-yellow-600" />
                       </div>
