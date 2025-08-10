@@ -21,7 +21,6 @@ import StudentTeacherLogin from "./pages/StudentTeacherLogin";
 import StudentDashboard from "./pages/StudentDashboard";
 import StudentAttendance from "./pages/StudentAttendance";
 import StudentProfile from "./pages/StudentProfile";
-
 import TeacherDashboard from "./pages/TeacherDashboard";
 import TeacherProtectedRoute from "./components/TeacherProtectedRoute";
 

@@ -106,6 +106,7 @@ const FeeManagement = () => {
     feesPaid: 0,
     remarks: "",
   });
+  const [paymentMethodError, setPaymentMethodError] = useState("");
   const [loadingStudents, setLoadingStudents] = useState(false);
 
   const [showMarkPaidModal, setShowMarkPaidModal] = useState(false);
@@ -148,6 +149,7 @@ const FeeManagement = () => {
   // Payment History states
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [paymentHistoryLoading, setPaymentHistoryLoading] = useState(false);
+  const [currentFetchingStudent, setCurrentFetchingStudent] = useState(null);
   const [paymentHistorySummary, setPaymentHistorySummary] = useState({
     totalAmount: 0,
     totalPayments: 0,
@@ -1324,7 +1326,24 @@ const FeeManagement = () => {
   // Fetch payment history for a student
   const fetchPaymentHistory = async (studentId) => {
     try {
+      // Validate studentId
+      if (!studentId || typeof studentId !== "string" || studentId.trim() === "") {
+        console.error("Invalid studentId provided:", studentId);
+        toast.error("Invalid student ID provided");
+        return;
+      }
+
+      // Trim the studentId to remove any whitespace
+      const cleanStudentId = studentId.trim();
+
+      // Prevent multiple simultaneous requests for the same student
+      if (paymentHistoryLoading && currentFetchingStudent === studentId) {
+        console.log("Payment history request already in progress for this student, skipping...");
+        return;
+      }
+
       setPaymentHistoryLoading(true);
+      setCurrentFetchingStudent(studentId);
       const token = localStorage.getItem("token");
 
       if (!token) {
@@ -1333,49 +1352,128 @@ const FeeManagement = () => {
       }
 
       console.log("Fetching payment history for student:", studentId);
+
+      // Create AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
       const response = await fetch(`${appConfig.API_BASE_URL}/fees/student/${studentId}/payment-history`, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+
       console.log("Payment history response status:", response.status);
+      console.log("Payment history response headers:", Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
         const errorText = await response.text();
         console.error("Payment history API error:", response.status, errorText);
-        toast.error(`Failed to fetch payment history: ${response.status}`);
+
+        if (response.status === 404) {
+          toast.error("Student not found");
+        } else if (response.status === 403) {
+          toast.error("Access denied - insufficient permissions");
+        } else if (response.status === 500) {
+          toast.error("Server error - please try again later");
+        } else {
+          toast.error(`Failed to fetch payment history: ${response.status}`);
+        }
         return;
       }
 
-      const data = await response.json();
-      console.log("Payment history data:", data);
+      let data;
+      try {
+        data = await response.json();
+        console.log("Payment history data:", data);
+      } catch (parseError) {
+        console.error("Error parsing JSON response:", parseError);
+        throw new Error("Failed to parse server response");
+      }
 
-      if (data.success) {
-        setPaymentHistory(data.data.paymentHistory || []);
-        setPaymentHistorySummary(
-          data.data.summary || {
+      // Validate response structure
+      if (!data || typeof data !== "object") {
+        console.error("Invalid response format:", data);
+        // Try to provide a fallback response
+        if (response.status === 200) {
+          console.log("Response was OK but data is malformed, using fallback");
+          setPaymentHistory([]);
+          setPaymentHistorySummary({
             totalAmount: 0,
             totalPayments: 0,
             averageAmount: 0,
-          }
-        );
+          });
+          return;
+        }
+        throw new Error("Invalid response format from server");
+      }
 
-        if (!data.data.paymentHistory || data.data.paymentHistory.length === 0) {
-          toast.info(
-            "No payment history found for this student. Payment history will appear here once payments are processed."
-          );
+      if (data.success) {
+        // Ensure data.data exists and has the expected structure
+        const responseData = data.data || {};
+        const paymentHistory = Array.isArray(responseData.paymentHistory) ? responseData.paymentHistory : [];
+        const summary = responseData.summary || {
+          totalAmount: 0,
+          totalPayments: 0,
+          averageAmount: 0,
+        };
+
+        console.log("Setting payment history:", paymentHistory);
+        console.log("Setting payment summary:", summary);
+
+        setPaymentHistory(paymentHistory);
+        setPaymentHistorySummary(summary);
+
+        // Show info message only when there's no payment history (not as an error)
+        if (paymentHistory.length === 0) {
+          console.log("No payment history found - this is normal for new students");
+          // Don't show toast for empty payment history as it's not an error
         }
       } else {
         console.error("Failed to fetch payment history:", data.message);
-        toast.error(data.message || "Failed to fetch payment history");
+        // Check if this is a case where the student has no payment history
+        if (data.message && data.message.includes("No payment history")) {
+          console.log("Student has no payment history - this is normal");
+          setPaymentHistory([]);
+          setPaymentHistorySummary({
+            totalAmount: 0,
+            totalPayments: 0,
+            averageAmount: 0,
+          });
+        } else {
+          toast.error(data.message || "Failed to fetch payment history");
+        }
       }
     } catch (error) {
       console.error("Error fetching payment history:", error);
-      toast.error("Network error while fetching payment history");
+
+      // Handle different types of errors
+      if (error.name === "AbortError") {
+        toast.error("Request timeout - please try again");
+      } else if (error.name === "TypeError" && error.message.includes("fetch")) {
+        toast.error("Network error while fetching payment history");
+      } else if (error.message === "Failed to parse server response") {
+        toast.error("Server response error - please try again");
+      } else if (error.message === "Invalid response format from server") {
+        toast.error("Invalid server response - please try again");
+      } else {
+        toast.error("Error processing payment history data");
+      }
+
+      // Set empty payment history on error to prevent UI issues
+      setPaymentHistory([]);
+      setPaymentHistorySummary({
+        totalAmount: 0,
+        totalPayments: 0,
+        averageAmount: 0,
+      });
     } finally {
       setPaymentHistoryLoading(false);
+      setCurrentFetchingStudent(null);
     }
   };
 
@@ -1519,6 +1617,8 @@ const FeeManagement = () => {
       feesPaid: student.feesPaid || 0,
       remarks: student.remarks || "",
     });
+    // Clear any previous validation errors
+    setPaymentMethodError("");
     setShowStudentEditModal(true);
   };
 
@@ -1533,15 +1633,21 @@ const FeeManagement = () => {
     setShowStudentViewModal(true);
 
     // Fetch payment history for the student
-    fetchPaymentHistory(student._id);
+    if (student && student._id) {
+      fetchPaymentHistory(student._id);
+    } else {
+      console.error("Invalid student object or missing _id:", student);
+    }
 
     // Fetch correct fee information with installment data from actual fee records
-    const feeInfo = await fetchStudentFeeInfo(student._id);
-    if (feeInfo) {
-      setSelectedStudent((prev) => ({
-        ...prev,
-        feeInfo: feeInfo,
-      }));
+    if (student && student._id) {
+      const feeInfo = await fetchStudentFeeInfo(student._id);
+      if (feeInfo) {
+        setSelectedStudent((prev) => ({
+          ...prev,
+          feeInfo: feeInfo,
+        }));
+      }
     }
   };
 
@@ -1594,6 +1700,16 @@ const FeeManagement = () => {
   // Handle fee edit
   const handleFeeEdit = async (e) => {
     e.preventDefault();
+
+    // Validate payment method
+    if (!feeEditData.paymentMethod || feeEditData.paymentMethod.trim() === "") {
+      setPaymentMethodError("Please select a payment method");
+      return;
+    }
+
+    // Clear any previous errors
+    setPaymentMethodError("");
+
     try {
       const token = localStorage.getItem("token");
 
@@ -3195,7 +3311,13 @@ const FeeManagement = () => {
               <div className="p-6">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold text-gray-900">Edit Fee Information</h3>
-                  <button onClick={() => setShowStudentEditModal(false)} className="text-gray-400 hover:text-gray-600">
+                  <button
+                    onClick={() => {
+                      setShowStudentEditModal(false);
+                      setPaymentMethodError("");
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -3272,17 +3394,24 @@ const FeeManagement = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
                     <select
                       value={feeEditData.paymentMethod}
-                      onChange={(e) => setFeeEditData({ ...feeEditData, paymentMethod: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      onChange={(e) => {
+                        setFeeEditData({ ...feeEditData, paymentMethod: e.target.value });
+                        // Clear error when user selects a payment method
+                        if (e.target.value) {
+                          setPaymentMethodError("");
+                        }
+                      }}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        paymentMethodError ? "border-red-500" : "border-gray-300"
+                      }`}
                     >
                       <option value="">Select Payment Method</option>
                       <option value="cash">Cash</option>
                       <option value="card">Card</option>
-                      <option value="bank_transfer">Bank Transfer</option>
                       <option value="cheque">Cheque</option>
                       <option value="online">Online</option>
-                      <option value="other">Other</option>
                     </select>
+                    {paymentMethodError && <p className="mt-1 text-sm text-red-600">{paymentMethodError}</p>}
                   </div>
 
                   <div>
@@ -3342,7 +3471,10 @@ const FeeManagement = () => {
                   <div className="flex justify-end space-x-3 mt-6">
                     <button
                       type="button"
-                      onClick={() => setShowStudentEditModal(false)}
+                      onClick={() => {
+                        setShowStudentEditModal(false);
+                        setPaymentMethodError("");
+                      }}
                       className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                     >
                       Cancel

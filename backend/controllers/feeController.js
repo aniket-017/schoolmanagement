@@ -1397,6 +1397,12 @@ const getStudentPaymentHistory = async (req, res) => {
       });
     }
 
+    // Ensure paymentHistory is an array
+    if (!Array.isArray(studentRecord.paymentHistory)) {
+      console.log("❌ Payment history is not an array, initializing as empty array");
+      studentRecord.paymentHistory = [];
+    }
+
     console.log("✅ Payment history array found, processing...");
     console.log("Original payment history:");
     studentRecord.paymentHistory.forEach((payment, index) => {
@@ -1478,6 +1484,21 @@ const getStudentPaymentHistory = async (req, res) => {
     };
 
     console.log("Sending response with", paginatedPayments.length, "payment records");
+    console.log("Response structure:", JSON.stringify(response, null, 2));
+
+    // Ensure response is properly formatted
+    if (!response || !response.success || !response.data) {
+      console.error("❌ Invalid response structure, sending error response");
+      return res.status(500).json({
+        success: false,
+        message: "Invalid response structure",
+      });
+    }
+
+    // Set proper headers
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("Cache-Control", "no-cache");
+
     res.json(response);
   } catch (error) {
     console.error("Error fetching payment history:", error);
