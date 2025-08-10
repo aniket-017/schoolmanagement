@@ -447,7 +447,7 @@ class ApiService {
       const response = await fetch(`${this.baseURL}/attendances/stats?${queryString}`, {
         headers: this.getAuthHeaders(),
       });
-    
+
       return this.handleResponse(response);
     },
   };
@@ -581,6 +581,15 @@ class ApiService {
     getClassFeeStatus: async (classId, params = {}) => {
       const queryString = new URLSearchParams(params).toString();
       const response = await fetch(`${this.baseURL}/fees/class/${classId}/status?${queryString}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    // Payment history for a student
+    getStudentPaymentHistory: async (studentId, params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await fetch(`${this.baseURL}/fees/student/${studentId}/payment-history?${queryString}`, {
         headers: this.getAuthHeaders(),
       });
       return this.handleResponse(response);

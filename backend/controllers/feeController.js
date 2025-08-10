@@ -1331,7 +1331,7 @@ const getOverdueStudents = async (req, res) => {
 
 // @desc    Get payment history for a student
 // @route   GET /api/fees/student/:studentId/payment-history
-// @access  Private (Admin only)
+// @access  Private (Admin or the same student)
 const getStudentPaymentHistory = async (req, res) => {
   try {
     console.log("=== PAYMENT HISTORY REQUEST STARTED ===");
@@ -1340,6 +1340,11 @@ const getStudentPaymentHistory = async (req, res) => {
 
     console.log("Payment history request for student:", studentId);
     console.log("Query parameters:", { page, limit, academicYear, feeType });
+
+    // Authorization: allow admin, or the same student viewing own history
+    if (req.user.role === "student" && req.user.id !== studentId) {
+      return res.status(403).json({ success: false, message: "Access denied" });
+    }
 
     // Find student using utility function
     console.log("Finding student using utility function...");

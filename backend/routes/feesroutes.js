@@ -109,7 +109,7 @@ router.get("/overdue-students", auth, authorize("admin"), getOverdueStudents);
 
 // @route   GET /api/fees/student/:studentId/payment-history
 // @desc    Get payment history for a student
-// @access  Private (Admin only)
-router.get("/student/:studentId/payment-history", auth, authorize("admin"), getStudentPaymentHistory);
+// @access  Private (Admin or the same student)
+router.get("/student/:studentId/payment-history", auth, getStudentPaymentHistory);
 
 module.exports = router;

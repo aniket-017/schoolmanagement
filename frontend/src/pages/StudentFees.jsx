@@ -22,6 +22,9 @@ const StudentFees = () => {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [showMessageModal, setShowMessageModal] = useState(false);
+  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [paymentSummary, setPaymentSummary] = useState(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const { user } = useTeacherAuth();
 
   // No helper functions needed; backend returns summary with adjusted totals
@@ -30,6 +33,7 @@ const StudentFees = () => {
     if (user) {
       loadFeesData();
       loadMessages();
+      loadPaymentHistory();
     }
   }, [user]);
 
@@ -74,6 +78,21 @@ const StudentFees = () => {
       console.error("Error loading messages:", error);
     } finally {
       setLoadingMessages(false);
+    }
+  };
+
+  const loadPaymentHistory = async () => {
+    try {
+      setLoadingHistory(true);
+      const res = await apiService.fees.getStudentPaymentHistory(user.id, { limit: 50 });
+      if (res.success) {
+        setPaymentHistory(res.data?.paymentHistory || []);
+        setPaymentSummary(res.data?.summary || null);
+      }
+    } catch (error) {
+      console.error("Error loading payment history:", error);
+    } finally {
+      setLoadingHistory(false);
     }
   };
 
@@ -304,6 +323,100 @@ const StudentFees = () => {
             </div>
           </div>
         )}
+
+        {/* Payment History */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+              <CurrencyDollarIcon className="w-5 h-5 mr-2" />
+              Payment History
+            </h2>
+            <button
+              onClick={loadPaymentHistory}
+              className="px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              title="Refresh payment history"
+            >
+              Refresh
+            </button>
+          </div>
+
+          {loadingHistory ? (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="animate-pulse">
+                <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-16 bg-gray-200 rounded"></div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : paymentHistory.length > 0 ? (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+              {paymentSummary && (
+                <div className="px-6 pt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div className="p-3 rounded border bg-gray-50">
+                      <p className="text-sm text-gray-600">Total Payments</p>
+                      <p className="text-lg font-semibold text-gray-900">{paymentSummary.totalPayments}</p>
+                    </div>
+                    <div className="p-3 rounded border bg-gray-50">
+                      <p className="text-sm text-gray-600">Total Amount Paid</p>
+                      <p className="text-lg font-semibold text-green-600">
+                        ₹{(paymentSummary.totalAmount || 0).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded border bg-gray-50">
+                      <p className="text-sm text-gray-600">Average Payment</p>
+                      <p className="text-lg font-semibold text-blue-600">
+                        ₹{(paymentSummary.averageAmount || 0).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div className="divide-y">
+                {paymentHistory.map((pmt, idx) => (
+                  <div key={idx} className="p-6 flex items-start justify-between">
+                    <div className="flex items-start space-x-4">
+                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <CheckCircleIcon className="w-6 h-6 text-green-600" />
+                      </div>
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <h4 className="font-medium text-gray-900">₹{(pmt.amount || 0).toLocaleString()}</h4>
+                          {pmt.paymentMethod && (
+                            <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-800 capitalize">
+                              {pmt.paymentMethod}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          {pmt.feeType && <span className="capitalize">{pmt.feeType}</span>}
+                          {pmt.installmentNumber && <span className="ml-2">Installment {pmt.installmentNumber}</span>}
+                          {pmt.academicYear && <span className="ml-2">AY {pmt.academicYear}</span>}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {pmt.transactionId && <span>Txn: {pmt.transactionId}</span>}
+                          {pmt.receiptNumber && <span className="ml-2">Receipt: {pmt.receiptNumber}</span>}
+                        </div>
+                        {pmt.remarks && <p className="text-xs text-gray-600 mt-2">{pmt.remarks}</p>}
+                      </div>
+                    </div>
+                    <div className="text-right text-sm text-gray-500">
+                      <div>{pmt.paymentDate ? new Date(pmt.paymentDate).toLocaleDateString() : ""}</div>
+                      <div>{pmt.paymentDate ? new Date(pmt.paymentDate).toLocaleTimeString() : ""}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="text-center text-gray-600">No payment history yet.</div>
+            </div>
+          )}
+        </div>
 
         {/* Messages from Admin Section */}
         <div className="mb-8">

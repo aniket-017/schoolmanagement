@@ -1614,7 +1614,7 @@ const FeeManagement = () => {
       paymentMethod: student.paymentMethod || "",
       paymentType: student.paymentType || "full",
       transactionId: student.transactionId || "",
-      feesPaid: student.feesPaid || 0,
+      feesPaid: 0, // Reset to 0 for new payment entry
       remarks: student.remarks || "",
     });
     // Clear any previous validation errors
@@ -1735,6 +1735,7 @@ const FeeManagement = () => {
       if (paymentData.success) {
         toast.success("Payment processed successfully across installments");
         setShowStudentEditModal(false);
+        setPaymentMethodError(""); // Clear any validation errors
         fetchAllStudents(); // Refresh the student list
       } else {
         toast.error(paymentData.message || "Error processing payment");
@@ -3448,7 +3449,7 @@ const FeeManagement = () => {
                       min="0"
                       step="0.01"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Enter current payment amount"
+                      placeholder="Enter new payment amount"
                     />
                   </div>
 
