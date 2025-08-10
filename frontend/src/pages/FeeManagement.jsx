@@ -80,9 +80,9 @@ const FeeManagement = () => {
   // Form states
   const [formData, setFormData] = useState({
     slabName: "",
-    totalAmount: 0,
+    totalAmount: "",
     academicYear: "2024-25",
-    installments: [{ amount: 0, dueDate: "", description: "" }],
+    installments: [{ amount: "", dueDate: "", description: "" }],
   });
 
   // Students states
@@ -1015,9 +1015,50 @@ const FeeManagement = () => {
 
   const handleCreateSlab = async (e) => {
     e.preventDefault();
+
+    // Client-side validation
+    if (!formData.totalAmount || formData.totalAmount === "") {
+      toast.error("Please enter the total amount");
+      return;
+    }
+
+    const totalAmount = parseFloat(formData.totalAmount);
+    if (isNaN(totalAmount) || totalAmount <= 0) {
+      toast.error("Please enter a valid total amount (must be greater than 0)");
+      return;
+    }
+
+    // Validate installments
+    for (let i = 0; i < formData.installments.length; i++) {
+      const inst = formData.installments[i];
+      if (!inst.amount || inst.amount === "") {
+        toast.error(`Please enter amount for installment ${i + 1}`);
+        return;
+      }
+      const amount = parseFloat(inst.amount);
+      if (isNaN(amount) || amount <= 0) {
+        toast.error(`Please enter a valid amount for installment ${i + 1} (must be greater than 0)`);
+        return;
+      }
+      if (!inst.dueDate) {
+        toast.error(`Please select due date for installment ${i + 1}`);
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
+      // Parse numeric values before sending to backend
+      const processedData = {
+        ...formData,
+        totalAmount: totalAmount,
+        installments: formData.installments.map((inst) => ({
+          ...inst,
+          amount: parseFloat(inst.amount),
+        })),
+      };
+
       const token = localStorage.getItem("token");
       const response = await fetch(`${appConfig.API_BASE_URL}/fee-slabs`, {
         method: "POST",
@@ -1025,7 +1066,7 @@ const FeeManagement = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(processedData),
       });
 
       const data = await response.json();
@@ -1047,9 +1088,50 @@ const FeeManagement = () => {
 
   const handleUpdateSlab = async (e) => {
     e.preventDefault();
+
+    // Client-side validation
+    if (!formData.totalAmount || formData.totalAmount === "") {
+      toast.error("Please enter the total amount");
+      return;
+    }
+
+    const totalAmount = parseFloat(formData.totalAmount);
+    if (isNaN(totalAmount) || totalAmount <= 0) {
+      toast.error("Please enter a valid total amount (must be greater than 0)");
+      return;
+    }
+
+    // Validate installments
+    for (let i = 0; i < formData.installments.length; i++) {
+      const inst = formData.installments[i];
+      if (!inst.amount || inst.amount === "") {
+        toast.error(`Please enter amount for installment ${i + 1}`);
+        return;
+      }
+      const amount = parseFloat(inst.amount);
+      if (isNaN(amount) || amount <= 0) {
+        toast.error(`Please enter a valid amount for installment ${i + 1}`);
+        return;
+      }
+      if (!inst.dueDate) {
+        toast.error(`Please select due date for installment ${i + 1}`);
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
+      // Parse numeric values before sending to backend
+      const processedData = {
+        ...formData,
+        totalAmount: totalAmount,
+        installments: formData.installments.map((inst) => ({
+          ...inst,
+          amount: parseFloat(inst.amount),
+        })),
+      };
+
       const token = localStorage.getItem("token");
       const response = await fetch(`${appConfig.API_BASE_URL}/fee-slabs/${editingSlab._id}`, {
         method: "PUT",
@@ -1057,7 +1139,7 @@ const FeeManagement = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(processedData),
       });
 
       const data = await response.json();
@@ -1105,9 +1187,9 @@ const FeeManagement = () => {
   const resetForm = () => {
     setFormData({
       slabName: "",
-      totalAmount: 0,
+      totalAmount: "",
       academicYear: "2024-25",
-      installments: [{ amount: 0, dueDate: "", description: "" }],
+      installments: [{ amount: "", dueDate: "", description: "" }],
     });
     setEditingSlab(null);
   };
@@ -1130,7 +1212,7 @@ const FeeManagement = () => {
   const addInstallment = () => {
     setFormData({
       ...formData,
-      installments: [...formData.installments, { amount: 0, dueDate: "", description: "" }],
+      installments: [...formData.installments, { amount: "", dueDate: "", description: "" }],
     });
   };
 
@@ -1148,8 +1230,8 @@ const FeeManagement = () => {
   };
 
   const calculatePercentage = (amount) => {
-    if (formData.totalAmount === 0) return 0;
-    return ((amount / formData.totalAmount) * 100).toFixed(1);
+    if (!formData.totalAmount || formData.totalAmount === "" || !amount || amount === "") return 0;
+    return ((parseFloat(amount) / parseFloat(formData.totalAmount)) * 100).toFixed(1);
   };
 
   const filteredPayments = recentPayments.filter(
@@ -2726,11 +2808,17 @@ const FeeManagement = () => {
                     <input
                       type="number"
                       value={formData.totalAmount}
-                      onChange={(e) => setFormData({ ...formData, totalAmount: parseFloat(e.target.value) || 0 })}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Prevent negative numbers
+                        if (value.startsWith("-")) return;
+                        setFormData({ ...formData, totalAmount: value });
+                      }}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="20000"
                       required
                       min="0"
+                      step="0.01"
                     />
                   </div>
                   <div>
@@ -2779,10 +2867,16 @@ const FeeManagement = () => {
                             <input
                               type="number"
                               value={installment.amount}
-                              onChange={(e) => updateInstallment(index, "amount", parseFloat(e.target.value) || 0)}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                // Prevent negative numbers
+                                if (value.startsWith("-")) return;
+                                updateInstallment(index, "amount", value);
+                              }}
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                               placeholder="10000"
                               min="0"
+                              step="0.01"
                             />
                             <div className="flex items-center mt-1 text-sm text-gray-500">
                               <Percent className="w-3 h-3 mr-1" />
@@ -2882,10 +2976,16 @@ const FeeManagement = () => {
                     <input
                       type="number"
                       value={formData.totalAmount}
-                      onChange={(e) => setFormData({ ...formData, totalAmount: parseFloat(e.target.value) || 0 })}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Prevent negative numbers
+                        if (value.startsWith("-")) return;
+                        setFormData({ ...formData, totalAmount: value });
+                      }}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       required
                       min="0"
+                      step="0.01"
                     />
                   </div>
                   <div>
@@ -2934,9 +3034,15 @@ const FeeManagement = () => {
                             <input
                               type="number"
                               value={installment.amount}
-                              onChange={(e) => updateInstallment(index, "amount", parseFloat(e.target.value) || 0)}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                // Prevent negative numbers
+                                if (value.startsWith("-")) return;
+                                updateInstallment(index, "amount", value);
+                              }}
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                               min="0"
+                              step="0.01"
                             />
                             <div className="flex items-center mt-1 text-sm text-gray-500">
                               <Percent className="w-3 h-3 mr-1" />
@@ -3011,11 +3117,19 @@ const FeeManagement = () => {
                   <input
                     type="number"
                     value={markPaidData.paidAmount}
-                    onChange={(e) => setMarkPaidData({ ...markPaidData, paidAmount: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Prevent negative numbers
+                      if (value.startsWith("-")) return;
+
+                      const numValue = parseFloat(value) || 0;
+                      setMarkPaidData({ ...markPaidData, paidAmount: numValue });
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder={selectedFee.amount}
                     min="0"
                     max={selectedFee.amount}
+                    step="0.01"
                   />
                 </div>
 
@@ -3189,16 +3303,21 @@ const FeeManagement = () => {
                       type="number"
                       value={feeEditData.feesPaid || ""}
                       onChange={(e) => {
-                        const value = parseFloat(e.target.value) || 0;
+                        const value = e.target.value;
+                        // Prevent negative numbers
+                        if (value.startsWith("-")) return;
+
+                        const numValue = parseFloat(value) || 0;
                         const maxAmount =
                           (selectedStudent.feeSlabId?.totalAmount || 0) -
                           (selectedStudent.concessionAmount || 0) -
                           (selectedStudent.feesPaid || 0);
-                        if (value <= maxAmount) {
-                          setFeeEditData({ ...feeEditData, feesPaid: value });
+                        if (numValue <= maxAmount) {
+                          setFeeEditData({ ...feeEditData, feesPaid: numValue });
                         }
                       }}
                       min="0"
+                      step="0.01"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="Enter current payment amount"
                     />
