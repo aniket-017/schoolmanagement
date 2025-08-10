@@ -3329,6 +3329,7 @@ const FeeManagement = () => {
                       type="text"
                       value={(
                         (selectedStudent.feeSlabId?.totalAmount || 0) -
+                        (selectedStudent.concessionAmount || 0) -
                         (selectedStudent.feesPaid || 0) -
                         (feeEditData.feesPaid || 0)
                       ).toLocaleString()}
@@ -3422,7 +3423,12 @@ const FeeManagement = () => {
                     <div>
                       <span className="text-gray-600">Total Amount:</span>
                       <span className="font-medium ml-2">
-                        ₹{(selectedStudent.feeInfo?.summary?.totalAmount || 0).toLocaleString()}
+                        ₹
+                        {(
+                          selectedStudent.feeInfo?.summary?.adjustedTotalAmount ??
+                          selectedStudent.feeInfo?.summary?.totalAmount ??
+                          0
+                        ).toLocaleString()}
                       </span>
                     </div>
                     <div>
@@ -3434,7 +3440,12 @@ const FeeManagement = () => {
                     <div>
                       <span className="text-gray-600">Remaining Amount:</span>
                       <span className="font-medium ml-2">
-                        ₹{(selectedStudent.feeInfo?.summary?.pendingAmount || 0).toLocaleString()}
+                        ₹
+                        {(
+                          selectedStudent.feeInfo?.summary?.adjustedPendingAmount ??
+                          selectedStudent.feeInfo?.summary?.pendingAmount ??
+                          0
+                        ).toLocaleString()}
                       </span>
                     </div>
                     <div>

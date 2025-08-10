@@ -467,11 +467,11 @@ const StudentFees = () => {
                 <div className="px-6 py-4">
                   <h3 className="text-lg font-semibold text-gray-900">{feesData.feeSlab.slabName || "Fee Slab"}</h3>
                   <p className="text-sm text-gray-600">
-                    Total Amount: ₹{(feesData.summary?.totalAmount || 0).toLocaleString()}
+                    Total Amount: ₹
+                    {(feesData.summary?.adjustedTotalAmount ?? feesData.summary?.totalAmount ?? 0).toLocaleString()}
                     {feesData.summary?.concessionAmount > 0 && (
                       <span className="text-green-600 ml-2">
-                        (Original: ₹
-                        {(feesData.summary.totalAmount + feesData.summary.concessionAmount).toLocaleString()})
+                        (Original: ₹{(feesData.summary.totalAmount || 0).toLocaleString()})
                       </span>
                     )}
                   </p>

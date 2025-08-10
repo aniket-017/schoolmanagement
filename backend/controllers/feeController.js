@@ -1889,6 +1889,7 @@ const getStudentFeeInfo = async (req, res) => {
       const totalOriginalAmount = student.feeSlabId.totalAmount;
       const discountRatio = concessionAmount / totalOriginalAmount;
 
+      // First, compute adjusted amounts for each installment
       adjustedInstallments = installments.map((installment) => {
         const originalAmount = installment.amount;
         const discountAmount = Math.round(originalAmount * discountRatio);
@@ -1896,12 +1897,38 @@ const getStudentFeeInfo = async (req, res) => {
 
         return {
           ...installment,
-          originalAmount: originalAmount,
-          discountAmount: discountAmount,
+          originalAmount,
+          discountAmount,
           amount: adjustedAmount,
-          remainingAmount: Math.max(0, adjustedAmount - installment.paidAmount),
         };
       });
+
+      // Then redistribute the total paid amount across the adjusted amounts
+      // so that no installment shows paid more than its adjusted amount and
+      // any overflow carries to subsequent installments
+      let remainingPaidToAllocate = totalPaidAmount;
+      adjustedInstallments = adjustedInstallments
+        .sort((a, b) => (a.installmentNumber || 0) - (b.installmentNumber || 0))
+        .map((installment) => {
+          const payableForThis = Math.max(0, installment.amount);
+          const paidApplied = Math.min(remainingPaidToAllocate, payableForThis);
+          remainingPaidToAllocate -= paidApplied;
+
+          const remainingAmount = Math.max(0, payableForThis - paidApplied);
+          let status = "pending";
+          if (paidApplied >= payableForThis && payableForThis > 0) {
+            status = "paid";
+          } else if (paidApplied > 0) {
+            status = "partial";
+          }
+
+          return {
+            ...installment,
+            paidAmount: paidApplied,
+            remainingAmount,
+            status,
+          };
+        });
     }
 
     res.json({
@@ -1924,8 +1951,8 @@ const getStudentFeeInfo = async (req, res) => {
           paidAmount: totalPaidAmount,
           pendingAmount: totalPendingAmount,
           concessionAmount: concessionAmount,
-          adjustedTotalAmount: totalAmount - concessionAmount,
-          adjustedPendingAmount: totalPendingAmount - concessionAmount,
+          adjustedTotalAmount: Math.max(0, totalAmount - concessionAmount),
+          adjustedPendingAmount: Math.max(0, totalPendingAmount - concessionAmount),
         },
       },
     });
