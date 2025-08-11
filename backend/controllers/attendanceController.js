@@ -702,12 +702,19 @@ const getClassAttendanceSummary = async (req, res) => {
 
     // Calculate date range based on period type
     if (period === "week" && week) {
-      const [year, weekNum] = week.split("-W");
-      const firstDayOfYear = new Date(year, 0, 1);
-      const startOfWeek = new Date(firstDayOfYear.getTime() + (weekNum - 1) * 7 * 24 * 60 * 60 * 1000);
-      const endOfWeek = new Date(startOfWeek.getTime() + 6 * 24 * 60 * 60 * 1000);
+      // Expecting week in format YYYY-Www (ISO week). Compute Monday-start week range.
+      const [yearStr, weekStr] = week.split("-W");
+      const yearNum = parseInt(yearStr, 10);
+      const weekNum = parseInt(weekStr, 10);
+      // Monday as first day of week
+      const simple = new Date(yearNum, 0, 1 + (weekNum - 1) * 7);
+      const day = simple.getDay() || 7; // Sunday => 7
+      if (day !== 1) simple.setDate(simple.getDate() - (day - 1));
+      const startOfWeek = new Date(simple.getFullYear(), simple.getMonth(), simple.getDate());
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
       dateFilter = { $gte: startOfWeek, $lte: endOfWeek };
-      periodName = `Week ${weekNum}, ${year}`;
+      periodName = `Week ${weekNum}, ${yearNum}`;
     } else if (period === "month" && year && month) {
       const startOfMonth = new Date(year, month - 1, 1);
       const endOfMonth = new Date(year, month, 0);

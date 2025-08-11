@@ -3,12 +3,15 @@ import { motion } from "framer-motion";
 import { Calendar, Download, Users, TrendingUp, BarChart3, Activity } from "lucide-react";
 import { toast } from "react-toastify";
 import appConfig from "../config/environment";
+import StudentAttendancePeriodModal from "./StudentAttendancePeriodModal";
 
 const EnhancedAttendanceView = ({ classId, className }) => {
   const [viewType, setViewType] = useState("week"); // week, month, year
   const [currentPeriod, setCurrentPeriod] = useState("");
   const [attendanceSummary, setAttendanceSummary] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [showStudentPeriodModal, setShowStudentPeriodModal] = useState(false);
 
   useEffect(() => {
     // Set default current period based on view type
@@ -366,7 +369,14 @@ const EnhancedAttendanceView = ({ classId, className }) => {
                       return rollA.toString().localeCompare(rollB.toString());
                     })
                     .map((studentData, index) => (
-                      <tr key={studentData.student._id} className="hover:bg-gray-50">
+                      <tr
+                        key={studentData.student._id}
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => {
+                          setSelectedStudent(studentData.student);
+                          setShowStudentPeriodModal(true);
+                        }}
+                      >
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {studentData.student.rollNumber || "N/A"}
                         </td>
@@ -412,6 +422,14 @@ const EnhancedAttendanceView = ({ classId, className }) => {
               </div>
             )}
           </motion.div>
+          {/* Student period modal */}
+          <StudentAttendancePeriodModal
+            isOpen={showStudentPeriodModal}
+            onClose={() => setShowStudentPeriodModal(false)}
+            student={selectedStudent}
+            viewType={viewType}
+            currentPeriod={currentPeriod}
+          />
         </div>
       ) : (
         <div className="text-center py-12">

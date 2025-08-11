@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import {
   CalendarIcon,
   UserGroupIcon,
@@ -10,10 +10,10 @@ import {
   ChevronUpIcon,
   ChevronLeftIcon,
   ArrowLeftIcon,
-} from '@heroicons/react/24/outline';
-import { useTeacherAuth } from '../context/TeacherAuthContext';
-import apiService from '../services/apiService';
-import { useNavigate } from 'react-router-dom';
+} from "@heroicons/react/24/outline";
+import { useTeacherAuth } from "../context/TeacherAuthContext";
+import apiService from "../services/apiService";
+import { useNavigate } from "react-router-dom";
 
 const TeacherAttendance = () => {
   const [loading, setLoading] = useState(false);
@@ -39,8 +39,8 @@ const TeacherAttendance = () => {
     const handleResize = () => {
       setMobileView(window.innerWidth < 768);
     };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   useEffect(() => {
@@ -67,7 +67,7 @@ const TeacherAttendance = () => {
         setClasses(response.data);
       }
     } catch (error) {
-      console.error('Error loading classes:', error);
+      console.error("Error loading classes:", error);
     } finally {
       setLoading(false);
     }
@@ -77,7 +77,7 @@ const TeacherAttendance = () => {
     try {
       setLoading(true);
       const response = await apiService.attendance.getClassStudents(selectedClass);
-      
+
       if (response.success && response.data && response.data.students) {
         setStudents(response.data.students);
         // Initialize attendance data
@@ -95,7 +95,7 @@ const TeacherAttendance = () => {
         });
       }
     } catch (error) {
-      console.error('Error loading students:', error);
+      console.error("Error loading students:", error);
     } finally {
       setLoading(false);
     }
@@ -121,7 +121,7 @@ const TeacherAttendance = () => {
         }
       }
     } catch (error) {
-      console.error('Error loading existing attendance:', error);
+      console.error("Error loading existing attendance:", error);
     } finally {
       setLoading(false);
     }
@@ -146,7 +146,7 @@ const TeacherAttendance = () => {
       leave: 0,
       unmarked: 0,
     });
-    
+
     // Load existing attendance for the selected date if class is selected
     if (classId) {
       // Use setTimeout to ensure state is updated before calling loadExistingAttendance
@@ -216,14 +216,18 @@ const TeacherAttendance = () => {
 
       if (response.success) {
         // Show success message
-        const successMessage = `✅ Attendance saved successfully!\n\n📊 Marked attendance for ${markedStudents.length} students.\n📅 Date: ${formatDate(selectedDate)}\n🏫 Class: ${classes.find(c => c._id === selectedClass)?.fullName || 'Selected Class'}`;
+        const successMessage = `✅ Attendance saved successfully!\n\n📊 Marked attendance for ${
+          markedStudents.length
+        } students.\n📅 Date: ${formatDate(selectedDate)}\n🏫 Class: ${
+          classes.find((c) => c._id === selectedClass)?.fullName || "Selected Class"
+        }`;
         alert(successMessage);
         // Refresh the attendance data
         loadExistingAttendance();
       }
     } catch (error) {
-      console.error('Error saving attendance:', error);
-      alert('Error saving attendance. Please try again.');
+      console.error("Error saving attendance:", error);
+      alert("Error saving attendance. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -266,7 +270,7 @@ const TeacherAttendance = () => {
 
   // Back navigation handler
   const handleBack = () => {
-    navigate('/teacher/dashboard');
+    navigate("/teacher/dashboard");
   };
 
   if (loading && classes.length === 0) {
@@ -296,12 +300,8 @@ const TeacherAttendance = () => {
               </button>
             </div>
           )}
-          
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center"
-          >
+
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
             <h1 className="text-2xl font-bold mb-1">Attendance Management</h1>
             <p className="text-blue-100 text-sm">Mark daily attendance for your classes</p>
           </motion.div>
@@ -323,9 +323,9 @@ const TeacherAttendance = () => {
               <CalendarIcon className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400 flex-shrink-0" />
               <input
                 type="date"
-                value={selectedDate.toISOString().split('T')[0]}
+                value={selectedDate.toISOString().split("T")[0]}
                 onChange={handleDateChange}
-                max={new Date().toISOString().split('T')[0]}
+                max={new Date().toISOString().split("T")[0]}
                 className="flex-1 px-3 py-2 sm:px-4 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
               />
             </div>
@@ -357,7 +357,7 @@ const TeacherAttendance = () => {
                 Loading students...
               </div>
             )}
-            
+
             {/* Mobile Quick Actions */}
             {selectedClass && students.length > 0 && (
               <div className="mt-4 sm:hidden">
@@ -365,7 +365,7 @@ const TeacherAttendance = () => {
                   <button
                     onClick={() => {
                       const newAttendanceData = {};
-                      students.forEach(student => {
+                      students.forEach((student) => {
                         newAttendanceData[student._id] = "present";
                       });
                       setAttendanceData(newAttendanceData);
@@ -384,7 +384,7 @@ const TeacherAttendance = () => {
                   <button
                     onClick={() => {
                       const newAttendanceData = {};
-                      students.forEach(student => {
+                      students.forEach((student) => {
                         newAttendanceData[student._id] = "absent";
                       });
                       setAttendanceData(newAttendanceData);
@@ -418,7 +418,7 @@ const TeacherAttendance = () => {
                   <button
                     onClick={() => {
                       const newAttendanceData = {};
-                      students.forEach(student => {
+                      students.forEach((student) => {
                         newAttendanceData[student._id] = "present";
                       });
                       setAttendanceData(newAttendanceData);
@@ -458,24 +458,28 @@ const TeacherAttendance = () => {
                       }`}
                     >
                       <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
-                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                          currentStatus === "present"
-                            ? "bg-green-100"
-                            : currentStatus === "absent"
-                            ? "bg-red-100"
-                            : currentStatus === "leave"
-                            ? "bg-yellow-100"
-                            : "bg-blue-100"
-                        }`}>
-                          <span className={`font-semibold text-xs sm:text-sm ${
+                        <div
+                          className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
                             currentStatus === "present"
-                              ? "text-green-600"
+                              ? "bg-green-100"
                               : currentStatus === "absent"
-                              ? "text-red-600"
+                              ? "bg-red-100"
                               : currentStatus === "leave"
-                              ? "text-yellow-600"
-                              : "text-blue-600"
-                          }`}>
+                              ? "bg-yellow-100"
+                              : "bg-blue-100"
+                          }`}
+                        >
+                          <span
+                            className={`font-semibold text-xs sm:text-sm ${
+                              currentStatus === "present"
+                                ? "text-green-600"
+                                : currentStatus === "absent"
+                                ? "text-red-600"
+                                : currentStatus === "leave"
+                                ? "text-yellow-600"
+                                : "text-blue-600"
+                            }`}
+                          >
                             {student.rollNumber || student.name?.charAt(0) || "S"}
                           </span>
                         </div>
@@ -484,18 +488,24 @@ const TeacherAttendance = () => {
                           <p className="text-xs sm:text-sm text-gray-600">Roll: {student.rollNumber || "N/A"}</p>
                           {/* Mobile status indicator */}
                           <div className="sm:hidden mt-1">
-                            <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                              currentStatus === "present"
-                                ? "bg-green-100 text-green-700"
+                            <span
+                              className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                                currentStatus === "present"
+                                  ? "bg-green-100 text-green-700"
+                                  : currentStatus === "absent"
+                                  ? "bg-red-100 text-red-700"
+                                  : currentStatus === "leave"
+                                  ? "bg-yellow-100 text-yellow-700"
+                                  : "bg-gray-100 text-gray-700"
+                              }`}
+                            >
+                              {currentStatus === "present"
+                                ? "Present"
                                 : currentStatus === "absent"
-                                ? "bg-red-100 text-red-700"
+                                ? "Absent"
                                 : currentStatus === "leave"
-                                ? "bg-yellow-100 text-yellow-700"
-                                : "bg-gray-100 text-gray-700"
-                            }`}>
-                              {currentStatus === "present" ? "Present" : 
-                               currentStatus === "absent" ? "Absent" : 
-                               currentStatus === "leave" ? "Leave" : "Unmarked"}
+                                ? "Leave"
+                                : "Unmarked"}
                             </span>
                           </div>
                         </div>
@@ -548,7 +558,7 @@ const TeacherAttendance = () => {
             <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
               <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Attendance Summary</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
-                <motion.div 
+                <motion.div
                   className="text-center p-3 sm:p-4 bg-green-50 rounded-lg border border-green-200"
                   whileHover={{ scale: 1.05 }}
                   transition={{ type: "spring", stiffness: 300 }}
@@ -559,7 +569,7 @@ const TeacherAttendance = () => {
                     {summary.total > 0 ? Math.round((summary.present / summary.total) * 100) : 0}%
                   </div>
                 </motion.div>
-                <motion.div 
+                <motion.div
                   className="text-center p-3 sm:p-4 bg-red-50 rounded-lg border border-red-200"
                   whileHover={{ scale: 1.05 }}
                   transition={{ type: "spring", stiffness: 300 }}
@@ -570,7 +580,7 @@ const TeacherAttendance = () => {
                     {summary.total > 0 ? Math.round((summary.absent / summary.total) * 100) : 0}%
                   </div>
                 </motion.div>
-                <motion.div 
+                <motion.div
                   className="text-center p-3 sm:p-4 bg-yellow-50 rounded-lg border border-yellow-200"
                   whileHover={{ scale: 1.05 }}
                   transition={{ type: "spring", stiffness: 300 }}
@@ -581,7 +591,7 @@ const TeacherAttendance = () => {
                     {summary.total > 0 ? Math.round((summary.leave / summary.total) * 100) : 0}%
                   </div>
                 </motion.div>
-                <motion.div 
+                <motion.div
                   className="text-center p-3 sm:p-4 bg-gray-50 rounded-lg border border-gray-200"
                   whileHover={{ scale: 1.05 }}
                   transition={{ type: "spring", stiffness: 300 }}
@@ -595,9 +605,10 @@ const TeacherAttendance = () => {
               </div>
               <div className="mt-3 sm:mt-4 p-2 sm:p-3 bg-blue-50 rounded-lg border border-blue-200">
                 <div className="text-xs sm:text-sm text-blue-800">
-                  <span className="font-medium">Total:</span> {summary.total} | 
-                  <span className="font-medium ml-1 sm:ml-2">Marked:</span> {summary.total - summary.unmarked} | 
-                  <span className="font-medium ml-1 sm:ml-2">Rate:</span> {summary.total > 0 ? Math.round(((summary.total - summary.unmarked) / summary.total) * 100) : 0}%
+                  <span className="font-medium">Total:</span> {summary.total} |
+                  <span className="font-medium ml-1 sm:ml-2">Marked:</span> {summary.total - summary.unmarked} |
+                  <span className="font-medium ml-1 sm:ml-2">Rate:</span>{" "}
+                  {summary.total > 0 ? Math.round(((summary.total - summary.unmarked) / summary.total) * 100) : 0}%
                 </div>
               </div>
             </div>
@@ -646,12 +657,14 @@ const TeacherAttendance = () => {
             <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 text-center">
               <UserGroupIcon className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
               <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">Select a Class</h3>
-              <p className="text-xs sm:text-sm text-gray-600">Choose a class from the dropdown above to start marking attendance.</p>
+              <p className="text-xs sm:text-sm text-gray-600">
+                Choose a class from the dropdown above to start marking attendance.
+              </p>
             </div>
           )}
         </motion.div>
       </div>
-      
+
       {/* Mobile Floating Action Button */}
       {students.length > 0 && (
         <div className="sm:hidden fixed bottom-6 right-6 z-50">
@@ -674,4 +687,4 @@ const TeacherAttendance = () => {
   );
 };
 
-export default TeacherAttendance; 
+export default TeacherAttendance;
