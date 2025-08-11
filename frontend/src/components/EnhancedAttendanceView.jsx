@@ -354,64 +354,50 @@ const EnhancedAttendanceView = ({ classId, className }) => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {attendanceSummary.students
-                    .sort((a, b) => {
-                      // Sort by roll number (handle both string and number roll numbers)
-                      const rollA = a.student.rollNumber || "";
-                      const rollB = b.student.rollNumber || "";
-
-                      // If both are numbers, sort numerically
-                      if (!isNaN(rollA) && !isNaN(rollB)) {
-                        return parseInt(rollA) - parseInt(rollB);
-                      }
-
-                      // Otherwise, sort alphabetically
-                      return rollA.toString().localeCompare(rollB.toString());
-                    })
-                    .map((studentData, index) => (
-                      <tr
-                        key={studentData.student._id}
-                        className="hover:bg-gray-50 cursor-pointer"
-                        onClick={() => {
-                          setSelectedStudent(studentData.student);
-                          setShowStudentPeriodModal(true);
-                        }}
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {studentData.student.rollNumber || "N/A"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {studentData.student.name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                            {studentData.present}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                            {studentData.absent}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                            {studentData.late}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                            {studentData.leave}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <span
-                            className={`text-sm font-semibold ${getAttendanceColor(studentData.attendancePercentage)}`}
-                          >
-                            {studentData.attendancePercentage}%
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                  {attendanceSummary.students.map((studentData, index) => (
+                    <tr
+                      key={studentData.student._id}
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => {
+                        setSelectedStudent(studentData.student);
+                        setShowStudentPeriodModal(true);
+                      }}
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {studentData.student.rollNumber || "N/A"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {studentData.student.name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                          {studentData.present}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                          {studentData.absent}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                          {studentData.late}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                          {studentData.leave}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <span
+                          className={`text-sm font-semibold ${getAttendanceColor(studentData.attendancePercentage)}`}
+                        >
+                          {studentData.attendancePercentage}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

@@ -209,6 +209,23 @@ const getClassAttendance = async (req, res) => {
       };
     });
 
+    // Sort students by roll number
+    completeAttendance.sort((a, b) => {
+      // Convert roll numbers to numbers if they are numeric
+      const rollA = a.student.rollNumber ? parseInt(a.student.rollNumber) : Infinity;
+      const rollB = b.student.rollNumber ? parseInt(b.student.rollNumber) : Infinity;
+
+      // If both roll numbers are valid numbers, sort numerically
+      if (!isNaN(rollA) && !isNaN(rollB)) {
+        return rollA - rollB;
+      }
+
+      // If roll numbers are not numeric or one is missing, fall back to string comparison
+      const strA = a.student.rollNumber || "";
+      const strB = b.student.rollNumber || "";
+      return strA.localeCompare(strB);
+    });
+
     // Calculate summary
     const summary = {
       total: completeAttendance.length,
@@ -648,6 +665,23 @@ const getClassAttendanceByDate = async (req, res) => {
       };
     });
 
+    // Sort students by roll number
+    completeAttendance.sort((a, b) => {
+      // Convert roll numbers to numbers if they are numeric
+      const rollA = a.student.rollNumber ? parseInt(a.student.rollNumber) : Infinity;
+      const rollB = b.student.rollNumber ? parseInt(b.student.rollNumber) : Infinity;
+
+      // If both roll numbers are valid numbers, sort numerically
+      if (!isNaN(rollA) && !isNaN(rollB)) {
+        return rollA - rollB;
+      }
+
+      // If roll numbers are not numeric or one is missing, fall back to string comparison
+      const strA = a.student.rollNumber || "";
+      const strB = b.student.rollNumber || "";
+      return strA.localeCompare(strB);
+    });
+
     // Calculate summary
     const summary = {
       total: completeAttendance.length,
@@ -822,6 +856,23 @@ const getClassAttendanceSummary = async (req, res) => {
       totalAbsent += absent;
       totalLate += late;
       totalLeave += leave;
+    });
+
+    // Sort students by roll number
+    studentsData.sort((a, b) => {
+      // Convert roll numbers to numbers if they are numeric
+      const rollA = a.student.rollNumber ? parseInt(a.student.rollNumber) : Infinity;
+      const rollB = b.student.rollNumber ? parseInt(b.student.rollNumber) : Infinity;
+
+      // If both roll numbers are valid numbers, sort numerically
+      if (!isNaN(rollA) && !isNaN(rollB)) {
+        return rollA - rollB;
+      }
+
+      // If roll numbers are not numeric or one is missing, fall back to string comparison
+      const strA = a.student.rollNumber || "";
+      const strB = b.student.rollNumber || "";
+      return strA.localeCompare(strB);
     });
 
     totalDays = totalPresent + totalAbsent + totalLate + totalLeave;
