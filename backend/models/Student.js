@@ -602,7 +602,7 @@ const studentSchema = new mongoose.Schema(
     phone: String,
     currentAddress: {
       type: String,
-      required: [true, "Current address is required"],
+      // required: [true, "Current address is required"],
       trim: true,
     },
     mothersName: {
