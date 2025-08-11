@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { Link, useNavigate } from "react-router-dom";
 import {
   UserGroupIcon,
   AcademicCapIcon,
@@ -12,9 +12,9 @@ import {
   ClockIcon,
   ChevronLeftIcon,
   ArrowLeftIcon,
-} from '@heroicons/react/24/outline';
-import { useTeacherAuth } from '../context/TeacherAuthContext';
-import apiService from '../services/apiService';
+} from "@heroicons/react/24/outline";
+import { useTeacherAuth } from "../context/TeacherAuthContext";
+import apiService from "../services/apiService";
 
 const TeacherClasses = () => {
   const [classes, setClasses] = useState([]);
@@ -29,8 +29,8 @@ const TeacherClasses = () => {
     const handleResize = () => {
       setMobileView(window.innerWidth < 768);
     };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   useEffect(() => {
@@ -40,14 +40,14 @@ const TeacherClasses = () => {
   const loadAssignedClasses = async () => {
     try {
       setLoading(true);
-      console.log('Loading assigned classes for teacher:', user);
-      console.log('apiService:', apiService);
-      console.log('apiService.classes:', apiService.classes);
-      
+      console.log("Loading assigned classes for teacher:", user);
+      console.log("apiService:", apiService);
+      console.log("apiService.classes:", apiService.classes);
+
       let response;
-      
+
       if (!apiService.classes) {
-        console.error('apiService.classes is undefined!');
+        console.error("apiService.classes is undefined!");
         // Fallback: try direct fetch
         const fetchResponse = await fetch(`${apiService.baseURL}/classes/teacher/assigned`, {
           headers: apiService.getAuthHeaders(),
@@ -56,17 +56,17 @@ const TeacherClasses = () => {
       } else {
         response = await apiService.classes.getTeacherAssignedClasses();
       }
-      
-      console.log('API Response:', response);
-      
+
+      console.log("API Response:", response);
+
       if (response.success) {
         setClasses(response.data);
         setSummary(response.summary);
       } else {
-        console.error('Failed to load classes:', response.message);
+        console.error("Failed to load classes:", response.message);
       }
     } catch (error) {
-      console.error('Error loading assigned classes:', error);
+      console.error("Error loading assigned classes:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -89,7 +89,7 @@ const TeacherClasses = () => {
 
   // Back navigation handler
   const handleBack = () => {
-    navigate('/teacher/dashboard');
+    navigate("/teacher/dashboard");
   };
 
   if (loading) {
@@ -119,16 +119,10 @@ const TeacherClasses = () => {
               </button>
             </div>
           )}
-          
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center"
-          >
+
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
             <h1 className="text-2xl font-bold mb-1">My Assigned Classes</h1>
-            <p className="text-blue-100 text-sm">
-              You are assigned as Class Teacher for {classes.length} class(es)
-            </p>
+            <p className="text-blue-100 text-sm">You are assigned as Class Teacher for {classes.length} class(es)</p>
           </motion.div>
         </div>
       </div>
@@ -165,7 +159,7 @@ const TeacherClasses = () => {
           className="space-y-4"
         >
           <h2 className="text-lg font-semibold text-gray-900 px-2">Your Assigned Classes</h2>
-          
+
           {classes.length > 0 ? (
             <div className="space-y-4">
               {classes.map((classItem, index) => (
@@ -181,15 +175,13 @@ const TeacherClasses = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                          {classItem.grade}{getOrdinalSuffix(classItem.grade)} Class - {classItem.division}
+                          {classItem.grade}
+                          {getOrdinalSuffix(classItem.grade)} Class - {classItem.division}
                         </h3>
                         <p className="text-sm text-gray-600">Academic Year: {classItem.academicYear}</p>
                         <p className="text-sm text-gray-600">Classroom: {classItem.classroom || "Not assigned"}</p>
                       </div>
-                      <Link
-                        to={`/teacher/classes/${classItem._id}`}
-                        className="text-blue-600 hover:text-blue-700"
-                      >
+                      <Link to={`/teacher/classes/${classItem._id}`} className="text-blue-600 hover:text-blue-700">
                         <ChevronRightIcon className="w-5 h-5" />
                       </Link>
                     </div>
@@ -217,10 +209,7 @@ const TeacherClasses = () => {
                       <h4 className="text-sm font-medium text-gray-900 mb-2">Subjects:</h4>
                       <div className="flex flex-wrap gap-2">
                         {classItem.subjects.slice(0, 3).map((subject, idx) => (
-                          <span
-                            key={idx}
-                            className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs"
-                          >
+                          <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
                             {subject.subject?.name || "Unknown Subject"}
                           </span>
                         ))}
@@ -250,4 +239,4 @@ const TeacherClasses = () => {
   );
 };
 
-export default TeacherClasses; 
+export default TeacherClasses;

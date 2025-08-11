@@ -27,6 +27,7 @@ import TeacherProtectedRoute from "./components/TeacherProtectedRoute";
 // Teacher-specific pages (to be created)
 import TeacherClasses from "./pages/TeacherClasses";
 import TeacherClassDetails from "./pages/TeacherClassDetails";
+import TeacherStudentProfile from "./pages/TeacherStudentProfile";
 import TeacherAttendance from "./pages/TeacherAttendance";
 import TeacherTimetable from "./pages/TeacherTimetable";
 import TeacherAnnualCalendar from "./pages/TeacherAnnualCalendar";
@@ -254,6 +255,14 @@ function AppContent() {
           element={
             <TeacherProtectedRoute allowedRoles={["teacher"]}>
               <TeacherClassDetails />
+            </TeacherProtectedRoute>
+          }
+        />
+        <Route
+          path="/teacher/classes/:classId/students/:studentId"
+          element={
+            <TeacherProtectedRoute allowedRoles={["teacher"]}>
+              <TeacherStudentProfile />
             </TeacherProtectedRoute>
           }
         />

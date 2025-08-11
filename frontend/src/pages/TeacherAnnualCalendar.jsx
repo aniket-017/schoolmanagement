@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import {
   CalendarIcon,
   ChevronLeftIcon,
@@ -11,9 +11,9 @@ import {
   InformationCircleIcon,
   AcademicCapIcon,
   ArrowLeftIcon,
-} from '@heroicons/react/24/outline';
-import { useTeacherAuth } from '../context/TeacherAuthContext';
-import apiService from '../services/apiService';
+} from "@heroicons/react/24/outline";
+import { useTeacherAuth } from "../context/TeacherAuthContext";
+import apiService from "../services/apiService";
 
 const TeacherAnnualCalendar = () => {
   const [loading, setLoading] = useState(true);
@@ -33,14 +33,14 @@ const TeacherAnnualCalendar = () => {
     try {
       setLoading(true);
       const response = await apiService.annualCalendar.getTeacherCalendar();
-      
+
       if (response.success) {
         setEvents(response.data);
       } else {
-        console.error('Failed to load calendar:', response.message);
+        console.error("Failed to load calendar:", response.message);
       }
     } catch (error) {
-      console.error('Error loading calendar:', error);
+      console.error("Error loading calendar:", error);
     } finally {
       setLoading(false);
     }
@@ -53,61 +53,61 @@ const TeacherAnnualCalendar = () => {
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
     const startingDay = firstDay.getDay();
-    
+
     const days = [];
-    
+
     // Add empty cells for days before the first day of the month
     for (let i = 0; i < startingDay; i++) {
       days.push(null);
     }
-    
+
     // Add all days of the month
     for (let i = 1; i <= daysInMonth; i++) {
       days.push(new Date(year, month, i));
     }
-    
+
     return days;
   };
 
   const getEventsForDate = (date) => {
     if (!date) return [];
-    
-    const dateString = date.toISOString().split('T')[0];
-    return events.filter(event => {
+
+    const dateString = date.toISOString().split("T")[0];
+    return events.filter((event) => {
       const eventDate = new Date(event.date);
-      const eventDateString = eventDate.toISOString().split('T')[0];
+      const eventDateString = eventDate.toISOString().split("T")[0];
       return eventDateString === dateString;
     });
   };
 
   const getEventTypeColor = (eventType) => {
     switch (eventType?.toLowerCase()) {
-      case 'exam':
-        return 'bg-red-100 text-red-800 border-red-200';
-      case 'holiday':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'event':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'meeting':
-        return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'deadline':
-        return 'bg-orange-100 text-orange-800 border-orange-200';
+      case "exam":
+        return "bg-red-100 text-red-800 border-red-200";
+      case "holiday":
+        return "bg-blue-100 text-blue-800 border-blue-200";
+      case "event":
+        return "bg-green-100 text-green-800 border-green-200";
+      case "meeting":
+        return "bg-purple-100 text-purple-800 border-purple-200";
+      case "deadline":
+        return "bg-orange-100 text-orange-800 border-orange-200";
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
 
   const getEventTypeIcon = (eventType) => {
     switch (eventType?.toLowerCase()) {
-      case 'exam':
+      case "exam":
         return ExclamationTriangleIcon;
-      case 'holiday':
+      case "holiday":
         return CalendarIcon;
-      case 'event':
+      case "event":
         return InformationCircleIcon;
-      case 'meeting':
+      case "meeting":
         return AcademicCapIcon;
-      case 'deadline':
+      case "deadline":
         return ClockIcon;
       default:
         return InformationCircleIcon;
@@ -115,19 +115,19 @@ const TeacherAnnualCalendar = () => {
   };
 
   const formatDate = (date) => {
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+    return date.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
 
   const formatTime = (time) => {
-    if (!time) return '';
-    return new Date(`2000-01-01T${time}`).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
+    if (!time) return "";
+    return new Date(`2000-01-01T${time}`).toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
       hour12: true,
     });
   };
@@ -157,7 +157,7 @@ const TeacherAnnualCalendar = () => {
   };
 
   const handleBack = () => {
-    navigate('/teacher/dashboard');
+    navigate("/teacher/dashboard");
   };
 
   if (loading) {
@@ -180,7 +180,7 @@ const TeacherAnnualCalendar = () => {
       <div className="w-full bg-blue-600 rounded-b-3xl pb-6 pt-8 text-white shadow relative">
         <button
           className="absolute left-4 top-8 p-2 rounded-full hover:bg-blue-700 focus:outline-none"
-          onClick={() => navigate('/teacher/dashboard')}
+          onClick={() => navigate("/teacher/dashboard")}
           aria-label="Back"
         >
           <ArrowLeftIcon className="w-6 h-6 text-white" />
@@ -194,19 +194,13 @@ const TeacherAnnualCalendar = () => {
         {/* Calendar Navigation */}
         <div className="bg-white rounded-2xl shadow p-4 mb-4">
           <div className="flex items-center justify-between mb-2">
-            <button
-              onClick={() => navigateMonth(-1)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
+            <button onClick={() => navigateMonth(-1)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
               <ChevronLeftIcon className="w-6 h-6 text-gray-600" />
             </button>
             <h2 className="text-lg font-semibold text-gray-900">
-              {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              {currentMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
             </h2>
-            <button
-              onClick={() => navigateMonth(1)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
+            <button onClick={() => navigateMonth(1)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
               <ChevronRightIcon className="w-6 h-6 text-gray-600" />
             </button>
           </div>
@@ -214,7 +208,7 @@ const TeacherAnnualCalendar = () => {
           {/* Calendar Grid */}
           <div className="grid grid-cols-7 gap-1">
             {/* Day Headers */}
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
               <div key={day} className="p-1 text-center text-xs font-medium text-gray-400">
                 {day}
               </div>
@@ -232,28 +226,39 @@ const TeacherAnnualCalendar = () => {
                   key={index}
                   onClick={() => handleDateClick(day)}
                   className={`p-2 min-h-[56px] flex flex-col items-center justify-start border border-gray-200 cursor-pointer transition-colors rounded-lg select-none
-                    ${isCurrentDay ? 'bg-blue-50 border-blue-300' : isSelectedDay ? 'bg-blue-100 border-blue-400' : 'hover:bg-gray-50'}`}
+                    ${
+                      isCurrentDay
+                        ? "bg-blue-50 border-blue-300"
+                        : isSelectedDay
+                        ? "bg-blue-100 border-blue-400"
+                        : "hover:bg-gray-50"
+                    }`}
                 >
-                  <div className={`text-sm font-semibold mb-1 ${isCurrentDay ? 'text-blue-600' : 'text-gray-900'}`}>{day.getDate()}</div>
+                  <div className={`text-sm font-semibold mb-1 ${isCurrentDay ? "text-blue-600" : "text-gray-900"}`}>
+                    {day.getDate()}
+                  </div>
                   {/* Event Dots */}
                   <div className="flex flex-wrap gap-0.5 justify-center">
                     {dayEvents.slice(0, 3).map((event, i) => (
                       <span
                         key={i}
                         className={`w-2 h-2 rounded-full mt-0.5 ${
-                          event.eventType === 'holiday' ? 'bg-blue-500' :
-                          event.eventType === 'exam' ? 'bg-red-500' :
-                          event.eventType === 'event' ? 'bg-green-500' :
-                          event.eventType === 'meeting' ? 'bg-purple-500' :
-                          event.eventType === 'deadline' ? 'bg-orange-500' :
-                          'bg-gray-400'
+                          event.eventType === "holiday"
+                            ? "bg-blue-500"
+                            : event.eventType === "exam"
+                            ? "bg-red-500"
+                            : event.eventType === "event"
+                            ? "bg-green-500"
+                            : event.eventType === "meeting"
+                            ? "bg-purple-500"
+                            : event.eventType === "deadline"
+                            ? "bg-orange-500"
+                            : "bg-gray-400"
                         }`}
                       />
                     ))}
                   </div>
-                  {dayEvents.length > 3 && (
-                    <span className="text-[10px] text-gray-400">+{dayEvents.length - 3}</span>
-                  )}
+                  {dayEvents.length > 3 && <span className="text-[10px] text-gray-400">+{dayEvents.length - 3}</span>}
                 </div>
               );
             })}
@@ -282,7 +287,7 @@ const TeacherAnnualCalendar = () => {
                       <div className="font-medium text-gray-900 text-sm">{event.title}</div>
                       <div className="text-xs text-gray-500">{event.eventType}</div>
                     </div>
-                    <span className="text-xs text-gray-400">{event.time ? formatTime(event.time) : ''}</span>
+                    <span className="text-xs text-gray-400">{event.time ? formatTime(event.time) : ""}</span>
                   </div>
                 );
               })}
@@ -295,7 +300,7 @@ const TeacherAnnualCalendar = () => {
           <h3 className="text-base font-semibold text-gray-900 mb-2">Upcoming Events</h3>
           <div className="space-y-2">
             {events
-              .filter(event => new Date(event.date) > new Date())
+              .filter((event) => new Date(event.date) > new Date())
               .sort((a, b) => new Date(a.date) - new Date(b.date))
               .slice(0, 5)
               .map((event, index) => {
@@ -384,4 +389,4 @@ const TeacherAnnualCalendar = () => {
   );
 };
 
-export default TeacherAnnualCalendar; 
+export default TeacherAnnualCalendar;

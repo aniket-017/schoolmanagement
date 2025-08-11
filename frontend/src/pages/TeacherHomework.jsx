@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import { 
-  BookOpenIcon, 
-  CalendarIcon, 
-  ClockIcon, 
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import {
+  BookOpenIcon,
+  CalendarIcon,
+  ClockIcon,
   CheckCircleIcon,
   EyeIcon,
   FunnelIcon,
@@ -13,15 +13,15 @@ import {
   PlusIcon,
   PencilIcon,
   TrashIcon,
-  ExclamationTriangleIcon
-} from '@heroicons/react/24/outline';
-import { useTeacherAuth } from '../context/TeacherAuthContext';
-import apiService from '../services/apiService';
-import HomeworkCard from '../components/HomeworkCard';
-import HomeworkModal from '../components/HomeworkModal';
-import HomeworkStats from '../components/HomeworkStats';
-import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
-import HomeworkDetailModal from '../components/HomeworkDetailModal';
+  ExclamationTriangleIcon,
+} from "@heroicons/react/24/outline";
+import { useTeacherAuth } from "../context/TeacherAuthContext";
+import apiService from "../services/apiService";
+import HomeworkCard from "../components/HomeworkCard";
+import HomeworkModal from "../components/HomeworkModal";
+import HomeworkStats from "../components/HomeworkStats";
+import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
+import HomeworkDetailModal from "../components/HomeworkDetailModal";
 
 const TeacherHomework = () => {
   const { user } = useTeacherAuth();
@@ -30,11 +30,11 @@ const TeacherHomework = () => {
   const [filteredHomework, setFilteredHomework] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [view, setView] = useState('list'); // 'list' or 'calendar'
-  const [filter, setFilter] = useState('all'); // 'all', 'due_today', 'due_tomorrow', 'overdue', 'active'
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('dueDate'); // 'dueDate', 'assignedDate', 'subject', 'class'
-  const [sortOrder, setSortOrder] = useState('asc'); // 'asc' or 'desc'
+  const [view, setView] = useState("list"); // 'list' or 'calendar'
+  const [filter, setFilter] = useState("all"); // 'all', 'due_today', 'due_tomorrow', 'overdue', 'active'
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState("dueDate"); // 'dueDate', 'assignedDate', 'subject', 'class'
+  const [sortOrder, setSortOrder] = useState("asc"); // 'asc' or 'desc'
   const [showHomeworkModal, setShowHomeworkModal] = useState(false);
   const [editingHomework, setEditingHomework] = useState(null);
   const [homeworkStats, setHomeworkStats] = useState({});
@@ -56,21 +56,21 @@ const TeacherHomework = () => {
       setLoading(true);
       const [homeworkResponse, statsResponse] = await Promise.all([
         apiService.homework.getAll({ limit: 100 }),
-        apiService.homework.getStats()
+        apiService.homework.getStats(),
       ]);
-      
+
       if (homeworkResponse.success) {
         setHomework(homeworkResponse.data || []);
       } else {
-        setError('Failed to load homework');
+        setError("Failed to load homework");
       }
 
       if (statsResponse.success) {
         setHomeworkStats(statsResponse.data || {});
       }
     } catch (error) {
-      console.error('Error loading homework:', error);
-      setError('Error loading homework');
+      console.error("Error loading homework:", error);
+      setError("Error loading homework");
     } finally {
       setLoading(false);
     }
@@ -81,40 +81,41 @@ const TeacherHomework = () => {
 
     // Apply search filter
     if (searchTerm) {
-      filtered = filtered.filter(hw => 
-        hw.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        hw.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        hw.subjectId?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        hw.classId?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+      filtered = filtered.filter(
+        (hw) =>
+          hw.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          hw.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          hw.subjectId?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          hw.classId?.name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     // Apply status filter
     switch (filter) {
-      case 'due_today':
-        filtered = filtered.filter(hw => {
+      case "due_today":
+        filtered = filtered.filter((hw) => {
           const today = new Date();
           const dueDate = new Date(hw.dueDate);
           return dueDate.toDateString() === today.toDateString();
         });
         break;
-      case 'due_tomorrow':
-        filtered = filtered.filter(hw => {
+      case "due_tomorrow":
+        filtered = filtered.filter((hw) => {
           const tomorrow = new Date();
           tomorrow.setDate(tomorrow.getDate() + 1);
           const dueDate = new Date(hw.dueDate);
           return dueDate.toDateString() === tomorrow.toDateString();
         });
         break;
-      case 'overdue':
-        filtered = filtered.filter(hw => {
+      case "overdue":
+        filtered = filtered.filter((hw) => {
           const now = new Date();
           const dueDate = new Date(hw.dueDate);
           return dueDate < now;
         });
         break;
-      case 'active':
-        filtered = filtered.filter(hw => hw.isActive !== false);
+      case "active":
+        filtered = filtered.filter((hw) => hw.isActive !== false);
         break;
       default:
         break;
@@ -123,30 +124,30 @@ const TeacherHomework = () => {
     // Apply sorting
     filtered.sort((a, b) => {
       let aValue, bValue;
-      
+
       switch (sortBy) {
-        case 'dueDate':
+        case "dueDate":
           aValue = new Date(a.dueDate);
           bValue = new Date(b.dueDate);
           break;
-        case 'assignedDate':
+        case "assignedDate":
           aValue = new Date(a.assignedDate);
           bValue = new Date(b.assignedDate);
           break;
-        case 'subject':
-          aValue = a.subjectId?.name || '';
-          bValue = b.subjectId?.name || '';
+        case "subject":
+          aValue = a.subjectId?.name || "";
+          bValue = b.subjectId?.name || "";
           break;
-        case 'class':
-          aValue = a.classId?.name || '';
-          bValue = b.classId?.name || '';
+        case "class":
+          aValue = a.classId?.name || "";
+          bValue = b.classId?.name || "";
           break;
         default:
           aValue = new Date(a.dueDate);
           bValue = new Date(b.dueDate);
       }
 
-      if (sortOrder === 'asc') {
+      if (sortOrder === "asc") {
         return aValue > bValue ? 1 : -1;
       } else {
         return aValue < bValue ? 1 : -1;
@@ -173,22 +174,22 @@ const TeacherHomework = () => {
 
   const confirmDeleteHomework = async () => {
     if (!deletingHomeworkId) return;
-    
+
     try {
       const response = await apiService.homework.delete(deletingHomeworkId);
       if (response.success) {
-        setHomework(prev => prev.filter(hw => hw._id !== deletingHomeworkId));
+        setHomework((prev) => prev.filter((hw) => hw._id !== deletingHomeworkId));
         // Reload stats after deletion
         const statsResponse = await apiService.homework.getStats();
         if (statsResponse.success) {
           setHomeworkStats(statsResponse.data || {});
         }
       } else {
-        alert('Failed to delete homework');
+        alert("Failed to delete homework");
       }
     } catch (error) {
-      console.error('Error deleting homework:', error);
-      alert('Error deleting homework');
+      console.error("Error deleting homework:", error);
+      alert("Error deleting homework");
     } finally {
       setShowDeleteModal(false);
       setDeletingHomeworkId(null);
@@ -212,47 +213,47 @@ const TeacherHomework = () => {
 
   const handleHomeworkSuccess = (newHomework) => {
     if (editingHomework) {
-      setHomework(prev => prev.map(hw => hw._id === newHomework._id ? newHomework : hw));
+      setHomework((prev) => prev.map((hw) => (hw._id === newHomework._id ? newHomework : hw)));
     } else {
-      setHomework(prev => [newHomework, ...prev]);
+      setHomework((prev) => [newHomework, ...prev]);
     }
     setShowHomeworkModal(false);
     setEditingHomework(null);
-    
+
     // Reload stats after creation/update
     loadHomework();
   };
 
   const getFilterCount = (filterType) => {
     switch (filterType) {
-      case 'due_today':
-        return homework.filter(hw => {
+      case "due_today":
+        return homework.filter((hw) => {
           const today = new Date();
           const dueDate = new Date(hw.dueDate);
           return dueDate.toDateString() === today.toDateString();
         }).length;
-      case 'due_tomorrow':
-        return homework.filter(hw => {
+      case "due_tomorrow":
+        return homework.filter((hw) => {
           const tomorrow = new Date();
           tomorrow.setDate(tomorrow.getDate() + 1);
           const dueDate = new Date(hw.dueDate);
           return dueDate.toDateString() === tomorrow.toDateString();
         }).length;
-      case 'overdue':
-        return homework.filter(hw => {
+      case "overdue":
+        return homework.filter((hw) => {
           const now = new Date();
           const dueDate = new Date(hw.dueDate);
           return dueDate < now;
         }).length;
-      case 'active':
-        return homework.filter(hw => hw.isActive !== false).length;
+      case "active":
+        return homework.filter((hw) => hw.isActive !== false).length;
       default:
         return homework.length;
     }
   };
 
   const handleBack = () => {
-    navigate('/teacher/dashboard');
+    navigate("/teacher/dashboard");
   };
 
   if (loading) {
@@ -356,11 +357,11 @@ const TeacherHomework = () => {
                   onChange={(e) => setFilter(e.target.value)}
                   className="flex-1 px-3 py-2 bg-transparent border-none focus:ring-0 focus:outline-none text-sm font-medium text-gray-700"
                 >
-                  <option value="all">All ({getFilterCount('all')})</option>
-                  <option value="active">Active ({getFilterCount('active')})</option>
-                  <option value="due_today">Due Today ({getFilterCount('due_today')})</option>
-                  <option value="due_tomorrow">Due Tomorrow ({getFilterCount('due_tomorrow')})</option>
-                  <option value="overdue">Overdue ({getFilterCount('overdue')})</option>
+                  <option value="all">All ({getFilterCount("all")})</option>
+                  <option value="active">Active ({getFilterCount("active")})</option>
+                  <option value="due_today">Due Today ({getFilterCount("due_today")})</option>
+                  <option value="due_tomorrow">Due Tomorrow ({getFilterCount("due_tomorrow")})</option>
+                  <option value="overdue">Overdue ({getFilterCount("overdue")})</option>
                 </select>
               </div>
 
@@ -380,10 +381,10 @@ const TeacherHomework = () => {
                   <option value="class">Class</option>
                 </select>
                 <button
-                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                  onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
                   className="flex items-center justify-center w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-sm font-bold text-gray-600"
                 >
-                  {sortOrder === 'asc' ? '↑' : '↓'}
+                  {sortOrder === "asc" ? "↑" : "↓"}
                 </button>
               </div>
             </div>
@@ -403,10 +404,9 @@ const TeacherHomework = () => {
               </div>
               <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">No Homework Found</h3>
               <p className="text-sm sm:text-base text-gray-600 px-4 mb-6">
-                {searchTerm || filter !== 'all' 
-                  ? 'No homework matches your current filters. Try adjusting your search or filters.'
-                  : 'You haven\'t created any homework assignments yet.'
-                }
+                {searchTerm || filter !== "all"
+                  ? "No homework matches your current filters. Try adjusting your search or filters."
+                  : "You haven't created any homework assignments yet."}
               </p>
               <button
                 onClick={handleCreateHomework}
@@ -472,4 +472,4 @@ const TeacherHomework = () => {
   );
 };
 
-export default TeacherHomework; 
+export default TeacherHomework;

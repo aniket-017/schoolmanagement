@@ -39,7 +39,7 @@ const TeacherAnnouncements = () => {
     try {
       const res = await fetch(`${appConfig.API_BASE_URL}/announcements/teachers`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
       const data = await res.json();
@@ -57,7 +57,7 @@ const TeacherAnnouncements = () => {
     try {
       const res = await fetch(`${appConfig.API_BASE_URL}/classes`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
       const data = await res.json();
@@ -69,9 +69,7 @@ const TeacherAnnouncements = () => {
     }
   };
 
-  const filtered = tab === "all"
-    ? announcements
-    : announcements.filter(a => a.createdBy?._id === user?._id);
+  const filtered = tab === "all" ? announcements : announcements.filter((a) => a.createdBy?._id === user?._id);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -80,8 +78,8 @@ const TeacherAnnouncements = () => {
       const res = await fetch(`${appConfig.API_BASE_URL}/announcements`, {
         method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
         body: JSON.stringify({
           title: form.title,
@@ -109,7 +107,12 @@ const TeacherAnnouncements = () => {
     <div className="min-h-screen bg-gray-100 px-2 py-4 flex justify-center items-start">
       <div className="w-full max-w-md">
         <div className="flex items-center space-x-2 mb-6">
-          <button onClick={() => window.history.back()} className="text-2xl text-gray-500 hover:text-blue-600 transition-colors font-bold">←</button>
+          <button
+            onClick={() => window.history.back()}
+            className="text-2xl text-gray-500 hover:text-blue-600 transition-colors font-bold"
+          >
+            ←
+          </button>
           <h2 className="text-2xl font-bold tracking-tight">All Announcements</h2>
         </div>
         <button
@@ -120,14 +123,18 @@ const TeacherAnnouncements = () => {
         </button>
         <div className="flex mb-6 rounded-xl overflow-hidden shadow-sm">
           <button
-            className={`flex-1 py-2 font-semibold text-base transition-colors ${tab === 'all' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}
-            onClick={() => setTab('all')}
+            className={`flex-1 py-2 font-semibold text-base transition-colors ${
+              tab === "all" ? "bg-blue-600 text-white" : "bg-white text-gray-600 border border-gray-200"
+            }`}
+            onClick={() => setTab("all")}
           >
             All Announcements
           </button>
           <button
-            className={`flex-1 py-2 font-semibold text-base transition-colors ${tab === 'mine' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}
-            onClick={() => setTab('mine')}
+            className={`flex-1 py-2 font-semibold text-base transition-colors ${
+              tab === "mine" ? "bg-blue-600 text-white" : "bg-white text-gray-600 border border-gray-200"
+            }`}
+            onClick={() => setTab("mine")}
           >
             My Announcements
           </button>
@@ -139,7 +146,7 @@ const TeacherAnnouncements = () => {
             {filtered.length === 0 ? (
               <div className="text-center text-gray-400 py-12">No announcements found.</div>
             ) : (
-              filtered.map(a => (
+              filtered.map((a) => (
                 <div
                   key={a._id}
                   className="bg-white rounded-2xl p-5 shadow flex flex-col gap-1 border border-gray-100 cursor-pointer hover:bg-blue-50 transition-colors"
@@ -148,7 +155,7 @@ const TeacherAnnouncements = () => {
                   <div className="font-bold text-lg mb-1 text-gray-900">{a.title}</div>
                   <div className="text-gray-700 text-base mb-2 line-clamp-2">{a.content}</div>
                   <div className="flex justify-between text-xs text-gray-400 mt-2">
-                    <span>By {a.createdBy?.name || 'School Administrator'}</span>
+                    <span>By {a.createdBy?.name || "School Administrator"}</span>
                     <span>{new Date(a.createdAt).toLocaleDateString()}</span>
                   </div>
                 </div>
@@ -168,7 +175,7 @@ const TeacherAnnouncements = () => {
                     placeholder="Title"
                     className="w-full border border-gray-200 rounded-lg px-4 py-2 mb-3 text-base focus:ring-2 focus:ring-blue-200 focus:outline-none"
                     value={form.title}
-                    onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                    onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                     required
                   />
                   <textarea
@@ -176,7 +183,7 @@ const TeacherAnnouncements = () => {
                     className="w-full border border-gray-200 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-200 focus:outline-none"
                     rows={3}
                     value={form.message}
-                    onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
+                    onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
                     required
                   />
                 </div>
@@ -185,13 +192,16 @@ const TeacherAnnouncements = () => {
                   <select
                     className="w-full border border-gray-200 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-200 focus:outline-none"
                     value={form.classId}
-                    onChange={e => setForm(f => ({ ...f, classId: e.target.value }))}
+                    onChange={(e) => setForm((f) => ({ ...f, classId: e.target.value }))}
                     required
                   >
-                    <option value="" disabled>Select Class</option>
-                    {classes.map(cls => (
+                    <option value="" disabled>
+                      Select Class
+                    </option>
+                    {classes.map((cls) => (
                       <option key={cls._id} value={cls._id}>
-                        {cls.grade}{getOrdinalSuffix(cls.grade)} Class - {cls.division}
+                        {cls.grade}
+                        {getOrdinalSuffix(cls.grade)} Class - {cls.division}
                       </option>
                     ))}
                   </select>
@@ -210,7 +220,7 @@ const TeacherAnnouncements = () => {
                     className="px-5 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
                     disabled={creating}
                   >
-                    {creating ? 'CREATING...' : 'CREATE'}
+                    {creating ? "CREATING..." : "CREATE"}
                   </button>
                 </div>
               </form>
@@ -234,13 +244,13 @@ const TeacherAnnouncements = () => {
                 <span className="font-medium">Class: </span>
                 {selectedAnnouncement.targetClasses && selectedAnnouncement.targetClasses.length > 0
                   ? (() => {
-                      const cls = classes.find(cls => cls._id === selectedAnnouncement.targetClasses[0]);
-                      return cls ? `${cls.grade}${getOrdinalSuffix(cls.grade)} Class - ${cls.division}` : 'N/A';
+                      const cls = classes.find((cls) => cls._id === selectedAnnouncement.targetClasses[0]);
+                      return cls ? `${cls.grade}${getOrdinalSuffix(cls.grade)} Class - ${cls.division}` : "N/A";
                     })()
-                  : 'All'}
+                  : "All"}
               </div>
               <div className="flex justify-between text-xs text-gray-400 mt-4">
-                <span>By {selectedAnnouncement.createdBy?.name || 'School Administrator'}</span>
+                <span>By {selectedAnnouncement.createdBy?.name || "School Administrator"}</span>
                 <span>{new Date(selectedAnnouncement.createdAt).toLocaleDateString()}</span>
               </div>
             </div>
@@ -251,4 +261,4 @@ const TeacherAnnouncements = () => {
   );
 };
 
-export default TeacherAnnouncements; 
+export default TeacherAnnouncements;
