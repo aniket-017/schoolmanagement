@@ -827,8 +827,6 @@ const StudentAttendance = () => {
           >
             <h3 className="text-lg font-semibold text-gray-900 mb-6">{formatPeriodDisplay()} Attendance</h3>
 
-            
-         
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
@@ -1185,8 +1183,6 @@ const StudentAttendance = () => {
         {/* Period Attendance Details */}
         <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-6">{formatPeriodDisplay()} Attendance Details</h3>
-
-          
 
           {loading ? (
             <div className="flex items-center justify-center py-12">
