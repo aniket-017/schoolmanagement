@@ -8,11 +8,9 @@ import {
   Eye,
   Edit,
   Trash2,
-  Clock,
   Users,
   Pin,
   Calendar,
-  Send,
   AlertCircle,
   Info,
   CheckCircle,
@@ -32,6 +30,7 @@ const Announcements = () => {
   const [editingAnnouncement, setEditingAnnouncement] = useState(null);
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [openMenuId, setOpenMenuId] = useState(null);
   const [stats, setStats] = useState({
     totalAnnouncements: 0,
     publishedAnnouncements: 0,
@@ -40,14 +39,14 @@ const Announcements = () => {
   });
   const [classes, setClasses] = useState([]);
   const [users, setUsers] = useState([]);
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalAnnouncements, setTotalAnnouncements] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  
+
   const { user } = useAuth();
 
   useEffect(() => {
@@ -57,8 +56,6 @@ const Announcements = () => {
     fetchUsers();
   }, []);
 
-
-
   const fetchAnnouncements = async (page = 1, reset = false) => {
     try {
       if (reset || page === 1) {
@@ -66,10 +63,10 @@ const Announcements = () => {
       } else {
         setLoadingMore(true);
       }
-      
+
       const limit = 10; // Number of announcements per page
       let url = `${appConfig.API_BASE_URL}/announcements?page=${page}&limit=${limit}`;
-      
+
       // Add status filter if not on "all" tab
       if (activeTab !== "all") {
         if (activeTab === "published") {
@@ -82,45 +79,41 @@ const Announcements = () => {
           // For "mine" tab, we'll filter on the client side since we need to check createdBy
         }
       }
-      
+
       const response = await fetch(url, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         // The API returns: { success: true, data: [...], pagination: {...} }
         const announcementsData = data.data || [];
         const pagination = data.pagination || {};
-        
 
-        
         if (reset || page === 1) {
           setAnnouncements(announcementsData);
           setCurrentPage(page);
         } else {
-          setAnnouncements(prev => [...prev, ...announcementsData]);
+          setAnnouncements((prev) => [...prev, ...announcementsData]);
         }
-        
+
         // Use the pagination data from API
         const total = pagination.count || announcementsData.length;
         const totalPages = pagination.total || 1;
-        
+
         setTotalPages(totalPages);
         setTotalAnnouncements(total);
         setHasMore(page < totalPages && announcementsData.length === 10);
-        
-
       }
     } catch (error) {
-      console.error('Error fetching announcements:', error);
+      console.error("Error fetching announcements:", error);
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -131,14 +124,14 @@ const Announcements = () => {
     try {
       const response = await fetch(`${appConfig.API_BASE_URL}/announcements/stats/overview`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
       if (data.success) {
         setStats({
@@ -149,7 +142,7 @@ const Announcements = () => {
         });
       }
     } catch (error) {
-      console.error('Error fetching stats:', error);
+      console.error("Error fetching stats:", error);
     }
   };
 
@@ -157,20 +150,20 @@ const Announcements = () => {
     try {
       const response = await fetch(`${appConfig.API_BASE_URL}/classes`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
       if (data.success) {
         setClasses(data.data);
       }
     } catch (error) {
-      console.error('Error fetching classes:', error);
+      console.error("Error fetching classes:", error);
     }
   };
 
@@ -178,36 +171,36 @@ const Announcements = () => {
     try {
       const response = await fetch(`${appConfig.API_BASE_URL}/users`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
       if (data.success) {
         setUsers(data.data);
       }
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error("Error fetching users:", error);
     }
   };
 
   const handleSaveAnnouncement = async (formData) => {
     try {
-      const url = editingAnnouncement 
+      const url = editingAnnouncement
         ? `${appConfig.API_BASE_URL}/announcements/${editingAnnouncement._id}`
         : `${appConfig.API_BASE_URL}/announcements`;
-      
-      const method = editingAnnouncement ? 'PUT' : 'POST';
-      
+
+      const method = editingAnnouncement ? "PUT" : "POST";
+
       const response = await fetch(url, {
         method,
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
         body: JSON.stringify(formData),
       });
@@ -217,19 +210,19 @@ const Announcements = () => {
       }
 
       const data = await response.json();
-      
+
       if (data.success) {
         setShowCreateModal(false);
         setEditingAnnouncement(null);
         fetchAnnouncements(1, true);
         fetchStats();
-        alert(editingAnnouncement ? 'Announcement updated successfully!' : 'Announcement created successfully!');
+        alert(editingAnnouncement ? "Announcement updated successfully!" : "Announcement created successfully!");
       } else {
-        alert(data.message || 'Error saving announcement');
+        alert(data.message || "Error saving announcement");
       }
     } catch (error) {
-      console.error('Error saving announcement:', error);
-      alert('Error saving announcement');
+      console.error("Error saving announcement:", error);
+      alert("Error saving announcement");
     }
   };
 
@@ -239,15 +232,15 @@ const Announcements = () => {
   };
 
   const handleDeleteAnnouncement = async (announcementId) => {
-    if (!confirm('Are you sure you want to delete this announcement?')) {
+    if (!confirm("Are you sure you want to delete this announcement?")) {
       return;
     }
 
     try {
       const response = await fetch(`${appConfig.API_BASE_URL}/announcements/${announcementId}`, {
-        method: 'DELETE',
+        method: "DELETE",
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
 
@@ -256,26 +249,26 @@ const Announcements = () => {
       }
 
       const data = await response.json();
-      
+
       if (data.success) {
         fetchAnnouncements(1, true);
         fetchStats();
-        alert('Announcement deleted successfully!');
+        alert("Announcement deleted successfully!");
       } else {
-        alert(data.message || 'Error deleting announcement');
+        alert(data.message || "Error deleting announcement");
       }
     } catch (error) {
-      console.error('Error deleting announcement:', error);
-      alert('Error deleting announcement');
+      console.error("Error deleting announcement:", error);
+      alert("Error deleting announcement");
     }
   };
 
   const handleTogglePin = async (announcementId) => {
     try {
       const response = await fetch(`${appConfig.API_BASE_URL}/announcements/${announcementId}/pin`, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
 
@@ -284,23 +277,23 @@ const Announcements = () => {
       }
 
       const data = await response.json();
-      
+
       if (data.success) {
         fetchAnnouncements(1, true);
         fetchStats();
       }
     } catch (error) {
-      console.error('Error toggling pin:', error);
+      console.error("Error toggling pin:", error);
     }
   };
 
   const handleStatusChange = async (announcementId, newStatus) => {
     try {
       const response = await fetch(`${appConfig.API_BASE_URL}/announcements/${announcementId}/status`, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
         body: JSON.stringify({ status: newStatus }),
       });
@@ -310,13 +303,13 @@ const Announcements = () => {
       }
 
       const data = await response.json();
-      
+
       if (data.success) {
         fetchAnnouncements(1, true);
         fetchStats();
       }
     } catch (error) {
-      console.error('Error updating status:', error);
+      console.error("Error updating status:", error);
     }
   };
 
@@ -355,10 +348,18 @@ const Announcements = () => {
     },
   ];
 
-  const isTeacher = user && user.role === 'teacher';
+  const isTeacher = user && user.role === "teacher";
   const tabConfig = [
     { id: "all", name: "All Announcements", count: totalAnnouncements },
-    ...(isTeacher ? [{ id: "mine", name: "My Announcements", count: announcements.filter(a => a.createdBy?._id === user._id).length }] : []),
+    ...(isTeacher
+      ? [
+          {
+            id: "mine",
+            name: "My Announcements",
+            count: announcements.filter((a) => a.createdBy?._id === user._id).length,
+          },
+        ]
+      : []),
     { id: "published", name: "Published", count: announcements.filter((a) => a.status === "published").length },
     { id: "draft", name: "Drafts", count: announcements.filter((a) => a.status === "draft").length },
     { id: "pinned", name: "Pinned", count: announcements.filter((a) => a.isPinned).length },
@@ -368,7 +369,7 @@ const Announcements = () => {
     const matchesSearch =
       announcement.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       announcement.content.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     let matchesTab = true;
     if (activeTab === "mine" && isTeacher) {
       matchesTab = announcement.createdBy?._id === user._id;
@@ -387,7 +388,7 @@ const Announcements = () => {
           matchesTab = true;
       }
     }
-    
+
     return matchesSearch && matchesTab;
   });
 
@@ -448,13 +449,13 @@ const Announcements = () => {
 
   const getTeacherName = (teacher) => {
     if (!teacher) return null;
-    
+
     // Try different name formats
     if (teacher.name) return teacher.name;
     if (teacher.firstName || teacher.lastName) {
       return [teacher.firstName, teacher.middleName, teacher.lastName].filter(Boolean).join(" ");
     }
-    if (teacher.email) return teacher.email.split('@')[0]; // Use email prefix as fallback
+    if (teacher.email) return teacher.email.split("@")[0]; // Use email prefix as fallback
     return null;
   };
 
@@ -499,10 +500,15 @@ const Announcements = () => {
       <div className="max-w-7xl mx-auto p-6 bg-gray-50 min-h-screen">
         <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
           {/* Header */}
-          <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-lg p-8 flex flex-col lg:flex-row lg:items-center lg:justify-between">
+          <motion.div
+            variants={itemVariants}
+            className="bg-white rounded-2xl shadow-lg p-8 flex flex-col lg:flex-row lg:items-center lg:justify-between"
+          >
             <div>
               <h1 className="text-4xl font-bold text-gray-900 mb-4">Announcements</h1>
-              <p className="text-xl text-gray-600 mb-2">Create, manage, and share important announcements with your school community</p>
+              <p className="text-xl text-gray-600 mb-2">
+                Create, manage, and share important announcements with your school community
+              </p>
             </div>
             <div className="mt-6 lg:mt-0 flex space-x-3">
               <motion.button
@@ -517,15 +523,6 @@ const Announcements = () => {
                 <Plus className="w-5 h-5 mr-2" />
                 Create Announcement
               </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="flex items-center px-5 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all duration-200 shadow-lg hover:shadow-xl font-medium"
-              >
-                <Send className="w-5 h-5 mr-2" />
-                Send Notification
-              </motion.button>
-
             </div>
           </motion.div>
 
@@ -685,13 +682,19 @@ const Announcements = () => {
                               </div>
                               <div className="flex items-center space-x-1">
                                 <Users className="w-4 h-4" />
-                                <span>{getTargetAudienceLabel(announcement.targetAudience, announcement.targetClasses, announcement.targetIndividuals)}</span>
+                                <span>
+                                  {getTargetAudienceLabel(
+                                    announcement.targetAudience,
+                                    announcement.targetClasses,
+                                    announcement.targetIndividuals
+                                  )}
+                                </span>
                               </div>
                               <div className="flex items-center space-x-1">
                                 <Eye className="w-4 h-4" />
                                 <span>{announcement.views || 0} views</span>
                               </div>
-                              <span>by {getTeacherName(announcement.createdBy) || 'Class Teacher'}</span>
+                              <span>by {getTeacherName(announcement.createdBy) || "Class Teacher"}</span>
                             </div>
                           </div>
                         </div>
@@ -707,31 +710,49 @@ const Announcements = () => {
                           >
                             {announcement.status}
                           </span>
-
-                          <div className="flex items-center space-x-1">
-                            <button 
-                              onClick={() => handleTogglePin(announcement._id)}
-                              className={cn(
-                                "p-2 rounded-lg transition-colors",
-                                announcement.isPinned 
-                                  ? "text-orange-600 bg-orange-50" 
-                                  : "text-gray-400 hover:text-orange-600 hover:bg-orange-50"
-                              )}
+                          <div className="relative">
+                            <button
+                              onClick={() => setOpenMenuId(openMenuId === announcement._id ? null : announcement._id)}
+                              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                              aria-haspopup="menu"
+                              aria-expanded={openMenuId === announcement._id}
                             >
-                              <Pin className="w-4 h-4" />
+                              <MoreVertical className="w-5 h-5" />
                             </button>
-                            <button 
-                              onClick={() => handleEditAnnouncement(announcement)}
-                              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button 
-                              onClick={() => handleDeleteAnnouncement(announcement._id)}
-                              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            {openMenuId === announcement._id && (
+                              <div className="absolute right-0 mt-2 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                                <button
+                                  onClick={() => {
+                                    handleTogglePin(announcement._id);
+                                    setOpenMenuId(null);
+                                  }}
+                                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
+                                >
+                                  <Pin className="w-4 h-4 text-orange-600" />
+                                  {announcement.isPinned ? "Unpin" : "Pin"}
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    handleEditAnnouncement(announcement);
+                                    setOpenMenuId(null);
+                                  }}
+                                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
+                                >
+                                  <Edit className="w-4 h-4 text-blue-600" />
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    handleDeleteAnnouncement(announcement._id);
+                                    setOpenMenuId(null);
+                                  }}
+                                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 text-red-600"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                  Delete
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -768,7 +789,8 @@ const Announcements = () => {
                 <div className="mt-8 flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0">
                   {/* Pagination Info */}
                   <div className="text-sm text-gray-600">
-                    Showing {announcements.length} of {totalAnnouncements} announcements (Page {currentPage} of {totalPages})
+                    Showing {announcements.length} of {totalAnnouncements} announcements (Page {currentPage} of{" "}
+                    {totalPages})
                   </div>
 
                   {/* Pagination Buttons */}
@@ -847,7 +869,7 @@ const Announcements = () => {
                       disabled={loadingMore}
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
                     >
-                      {loadingMore ? 'Loading...' : 'Load More'}
+                      {loadingMore ? "Loading..." : "Load More"}
                     </button>
                   )}
                 </div>
@@ -860,8 +882,6 @@ const Announcements = () => {
                   <p className="mt-2 text-sm text-gray-600">Loading more announcements...</p>
                 </div>
               )}
-
-
             </div>
           </motion.div>
         </motion.div>
