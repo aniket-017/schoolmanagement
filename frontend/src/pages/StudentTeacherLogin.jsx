@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { UserIcon, AcademicCapIcon, EyeIcon, EyeSlashIcon, ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useTeacherAuth } from "../context/TeacherAuthContext";
 import logo from "../assets/logo.png";
+import apiService from "../services/apiService";
 
 const StudentTeacherLogin = () => {
   const [selectedRole, setSelectedRole] = useState("");
@@ -14,6 +15,9 @@ const StudentTeacherLogin = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotStatus, setForgotStatus] = useState("");
   const navigate = useNavigate();
   const { login, isAuthenticated, user } = useTeacherAuth();
 
@@ -243,7 +247,11 @@ const StudentTeacherLogin = () => {
                 <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
                 <span className="ml-2 text-sm text-gray-700">Remember me</span>
               </label>
-              <button type="button" className="text-sm text-blue-600 hover:text-blue-700">
+              <button
+                type="button"
+                onClick={() => setShowForgot(true)}
+                className="text-sm text-blue-600 hover:text-blue-700"
+              >
                 Forgot password?
               </button>
             </div>
@@ -276,6 +284,45 @@ const StudentTeacherLogin = () => {
           </div>
         </div>
       </motion.div>
+
+      {/* Forgot Password Modal */}
+      {showForgot && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+            <h3 className="text-lg font-semibold mb-2">Forgot Password</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Enter your registered email. We will send you a password reset link.
+            </p>
+            <input
+              type="email"
+              value={forgotEmail}
+              onChange={(e) => setForgotEmail(e.target.value)}
+              placeholder="Email address"
+              className="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:outline-none mb-3"
+            />
+            {forgotStatus && <p className="text-sm text-green-600 mb-2">{forgotStatus}</p>}
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowForgot(false)} className="px-4 py-2 rounded-lg border">
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    setForgotStatus("");
+                    const resp = await apiService.auth.forgotPassword(forgotEmail);
+                    if (resp?.success) setForgotStatus("If this email is registered, a reset link has been sent.");
+                  } catch (e) {
+                    setForgotStatus("Failed to send reset email. Try again later.");
+                  }
+                }}
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white"
+              >
+                Send Link
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

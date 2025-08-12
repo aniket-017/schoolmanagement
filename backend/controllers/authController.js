@@ -1,5 +1,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const crypto = require("crypto");
+const nodemailer = require("nodemailer");
 
 // Generate JWT token
 const generateToken = (id) => {
@@ -158,9 +160,7 @@ const login = async (req, res) => {
 // @access  Private
 const getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id)
-      .populate("class", "name grade section")
-      .populate("subjects", "name");
+    const user = await User.findById(req.user.id).populate("class", "name grade section").populate("subjects", "name");
 
     // Format the name properly for teachers
     let formattedUser = user.toObject();
@@ -395,3 +395,117 @@ module.exports = {
   approveUser,
   rejectUser,
 };
+
+// --- Forgot/Reset Password Implementation ---
+
+// Internal helper to create a reusable SMTP transporter
+function createMailer() {
+  const service = process.env.SMPT_SERVICE;
+  const host = process.env.SMPT_HOST || "smtp.gmail.com";
+  const port = Number(process.env.SMPT_PORT || 465);
+  const secure = port === 465; // true for 465, false for other ports
+  const user = process.env.SMPT_MAIL;
+  const pass = process.env.SMPT_PASSWORD;
+
+  return nodemailer.createTransport(
+    service
+      ? {
+          service,
+          auth: { user, pass },
+        }
+      : {
+          host,
+          port,
+          secure,
+          auth: { user, pass },
+        }
+  );
+}
+
+// @desc    Initiate password reset (send email)
+// @route   POST /api/auth/forgot-password
+// @access  Public
+async function forgotPassword(req, res) {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, message: "Email is required" });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      // Do not reveal whether the email exists
+      return res.json({ success: true, message: "If this email is registered, a reset link has been sent" });
+    }
+
+    // Generate token
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const hashed = crypto.createHash("sha256").update(resetToken).digest("hex");
+
+    user.resetPasswordToken = hashed;
+    user.resetPasswordExpire = new Date(Date.now() + 1000 * 60 * 15); // 15 minutes
+    await user.save();
+
+    const appUrl = process.env.APP_URL || process.env.CLIENT_URL || "http://localhost:5173";
+    const resetUrl = `${appUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(user.email)}`;
+
+    const transporter = createMailer();
+    const from = process.env.SMPT_MAIL || "no-reply@school.com";
+
+    await transporter.sendMail({
+      from: `School Management <${from}>`,
+      to: user.email,
+      subject: "Password Reset Instructions",
+      html: `
+        <p>Hello ${user.name || "User"},</p>
+        <p>We received a request to reset your password. Click the link below to set a new password. This link is valid for 15 minutes.</p>
+        <p><a href="${resetUrl}">Reset your password</a></p>
+        <p>If you did not request this, you can safely ignore this email.</p>
+      `,
+    });
+
+    return res.json({ success: true, message: "If this email is registered, a reset link has been sent" });
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    return res.status(500).json({ success: false, message: "Failed to send reset email" });
+  }
+}
+
+// @desc    Reset password with token
+// @route   POST /api/auth/reset-password
+// @access  Public
+async function resetPassword(req, res) {
+  try {
+    const { token, email, newPassword } = req.body;
+    if (!token || !email || !newPassword) {
+      return res.status(400).json({ success: false, message: "Token, email and new password are required" });
+    }
+
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const user = await User.findOne({
+      email: email.toLowerCase(),
+      resetPasswordToken: tokenHash,
+      resetPasswordExpire: { $gt: new Date() },
+    }).select("+password");
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: "Invalid or expired reset token" });
+    }
+
+    user.password = newPassword;
+    user.isFirstLogin = false;
+    user.lastPasswordChange = new Date();
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save();
+
+    return res.json({ success: true, message: "Password has been reset successfully" });
+  } catch (error) {
+    console.error("Reset password error:", error);
+    return res.status(500).json({ success: false, message: "Failed to reset password" });
+  }
+}
+
+// Export new handlers
+module.exports.forgotPassword = forgotPassword;
+module.exports.resetPassword = resetPassword;

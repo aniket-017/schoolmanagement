@@ -56,6 +56,7 @@ import StudentAnnualCalendar from "./pages/StudentAnnualCalendar";
 import StudentHomework from "./pages/StudentHomework";
 import StudentFees from "./pages/StudentFees";
 import TeacherHomework from "./pages/TeacherHomework";
+import ResetPassword from "./pages/ResetPassword";
 
 function AppContent() {
   const { requirePasswordChange } = useAuth();
@@ -157,6 +158,7 @@ function AppContent() {
 
         {/* Student/Teacher Portal Routes */}
         <Route path="/student-teacher-login" element={<StudentTeacherLogin />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Student Portal Routes */}
         <Route

@@ -64,6 +64,24 @@ class ApiService {
       return this.handleResponse(response);
     },
 
+    forgotPassword: async (email) => {
+      const response = await fetch(`${this.baseURL}/auth/forgot-password`, {
+        method: "POST",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ email }),
+      });
+      return this.handleResponse(response);
+    },
+
+    resetPassword: async ({ token, email, newPassword }) => {
+      const response = await fetch(`${this.baseURL}/auth/reset-password`, {
+        method: "POST",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ token, email, newPassword }),
+      });
+      return this.handleResponse(response);
+    },
+
     getProfile: async () => {
       const response = await fetch(`${this.baseURL}/auth/profile`, {
         headers: this.getAuthHeaders(),

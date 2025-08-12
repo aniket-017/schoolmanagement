@@ -11,6 +11,7 @@ const {
   approveUser,
   rejectUser,
 } = require("../controllers/authController");
+const { forgotPassword, resetPassword } = require("../controllers/authController");
 const { auth, adminOnly } = require("../middleware/auth");
 
 // @route   POST /api/auth/register
@@ -42,6 +43,10 @@ router.put("/profile", auth, updateProfile);
 // @desc    Change user password
 // @access  Private
 router.put("/change-password", auth, changePassword);
+
+// Forgot / Reset password
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password", resetPassword);
 
 // Admin routes for user approval
 router.get("/pending-users", auth, adminOnly, getPendingUsers);

@@ -226,6 +226,9 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    // Password reset flow
+    resetPasswordToken: String,
+    resetPasswordExpire: Date,
   },
   {
     timestamps: true,
