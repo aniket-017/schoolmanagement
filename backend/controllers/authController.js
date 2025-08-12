@@ -446,8 +446,13 @@ async function forgotPassword(req, res) {
     user.resetPasswordExpire = new Date(Date.now() + 1000 * 60 * 15); // 15 minutes
     await user.save();
 
-    const appUrl = process.env.APP_URL || process.env.CLIENT_URL || "http://localhost:5173";
-    const resetUrl = `${appUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(user.email)}`;
+    // Determine the app URL: prefer explicit env, else derive from request host
+    const derivedProtocol = req.get("x-forwarded-proto") || req.protocol || "https";
+    const derivedOrigin = `${derivedProtocol}://${req.get("host")}`;
+    const appUrl = process.env.APP_URL || process.env.CLIENT_URL || derivedOrigin || "http://localhost:5173";
+    const resetUrl = `${appUrl.replace(/\/$/, "")}/reset-password?token=${resetToken}&email=${encodeURIComponent(
+      user.email
+    )}`;
 
     const transporter = createMailer();
     const from = process.env.SMPT_MAIL || "no-reply@school.com";
@@ -456,11 +461,20 @@ async function forgotPassword(req, res) {
       from: `School Management <${from}>`,
       to: user.email,
       subject: "Password Reset Instructions",
+      text: `Hello ${
+        user.name || "User"
+      },\n\nWe received a request to reset your password. Use the link below (valid for 15 minutes):\n\n${resetUrl}\n\nIf you did not request this, please ignore this email.`,
       html: `
-        <p>Hello ${user.name || "User"},</p>
-        <p>We received a request to reset your password. Click the link below to set a new password. This link is valid for 15 minutes.</p>
-        <p><a href="${resetUrl}">Reset your password</a></p>
-        <p>If you did not request this, you can safely ignore this email.</p>
+        <div style="font-family:Arial,Helvetica,sans-serif;line-height:1.6;color:#111">
+          <p>Hello ${user.name || "User"},</p>
+          <p>We received a request to reset your password. Click the button below to set a new password. This link is valid for <strong>15 minutes</strong>.</p>
+          <p style="margin:24px 0">
+            <a href="${resetUrl}" style="background:#1d4ed8;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;display:inline-block">Reset your password</a>
+          </p>
+          <p>If the button doesn’t work, copy and paste this link into your browser:</p>
+          <div style="background:#f3f4f6;padding:12px;border-radius:8px;word-break:break-all;font-family:Consolas,Monaco,monospace;font-size:13px">${resetUrl}</div>
+          <p style="margin-top:24px;color:#555">If you did not request this, you can safely ignore this email.</p>
+        </div>
       `,
     });
 
