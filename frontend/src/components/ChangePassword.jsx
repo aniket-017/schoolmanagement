@@ -2,8 +2,9 @@ import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { appConfig } from "../config/environment";
 
-const ChangePassword = () => {
+const ChangePassword = ({ open = true, onClose }) => {
   const { clearPasswordChangeRequirement } = useAuth();
+  const isOptional = typeof onClose === "function";
   const [formData, setFormData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -79,8 +80,11 @@ const ChangePassword = () => {
       const data = await response.json();
 
       if (data.success) {
-        alert("Password changed successfully! You can now continue using the system.");
+        alert("Password changed successfully!");
         clearPasswordChangeRequirement();
+        if (isOptional) {
+          onClose();
+        }
       } else {
         if (data.message.includes("Current password is incorrect")) {
           setErrors({ currentPassword: "Current password is incorrect" });
@@ -96,19 +100,27 @@ const ChangePassword = () => {
     }
   };
 
+  if (!open) return null;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
         <div className="text-center mb-6">
           <div className="text-4xl mb-4">🔒</div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Password Change Required</h2>
-          <p className="text-gray-600">This is your first login. Please change your temporary password to continue.</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            {isOptional ? "Change Password" : "Password Change Required"}
+          </h2>
+          <p className="text-gray-600">
+            {isOptional
+              ? "Update your password to keep your account secure."
+              : "This is your first login. Please change your temporary password to continue."}
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 mb-2">
-              Current Password (Temporary)
+              {isOptional ? "Current Password" : "Current Password (Temporary)"}
             </label>
             <input
               type="password"
@@ -184,6 +196,15 @@ const ChangePassword = () => {
             </div>
           </div>
         </div>
+
+        {/* Optional close for non-forced usage */}
+        {typeof onClose === "function" && (
+          <div className="mt-4 text-center">
+            <button type="button" onClick={onClose} className="text-sm text-gray-600 hover:text-gray-800">
+              Cancel
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -154,13 +154,7 @@ const StudentTeacherLogin = () => {
             ))}
           </div>
 
-          {/* Admin Login Link */}
-          <div className="mt-8 text-center">
-            <p className="text-gray-600 text-sm mb-2">Looking for admin access?</p>
-            <Link to="/login" className="text-blue-600 hover:text-blue-700 font-medium text-sm">
-              Go to Admin Portal
-            </Link>
-          </div>
+          {/* Admin login link intentionally removed from this page */}
         </div>
       </div>
     );

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import ChangePassword from "./ChangePassword";
 import { motion } from "framer-motion";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { cn } from "../utils/cn";
@@ -23,6 +24,7 @@ import {
 
 const Layout = ({ children }) => {
   const { user, logout } = useAuth();
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -240,7 +242,7 @@ const Layout = ({ children }) => {
             ))}
           </nav>
 
-          {/* User info and logout */}
+          {/* User info and actions */}
           <div className="p-4 border-t border-gray-200 bg-gray-50/50">
             <div className="flex items-center justify-center mb-3">
               <div className={`flex items-center ${isCollapsed ? "flex-col" : "w-full"}`}>
@@ -260,6 +262,16 @@ const Layout = ({ children }) => {
                 )}
               </div>
             </div>
+            {!isCollapsed && (
+              <div className="mb-3">
+                <button
+                  onClick={() => setIsChangePasswordOpen(true)}
+                  className="w-full mb-2 flex items-center justify-center px-4 py-2 text-sm font-semibold text-blue-700 bg-blue-50 rounded-xl hover:bg-blue-100 border border-blue-200 transition-all"
+                >
+                  Change Password
+                </button>
+              </div>
+            )}
             <Tooltip.Provider>
               <Tooltip.Root delayDuration={0}>
                 <Tooltip.Trigger asChild>
@@ -302,6 +314,11 @@ const Layout = ({ children }) => {
           <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">{children}</div>
         </main>
       </motion.div>
+
+      {/* Optional Change Password modal from admin panel */}
+      {isChangePasswordOpen && (
+        <ChangePassword open={isChangePasswordOpen} onClose={() => setIsChangePasswordOpen(false)} />
+      )}
     </div>
   );
 };
