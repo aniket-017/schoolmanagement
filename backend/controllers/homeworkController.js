@@ -33,7 +33,7 @@ const createHomework = async (req, res) => {
 
     await homework.populate([
       { path: "subjectId", select: "name code" },
-      { path: "classId", select: "name grade section" },
+      { path: "classId", select: "name grade division" },
       { path: "teacherId", select: "name firstName middleName lastName email" },
     ]);
 
@@ -98,7 +98,7 @@ const getAllHomework = async (req, res) => {
 
     const homework = await Homework.find(filter)
       .populate("subjectId", "name code")
-      .populate("classId", "name grade section")
+      .populate("classId", "name grade division")
       .populate("teacherId", "name firstName middleName lastName email")
       .sort({ dueDate: 1 })
       .skip(skip)
@@ -130,7 +130,7 @@ const getHomeworkById = async (req, res) => {
   try {
     const homework = await Homework.findById(req.params.id)
       .populate("subjectId", "name code")
-      .populate("classId", "name grade section")
+      .populate("classId", "name grade division")
       .populate("teacherId", "name firstName middleName lastName email")
       .populate("studentProgress.studentId", "name studentId");
 
@@ -210,7 +210,7 @@ const updateHomework = async (req, res) => {
       runValidators: true,
     })
       .populate("subjectId", "name code")
-      .populate("classId", "name grade section")
+      .populate("classId", "name grade division")
       .populate("teacherId", "name email");
 
     res.json({
@@ -319,7 +319,7 @@ const updateStudentProgress = async (req, res) => {
     await homework.save();
     await homework.populate([
       { path: "subjectId", select: "name code" },
-      { path: "classId", select: "name grade section" },
+      { path: "classId", select: "name grade division" },
       { path: "teacherId", select: "name email" },
       { path: "studentProgress.studentId", select: "name studentId" },
     ]);
@@ -382,7 +382,7 @@ const getHomeworkCalendar = async (req, res) => {
 
     const homework = await Homework.find(filter)
       .populate("subjectId", "name code")
-      .populate("classId", "name grade section")
+      .populate("classId", "name grade division")
       .populate("teacherId", "name email")
       .sort({ dueDate: 1 });
 

@@ -251,9 +251,9 @@ const HomeworkDetailModal = ({
                         <p className="text-sm text-gray-600">Class</p>
                         <p className="font-medium text-gray-900">
                           {homework.classId?.name}
-                          {homework.classId?.grade &&
-                            homework.classId?.division &&
-                            ` - Grade ${homework.classId.grade} ${homework.classId.division}`}
+                          {homework.classId?.grade && homework.classId?.division
+                            ? ` - Grade ${homework.classId.grade} ${homework.classId.division}`
+                            : ""}
                         </p>
                       </div>
                     </div>

@@ -1,39 +1,40 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { 
-  BookOpenIcon, 
-  CalendarIcon, 
-  ClockIcon, 
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import {
+  BookOpenIcon,
+  CalendarIcon,
+  ClockIcon,
   CheckCircleIcon,
   EyeIcon,
   FunnelIcon,
   MagnifyingGlassIcon,
-  ArrowLeftIcon
-} from '@heroicons/react/24/outline';
-import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import apiService from '../services/apiService';
-import HomeworkCard from '../components/HomeworkCard';
-import HomeworkCalendar from '../components/HomeworkCalendar';
-import HomeworkDetailModal from '../components/HomeworkDetailModal';
+  ArrowLeftIcon,
+} from "@heroicons/react/24/outline";
+import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
+import apiService from "../services/apiService";
+import HomeworkCard from "../components/HomeworkCard";
+import HomeworkCalendar from "../components/HomeworkCalendar";
+import HomeworkDetailModal from "../components/HomeworkDetailModal";
 
-  const StudentHomework = () => {
-    const { user } = useAuth();
-    const navigate = useNavigate();
-    const [homework, setHomework] = useState([]);
-    const [filteredHomework, setFilteredHomework] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-      const [view, setView] = useState('list'); // 'list' or 'calendar'
-  const [filter, setFilter] = useState('all'); // 'all', 'due_today', 'due_tomorrow', 'overdue', 'completed'
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('dueDate'); // 'dueDate', 'assignedDate', 'subject'
-  const [sortOrder, setSortOrder] = useState('asc'); // 'asc' or 'desc'
+const StudentHomework = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [homework, setHomework] = useState([]);
+  const [filteredHomework, setFilteredHomework] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [view, setView] = useState("list"); // 'list' or 'calendar'
+  const [filter, setFilter] = useState("all"); // 'all', 'due_today', 'due_tomorrow', 'overdue', 'completed'
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState("dueDate"); // 'dueDate', 'assignedDate', 'subject'
+  const [sortOrder, setSortOrder] = useState("asc"); // 'asc' or 'desc'
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedHomework, setSelectedHomework] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
 
-      const handleBack = () => {
-    navigate('/student/dashboard');
+  const handleBack = () => {
+    navigate("/student/dashboard");
   };
 
   const handleViewHomeworkDetails = (homework) => {
@@ -54,21 +55,19 @@ import HomeworkDetailModal from '../components/HomeworkDetailModal';
     filterAndSortHomework();
   }, [homework, filter, searchTerm, sortBy, sortOrder]);
 
-
-
   const loadHomework = async () => {
     try {
       setLoading(true);
       const response = await apiService.homework.getAll({ limit: 100 });
-      
+
       if (response.success) {
         setHomework(response.data || []);
       } else {
-        setError('Failed to load homework');
+        setError("Failed to load homework");
       }
     } catch (error) {
-      console.error('Error loading homework:', error);
-      setError('Error loading homework');
+      console.error("Error loading homework:", error);
+      setError("Error loading homework");
     } finally {
       setLoading(false);
     }
@@ -79,41 +78,42 @@ import HomeworkDetailModal from '../components/HomeworkDetailModal';
 
     // Apply search filter
     if (searchTerm) {
-      filtered = filtered.filter(hw => 
-        hw.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        hw.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        hw.subjectId?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+      filtered = filtered.filter(
+        (hw) =>
+          hw.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          hw.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          hw.subjectId?.name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     // Apply status filter
     switch (filter) {
-      case 'due_today':
-        filtered = filtered.filter(hw => {
+      case "due_today":
+        filtered = filtered.filter((hw) => {
           const today = new Date();
           const dueDate = new Date(hw.dueDate);
           return dueDate.toDateString() === today.toDateString();
         });
         break;
-      case 'due_tomorrow':
-        filtered = filtered.filter(hw => {
+      case "due_tomorrow":
+        filtered = filtered.filter((hw) => {
           const tomorrow = new Date();
           tomorrow.setDate(tomorrow.getDate() + 1);
           const dueDate = new Date(hw.dueDate);
           return dueDate.toDateString() === tomorrow.toDateString();
         });
         break;
-      case 'overdue':
-        filtered = filtered.filter(hw => {
+      case "overdue":
+        filtered = filtered.filter((hw) => {
           const now = new Date();
           const dueDate = new Date(hw.dueDate);
           return dueDate < now;
         });
         break;
-      case 'completed':
-        filtered = filtered.filter(hw => {
-          const studentProgress = hw.studentProgress?.find(p => p.studentId === user.id);
-          return studentProgress?.status === 'completed';
+      case "completed":
+        filtered = filtered.filter((hw) => {
+          const studentProgress = hw.studentProgress?.find((p) => p.studentId === user.id);
+          return studentProgress?.status === "completed";
         });
         break;
       default:
@@ -123,26 +123,26 @@ import HomeworkDetailModal from '../components/HomeworkDetailModal';
     // Apply sorting
     filtered.sort((a, b) => {
       let aValue, bValue;
-      
+
       switch (sortBy) {
-        case 'dueDate':
+        case "dueDate":
           aValue = new Date(a.dueDate);
           bValue = new Date(b.dueDate);
           break;
-        case 'assignedDate':
+        case "assignedDate":
           aValue = new Date(a.assignedDate);
           bValue = new Date(b.assignedDate);
           break;
-        case 'subject':
-          aValue = a.subjectId?.name || '';
-          bValue = b.subjectId?.name || '';
+        case "subject":
+          aValue = a.subjectId?.name || "";
+          bValue = b.subjectId?.name || "";
           break;
         default:
           aValue = new Date(a.dueDate);
           bValue = new Date(b.dueDate);
       }
 
-      if (sortOrder === 'asc') {
+      if (sortOrder === "asc") {
         return aValue > bValue ? 1 : -1;
       } else {
         return aValue < bValue ? 1 : -1;
@@ -156,57 +156,59 @@ import HomeworkDetailModal from '../components/HomeworkDetailModal';
     try {
       const response = await apiService.homework.updateProgress(homeworkId, {
         status: progress,
-        studentId: user.id
+        studentId: user.id,
       });
 
       if (response.success) {
         // Update local state
-        setHomework(prev => prev.map(hw => {
-          if (hw._id === homeworkId) {
-            const updatedProgress = hw.studentProgress || [];
-            const existingIndex = updatedProgress.findIndex(p => p.studentId === user.id);
-            
-            if (existingIndex >= 0) {
-              updatedProgress[existingIndex] = { ...updatedProgress[existingIndex], status: progress };
-            } else {
-              updatedProgress.push({ studentId: user.id, status: progress });
+        setHomework((prev) =>
+          prev.map((hw) => {
+            if (hw._id === homeworkId) {
+              const updatedProgress = hw.studentProgress || [];
+              const existingIndex = updatedProgress.findIndex((p) => p.studentId === user.id);
+
+              if (existingIndex >= 0) {
+                updatedProgress[existingIndex] = { ...updatedProgress[existingIndex], status: progress };
+              } else {
+                updatedProgress.push({ studentId: user.id, status: progress });
+              }
+
+              return { ...hw, studentProgress: updatedProgress };
             }
-            
-            return { ...hw, studentProgress: updatedProgress };
-          }
-          return hw;
-        }));
+            return hw;
+          })
+        );
       }
     } catch (error) {
-      console.error('Error updating homework progress:', error);
+      console.error("Error updating homework progress:", error);
     }
   };
 
   const getFilterCount = (filterType) => {
     switch (filterType) {
-      case 'due_today':
-        return homework.filter(hw => {
+      case "due_today":
+        return homework.filter((hw) => {
           const today = new Date();
           const dueDate = new Date(hw.dueDate);
           return dueDate.toDateString() === today.toDateString();
         }).length;
-      case 'due_tomorrow':
-        return homework.filter(hw => {
+      case "due_tomorrow":
+        return homework.filter((hw) => {
           const tomorrow = new Date();
           tomorrow.setDate(tomorrow.getDate() + 1);
           const dueDate = new Date(hw.dueDate);
           return dueDate.toDateString() === tomorrow.toDateString();
         }).length;
-      case 'overdue':
-        return homework.filter(hw => {
+      case "overdue":
+        return homework.filter((hw) => {
           const now = new Date();
           const dueDate = new Date(hw.dueDate);
           return dueDate < now;
         }).length;
-      case 'completed':
-        return homework.filter(hw => {
-          const studentProgress = hw.studentProgress?.find(p => p.studentId === user.id);
-          return studentProgress?.status === 'completed';
+      case "completed":
+        return homework.filter((hw) => {
+          const studentProgress = hw.studentProgress?.find((p) => p.studentId === user.id);
+          return studentProgress?.status === "completed";
         }).length;
       default:
         return homework.length;
@@ -271,22 +273,22 @@ import HomeworkDetailModal from '../components/HomeworkDetailModal';
                 <div className="sm:hidden bg-white/10 rounded-2xl p-1 backdrop-blur-sm">
                   <div className="flex space-x-1">
                     <button
-                      onClick={() => setView('list')}
+                      onClick={() => setView("list")}
                       className={`px-6 py-3 rounded-xl transition-all duration-300 text-sm font-bold flex items-center justify-center min-w-[80px] ${
-                        view === 'list' 
-                          ? 'bg-white text-blue-600 shadow-lg transform scale-105' 
-                          : 'bg-transparent text-white hover:bg-white/20'
+                        view === "list"
+                          ? "bg-white text-blue-600 shadow-lg transform scale-105"
+                          : "bg-transparent text-white hover:bg-white/20"
                       }`}
                     >
                       <EyeIcon className="w-4 h-4 mr-2" />
                       List
                     </button>
                     <button
-                      onClick={() => setView('calendar')}
+                      onClick={() => setView("calendar")}
                       className={`px-6 py-3 rounded-xl transition-all duration-300 text-sm font-bold flex items-center justify-center min-w-[80px] ${
-                        view === 'calendar' 
-                          ? 'bg-white text-blue-600 shadow-lg transform scale-105' 
-                          : 'bg-transparent text-white hover:bg-white/20'
+                        view === "calendar"
+                          ? "bg-white text-blue-600 shadow-lg transform scale-105"
+                          : "bg-transparent text-white hover:bg-white/20"
                       }`}
                     >
                       <CalendarIcon className="w-4 h-4 mr-2" />
@@ -294,26 +296,26 @@ import HomeworkDetailModal from '../components/HomeworkDetailModal';
                     </button>
                   </div>
                 </div>
-                
+
                 {/* Desktop View - Original Buttons */}
                 <div className="hidden sm:flex items-center space-x-3">
                   <button
-                    onClick={() => setView('list')}
+                    onClick={() => setView("list")}
                     className={`px-4 py-3 rounded-xl transition-all duration-200 text-sm font-semibold ${
-                      view === 'list' 
-                        ? 'bg-white text-blue-600 shadow-lg transform scale-105' 
-                        : 'bg-blue-500 text-white hover:bg-blue-400 shadow-md'
+                      view === "list"
+                        ? "bg-white text-blue-600 shadow-lg transform scale-105"
+                        : "bg-blue-500 text-white hover:bg-blue-400 shadow-md"
                     }`}
                   >
                     <EyeIcon className="w-4 h-4 inline mr-2" />
                     List View
                   </button>
                   <button
-                    onClick={() => setView('calendar')}
+                    onClick={() => setView("calendar")}
                     className={`px-4 py-3 rounded-xl transition-all duration-200 text-sm font-semibold ${
-                      view === 'calendar' 
-                        ? 'bg-white text-blue-600 shadow-lg transform scale-105' 
-                        : 'bg-blue-500 text-white hover:bg-blue-400 shadow-md'
+                      view === "calendar"
+                        ? "bg-white text-blue-600 shadow-lg transform scale-105"
+                        : "bg-blue-500 text-white hover:bg-blue-400 shadow-md"
                     }`}
                   >
                     <CalendarIcon className="w-4 h-4 inline mr-2" />
@@ -327,69 +329,83 @@ import HomeworkDetailModal from '../components/HomeworkDetailModal';
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
-        {/* Filters and Search */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl shadow-lg border border-blue-100 p-6 sm:p-8 mb-6 sm:mb-8">
-          <div className="space-y-6">
-            {/* Search */}
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <MagnifyingGlassIcon className="w-5 h-5 text-blue-500" />
-              </div>
-              <input
-                type="text"
-                placeholder="Search homework..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 bg-white border-2 border-blue-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 text-sm font-medium placeholder-gray-400 transition-all duration-200 shadow-sm"
-              />
+        {/* Filters and Search (collapsible) */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl shadow-lg border border-blue-100 p-3 sm:p-4 mb-6 sm:mb-8">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => setShowFilters((v) => !v)}
+                className="inline-flex items-center px-3 py-2 bg-white text-blue-600 rounded-xl font-semibold text-sm shadow-sm hover:shadow transition"
+              >
+                <FunnelIcon className="w-4 h-4 mr-2" />
+                {showFilters ? "Hide Filters" : "Show Search & Filters"}
+              </button>
             </div>
 
-            {/* Filters - Mobile Optimized */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-center lg:justify-between gap-4">
-              <div className="flex items-center space-x-3 bg-white rounded-xl p-3 shadow-sm border border-blue-100">
-                <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-lg">
-                  <FunnelIcon className="w-4 h-4 text-blue-600" />
+            {showFilters && (
+              <div className="space-y-4">
+                {/* Search */}
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none">
+                    <MagnifyingGlassIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Search homework..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 bg-white border-2 border-blue-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 text-sm sm:text-base font-medium placeholder-gray-400 transition-all duration-200 shadow-sm"
+                  />
                 </div>
-                <select
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
-                  className="flex-1 px-3 py-2 bg-transparent border-none focus:ring-0 focus:outline-none text-sm font-medium text-gray-700"
-                >
-                  <option value="all">All ({getFilterCount('all')})</option>
-                  <option value="due_today">Due Today ({getFilterCount('due_today')})</option>
-                  <option value="due_tomorrow">Due Tomorrow ({getFilterCount('due_tomorrow')})</option>
-                  <option value="overdue">Overdue ({getFilterCount('overdue')})</option>
-                  <option value="completed">Completed ({getFilterCount('completed')})</option>
-                </select>
-              </div>
 
-              <div className="flex items-center space-x-3 bg-white rounded-xl p-3 shadow-sm border border-blue-100">
-                <div className="flex items-center justify-center w-8 h-8 bg-indigo-100 rounded-lg">
-                  <span className="text-xs font-bold text-indigo-600">S</span>
+                {/* Filters - Mobile Optimized */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-center lg:justify-between gap-3 sm:gap-4">
+                  <div className="flex items-center space-x-2 sm:space-x-3 bg-white rounded-xl p-2 sm:p-3 shadow-sm border border-blue-100">
+                    <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-blue-100 rounded-lg">
+                      <FunnelIcon className="w-4 h-4 sm:w-4 sm:h-4 text-blue-600" />
+                    </div>
+                    <select
+                      value={filter}
+                      onChange={(e) => setFilter(e.target.value)}
+                      className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-transparent border-none focus:ring-0 focus:outline-none text-xs sm:text-sm font-medium text-gray-700"
+                    >
+                      <option value="all">All ({getFilterCount("all")})</option>
+                      <option value="due_today">Due Today ({getFilterCount("due_today")})</option>
+                      <option value="due_tomorrow">Due Tomorrow ({getFilterCount("due_tomorrow")})</option>
+                      <option value="overdue">Overdue ({getFilterCount("overdue")})</option>
+                      <option value="completed">Completed ({getFilterCount("completed")})</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center space-x-2 sm:space-x-3 bg-white rounded-xl p-2 sm:p-3 shadow-sm border border-blue-100">
+                    <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-indigo-100 rounded-lg">
+                      <span className="text-[10px] sm:text-xs font-bold text-indigo-600">S</span>
+                    </div>
+                    <span className="text-[11px] sm:text-xs font-medium text-gray-500 whitespace-nowrap">Sort:</span>
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                      className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-transparent border-none focus:ring-0 focus:outline-none text-xs sm:text-sm font-medium text-gray-700"
+                    >
+                      <option value="dueDate">Due Date</option>
+                      <option value="assignedDate">Assigned Date</option>
+                      <option value="subject">Subject</option>
+                    </select>
+                    <button
+                      onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                      className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-xs sm:text-sm font-bold text-gray-600"
+                    >
+                      {sortOrder === "asc" ? "↑" : "↓"}
+                    </button>
+                  </div>
                 </div>
-                <span className="text-xs font-medium text-gray-500 whitespace-nowrap">Sort:</span>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="flex-1 px-3 py-2 bg-transparent border-none focus:ring-0 focus:outline-none text-sm font-medium text-gray-700"
-                >
-                  <option value="dueDate">Due Date</option>
-                  <option value="assignedDate">Assigned Date</option>
-                  <option value="subject">Subject</option>
-                </select>
-                <button
-                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                  className="flex items-center justify-center w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-sm font-bold text-gray-600"
-                >
-                  {sortOrder === 'asc' ? '↑' : '↓'}
-                </button>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
         {/* Content */}
-        {view === 'list' ? (
+        {view === "list" ? (
           <div className="space-y-4 sm:space-y-6">
             {filteredHomework.length === 0 ? (
               <motion.div
@@ -402,10 +418,9 @@ import HomeworkDetailModal from '../components/HomeworkDetailModal';
                 </div>
                 <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">No Homework Found</h3>
                 <p className="text-sm sm:text-base text-gray-600 px-4">
-                  {searchTerm || filter !== 'all' 
-                    ? 'No homework matches your current filters. Try adjusting your search or filters.'
-                    : 'You have no homework assignments at the moment.'
-                  }
+                  {searchTerm || filter !== "all"
+                    ? "No homework matches your current filters. Try adjusting your search or filters."
+                    : "You have no homework assignments at the moment."}
                 </p>
               </motion.div>
             ) : (
@@ -430,10 +445,7 @@ import HomeworkDetailModal from '../components/HomeworkDetailModal';
           </div>
         ) : (
           <div className="bg-white rounded-xl shadow-sm border p-4 sm:p-6">
-            <HomeworkCalendar 
-              homework={filteredHomework} 
-              onViewDetails={handleViewHomeworkDetails}
-            />
+            <HomeworkCalendar homework={filteredHomework} onViewDetails={handleViewHomeworkDetails} />
           </div>
         )}
       </div>
@@ -450,4 +462,4 @@ import HomeworkDetailModal from '../components/HomeworkDetailModal';
   );
 };
 
-export default StudentHomework; 
+export default StudentHomework;
