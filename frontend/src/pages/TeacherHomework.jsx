@@ -42,6 +42,8 @@ const TeacherHomework = () => {
   const [deletingHomeworkId, setDeletingHomeworkId] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedHomework, setSelectedHomework] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [includeCompleted, setIncludeCompleted] = useState(false);
 
   useEffect(() => {
     loadHomework();
@@ -55,7 +57,7 @@ const TeacherHomework = () => {
     try {
       setLoading(true);
       const [homeworkResponse, statsResponse] = await Promise.all([
-        apiService.homework.getAll({ limit: 100 }),
+        apiService.homework.getAll({ limit: 200, includeInactive: true }),
         apiService.homework.getStats(),
       ]);
 
@@ -172,6 +174,26 @@ const TeacherHomework = () => {
     setShowDeleteModal(true);
   };
 
+  // Mark homework as completed/archived so it doesn't count as overdue
+  const handleCompleteHomework = async (homeworkId) => {
+    try {
+      const response = await apiService.homework.update(homeworkId, { isActive: false });
+      if (response.success) {
+        setHomework((prev) => prev.filter((hw) => hw._id !== homeworkId));
+        // Refresh stats to reflect archive
+        const statsResponse = await apiService.homework.getStats();
+        if (statsResponse.success) {
+          setHomeworkStats(statsResponse.data || {});
+        }
+      } else {
+        alert("Failed to mark as completed");
+      }
+    } catch (error) {
+      console.error("Error marking complete:", error);
+      alert("Error marking homework as completed");
+    }
+  };
+
   const confirmDeleteHomework = async () => {
     if (!deletingHomeworkId) return;
 
@@ -247,6 +269,8 @@ const TeacherHomework = () => {
         }).length;
       case "active":
         return homework.filter((hw) => hw.isActive !== false).length;
+      case "completed":
+        return homework.filter((hw) => hw.isActive === false).length;
       default:
         return homework.length;
     }
@@ -325,69 +349,94 @@ const TeacherHomework = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
         {/* Stats Section */}
-        <div className="mb-6 sm:mb-8">
+        <div className="mb-4 sm:mb-8">
           <HomeworkStats stats={homeworkStats} isTeacher={true} />
         </div>
 
         {/* Filters and Search */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl shadow-lg border border-blue-100 p-6 sm:p-8 mb-6 sm:mb-8">
-          <div className="space-y-6">
-            {/* Search */}
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <MagnifyingGlassIcon className="w-5 h-5 text-blue-500" />
-              </div>
-              <input
-                type="text"
-                placeholder="Search homework..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 bg-white border-2 border-blue-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 text-sm font-medium placeholder-gray-400 transition-all duration-200 shadow-sm"
-              />
-            </div>
-
-            {/* Filters - Mobile Optimized */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-center lg:justify-between gap-4">
-              <div className="flex items-center space-x-3 bg-white rounded-xl p-3 shadow-sm border border-blue-100">
-                <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-lg">
-                  <FunnelIcon className="w-4 h-4 text-blue-600" />
-                </div>
-                <select
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
-                  className="flex-1 px-3 py-2 bg-transparent border-none focus:ring-0 focus:outline-none text-sm font-medium text-gray-700"
-                >
-                  <option value="all">All ({getFilterCount("all")})</option>
-                  <option value="active">Active ({getFilterCount("active")})</option>
-                  <option value="due_today">Due Today ({getFilterCount("due_today")})</option>
-                  <option value="due_tomorrow">Due Tomorrow ({getFilterCount("due_tomorrow")})</option>
-                  <option value="overdue">Overdue ({getFilterCount("overdue")})</option>
-                </select>
-              </div>
-
-              <div className="flex items-center space-x-3 bg-white rounded-xl p-3 shadow-sm border border-blue-100">
-                <div className="flex items-center justify-center w-8 h-8 bg-indigo-100 rounded-lg">
-                  <span className="text-xs font-bold text-indigo-600">S</span>
-                </div>
-                <span className="text-xs font-medium text-gray-500 whitespace-nowrap">Sort:</span>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="flex-1 px-3 py-2 bg-transparent border-none focus:ring-0 focus:outline-none text-sm font-medium text-gray-700"
-                >
-                  <option value="dueDate">Due Date</option>
-                  <option value="assignedDate">Assigned Date</option>
-                  <option value="subject">Subject</option>
-                  <option value="class">Class</option>
-                </select>
-                <button
-                  onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-                  className="flex items-center justify-center w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-sm font-bold text-gray-600"
-                >
-                  {sortOrder === "asc" ? "↑" : "↓"}
-                </button>
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl shadow-lg border border-blue-100 p-3 sm:p-4 mb-6 sm:mb-8">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => setShowFilters((v) => !v)}
+                className="inline-flex items-center px-3 py-2 bg-white text-blue-600 rounded-xl font-semibold text-sm shadow-sm hover:shadow transition"
+              >
+                <FunnelIcon className="w-4 h-4 mr-2" />
+                {showFilters ? "Hide Filters" : "Show Search & Filters"}
+              </button>
+              <div className="flex items-center space-x-2">
+                <label className="flex items-center space-x-2 text-xs sm:text-sm text-gray-700 bg-white rounded-lg px-2 py-1 border">
+                  <input
+                    type="checkbox"
+                    checked={includeCompleted}
+                    onChange={(e) => setIncludeCompleted(e.target.checked)}
+                  />
+                  <span>Include Completed</span>
+                </label>
               </div>
             </div>
+
+            {showFilters && (
+              <div className="space-y-4">
+                {/* Search */}
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none">
+                    <MagnifyingGlassIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Search homework..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 bg-white border-2 border-blue-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 text-sm sm:text-base font-medium placeholder-gray-400 transition-all duration-200 shadow-sm"
+                  />
+                </div>
+
+                {/* Filters - Mobile Optimized */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-center lg:justify-between gap-3 sm:gap-4">
+                  <div className="flex items-center space-x-2 sm:space-x-3 bg-white rounded-xl p-2 sm:p-3 shadow-sm border border-blue-100">
+                    <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-blue-100 rounded-lg">
+                      <FunnelIcon className="w-4 h-4 sm:w-4 sm:h-4 text-blue-600" />
+                    </div>
+                    <select
+                      value={filter}
+                      onChange={(e) => setFilter(e.target.value)}
+                      className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-transparent border-none focus:ring-0 focus:outline-none text-xs sm:text-sm font-medium text-gray-700"
+                    >
+                      <option value="all">All ({getFilterCount("all")})</option>
+                      <option value="active">Active ({getFilterCount("active")})</option>
+                      <option value="completed">Completed ({getFilterCount("completed")})</option>
+                      <option value="due_today">Due Today ({getFilterCount("due_today")})</option>
+                      <option value="due_tomorrow">Due Tomorrow ({getFilterCount("due_tomorrow")})</option>
+                      <option value="overdue">Overdue ({getFilterCount("overdue")})</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center space-x-2 sm:space-x-3 bg-white rounded-xl p-2 sm:p-3 shadow-sm border border-blue-100">
+                    <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-indigo-100 rounded-lg">
+                      <span className="text-[10px] sm:text-xs font-bold text-indigo-600">S</span>
+                    </div>
+                    <span className="text-[11px] sm:text-xs font-medium text-gray-500 whitespace-nowrap">Sort:</span>
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                      className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-transparent border-none focus:ring-0 focus:outline-none text-xs sm:text-sm font-medium text-gray-700"
+                    >
+                      <option value="dueDate">Due Date</option>
+                      <option value="assignedDate">Assigned Date</option>
+                      <option value="subject">Subject</option>
+                      <option value="class">Class</option>
+                    </select>
+                    <button
+                      onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                      className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-xs sm:text-sm font-bold text-gray-600"
+                    >
+                      {sortOrder === "asc" ? "↑" : "↓"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -417,23 +466,26 @@ const TeacherHomework = () => {
               </button>
             </motion.div>
           ) : (
-            <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredHomework.map((hw) => (
-                <motion.div
-                  key={hw._id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <HomeworkCard
-                    homework={hw}
-                    isTeacher={true}
-                    onEdit={handleEditHomework}
-                    onDelete={handleDeleteHomework}
-                    onViewDetails={() => handleViewHomeworkDetails(hw)}
-                  />
-                </motion.div>
-              ))}
+            <div className="grid gap-3 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredHomework
+                .filter((hw) => (includeCompleted ? true : hw.isActive !== false))
+                .map((hw) => (
+                  <motion.div
+                    key={hw._id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <HomeworkCard
+                      homework={hw}
+                      isTeacher={true}
+                      onEdit={handleEditHomework}
+                      onDelete={handleDeleteHomework}
+                      onComplete={handleCompleteHomework}
+                      onViewDetails={() => handleViewHomeworkDetails(hw)}
+                    />
+                  </motion.div>
+                ))}
             </div>
           )}
         </div>
@@ -467,6 +519,7 @@ const TeacherHomework = () => {
         isTeacher={true}
         onEdit={handleEditHomework}
         onDelete={handleDeleteHomework}
+        onComplete={(hw) => handleCompleteHomework(hw._id)}
       />
     </div>
   );

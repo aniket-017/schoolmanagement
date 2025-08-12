@@ -1,51 +1,51 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { 
-  CalendarIcon, 
-  ClockIcon, 
-  BookOpenIcon, 
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+import {
+  CalendarIcon,
+  ClockIcon,
+  BookOpenIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
   UserGroupIcon,
   PencilIcon,
-  TrashIcon
-} from '@heroicons/react/24/outline';
-import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid';
-import apiService from '../services/apiService';
+  TrashIcon,
+} from "@heroicons/react/24/outline";
+import { CheckCircleIcon as CheckCircleSolid } from "@heroicons/react/24/solid";
+import apiService from "../services/apiService";
 
-const HomeworkCard = ({ 
-  homework, 
-  isTeacher = false, 
-  onEdit, 
-  onDelete, 
+const HomeworkCard = ({
+  homework,
+  isTeacher = false,
+  onEdit,
+  onDelete,
   onProgressUpdate,
-  onViewDetails
+  onViewDetails,
+  onComplete,
 }) => {
   const [updatingProgress, setUpdatingProgress] = useState(false);
   const [studentProgress, setStudentProgress] = useState(
-    homework.studentProgress?.find(p => p.studentId === localStorage.getItem('userId')) || 
-    { status: 'assigned' }
+    homework.studentProgress?.find((p) => p.studentId === localStorage.getItem("userId")) || { status: "assigned" }
   );
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      case 'reading':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'assigned':
+      case "completed":
+        return "bg-green-100 text-green-800";
+      case "reading":
+        return "bg-yellow-100 text-yellow-800";
+      case "assigned":
       default:
-        return 'bg-blue-100 text-blue-800';
+        return "bg-blue-100 text-blue-800";
     }
   };
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'completed':
+      case "completed":
         return <CheckCircleSolid className="w-4 h-4" />;
-      case 'reading':
+      case "reading":
         return <BookOpenIcon className="w-4 h-4" />;
-      case 'assigned':
+      case "assigned":
       default:
         return <ClockIcon className="w-4 h-4" />;
     }
@@ -58,15 +58,15 @@ const HomeworkCard = ({
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays < 0) {
-      return { status: 'overdue', color: 'text-red-600', icon: ExclamationTriangleIcon };
+      return { status: "overdue", color: "text-red-600", icon: ExclamationTriangleIcon };
     } else if (diffDays === 0) {
-      return { status: 'due_today', color: 'text-orange-600', icon: ExclamationTriangleIcon };
+      return { status: "due_today", color: "text-orange-600", icon: ExclamationTriangleIcon };
     } else if (diffDays === 1) {
-      return { status: 'due_tomorrow', color: 'text-yellow-600', icon: ClockIcon };
+      return { status: "due_tomorrow", color: "text-yellow-600", icon: ClockIcon };
     } else if (diffDays <= 3) {
-      return { status: 'due_soon', color: 'text-blue-600', icon: ClockIcon };
+      return { status: "due_soon", color: "text-blue-600", icon: ClockIcon };
     } else {
-      return { status: 'assigned', color: 'text-gray-600', icon: CalendarIcon };
+      return { status: "assigned", color: "text-gray-600", icon: CalendarIcon };
     }
   };
 
@@ -79,9 +79,9 @@ const HomeworkCard = ({
       try {
         const response = await apiService.homework.updateProgress(homework._id, {
           status: newStatus,
-          notes: ''
+          notes: "",
         });
-        
+
         if (response.success) {
           setStudentProgress({ status: newStatus });
           if (onProgressUpdate) {
@@ -89,7 +89,7 @@ const HomeworkCard = ({
           }
         }
       } catch (error) {
-        console.error('Error updating progress:', error);
+        console.error("Error updating progress:", error);
       } finally {
         setUpdatingProgress(false);
       }
@@ -98,19 +98,19 @@ const HomeworkCard = ({
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+    return date.toLocaleDateString("en-US", {
+      weekday: "short",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   };
 
   const formatTime = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -126,24 +126,36 @@ const HomeworkCard = ({
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center space-x-3 mb-2">
-              <div 
-                className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: homework.color || '#3B82F6' }}
-              />
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: homework.color || "#3B82F6" }} />
               <h3 className="font-semibold text-gray-900 text-base">{homework.title}</h3>
               {!isTeacher && (
-                <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${getStatusColor(studentProgress.status)}`}>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${getStatusColor(
+                    studentProgress.status
+                  )}`}
+                >
                   {getStatusIcon(studentProgress.status)}
                   <span className="capitalize">{studentProgress.status}</span>
                 </span>
               )}
             </div>
-            
+
             {isTeacher && (
               <div className="flex items-center space-x-2 mb-3">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (onComplete) onComplete(homework._id);
+                  }}
+                  className="p-2 bg-green-50 hover:bg-green-100 text-green-600 rounded-lg transition-all duration-200 hover:scale-105"
+                  title="Mark as Completed"
+                >
+                  <CheckCircleIcon className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Close any detail view upstream before opening the edit modal
                     onEdit(homework);
                   }}
                   className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-all duration-200 hover:scale-105"
@@ -163,7 +175,7 @@ const HomeworkCard = ({
                 </button>
               </div>
             )}
-            
+
             {/* Subject and Class info removed - shown in detail modal */}
 
             {/* Description, Instructions, and Resources are only shown in detail modal */}
@@ -172,11 +184,12 @@ const HomeworkCard = ({
               <div className={`flex items-center space-x-1 ${dueStatus.color}`}>
                 <DueIcon className="w-4 h-4" />
                 <span className="text-sm">
-                  {dueStatus.status === 'overdue' && 'Overdue'}
-                  {dueStatus.status === 'due_today' && 'Due today'}
-                  {dueStatus.status === 'due_tomorrow' && 'Due tomorrow'}
-                  {dueStatus.status === 'due_soon' && `Due in ${Math.ceil((new Date(homework.dueDate) - new Date()) / (1000 * 60 * 60 * 24))} days`}
-                  {dueStatus.status === 'assigned' && `Due ${formatDate(homework.dueDate)}`}
+                  {dueStatus.status === "overdue" && "Overdue"}
+                  {dueStatus.status === "due_today" && "Due today"}
+                  {dueStatus.status === "due_tomorrow" && "Due tomorrow"}
+                  {dueStatus.status === "due_soon" &&
+                    `Due in ${Math.ceil((new Date(homework.dueDate) - new Date()) / (1000 * 60 * 60 * 24))} days`}
+                  {dueStatus.status === "assigned" && `Due ${formatDate(homework.dueDate)}`}
                 </span>
               </div>
 
@@ -186,13 +199,13 @@ const HomeworkCard = ({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleProgressUpdate('reading');
+                        handleProgressUpdate("reading");
                       }}
-                      disabled={updatingProgress || studentProgress.status === 'reading'}
+                      disabled={updatingProgress || studentProgress.status === "reading"}
                       className={`p-1 rounded ${
-                        studentProgress.status === 'reading' 
-                          ? 'bg-yellow-100 text-yellow-700' 
-                          : 'text-gray-400 hover:text-yellow-600'
+                        studentProgress.status === "reading"
+                          ? "bg-yellow-100 text-yellow-700"
+                          : "text-gray-400 hover:text-yellow-600"
                       }`}
                     >
                       <BookOpenIcon className="w-4 h-4" />
@@ -200,13 +213,13 @@ const HomeworkCard = ({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleProgressUpdate('completed');
+                        handleProgressUpdate("completed");
                       }}
-                      disabled={updatingProgress || studentProgress.status === 'completed'}
+                      disabled={updatingProgress || studentProgress.status === "completed"}
                       className={`p-1 rounded ${
-                        studentProgress.status === 'completed' 
-                          ? 'bg-green-100 text-green-700' 
-                          : 'text-gray-400 hover:text-green-600'
+                        studentProgress.status === "completed"
+                          ? "bg-green-100 text-green-700"
+                          : "text-gray-400 hover:text-green-600"
                       }`}
                     >
                       <CheckCircleIcon className="w-4 h-4" />
@@ -226,4 +239,4 @@ const HomeworkCard = ({
   );
 };
 
-export default HomeworkCard; 
+export default HomeworkCard;

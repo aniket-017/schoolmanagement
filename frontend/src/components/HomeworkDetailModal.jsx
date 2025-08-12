@@ -1,49 +1,50 @@
-import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  XMarkIcon, 
-  CalendarIcon, 
-  ClockIcon, 
-  BookOpenIcon, 
+import React from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  XMarkIcon,
+  CalendarIcon,
+  ClockIcon,
+  BookOpenIcon,
   UserGroupIcon,
   UserIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
   LinkIcon,
-  DocumentTextIcon
-} from '@heroicons/react/24/outline';
-import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid';
+  DocumentTextIcon,
+} from "@heroicons/react/24/outline";
+import { CheckCircleIcon as CheckCircleSolid } from "@heroicons/react/24/solid";
 
-const HomeworkDetailModal = ({ 
-  isOpen, 
-  onClose, 
-  homework, 
+const HomeworkDetailModal = ({
+  isOpen,
+  onClose,
+  homework,
   isTeacher = false,
   onProgressUpdate,
   onEdit,
-  onDelete
+  onDelete,
+  onComplete,
 }) => {
   if (!homework) return null;
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      case 'reading':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'assigned':
+      case "completed":
+        return "bg-green-100 text-green-800";
+      case "reading":
+        return "bg-yellow-100 text-yellow-800";
+      case "assigned":
       default:
-        return 'bg-blue-100 text-blue-800';
+        return "bg-blue-100 text-blue-800";
     }
   };
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'completed':
+      case "completed":
         return <CheckCircleSolid className="w-4 h-4" />;
-      case 'reading':
+      case "reading":
         return <BookOpenIcon className="w-4 h-4" />;
-      case 'assigned':
+      case "assigned":
       default:
         return <ClockIcon className="w-4 h-4" />;
     }
@@ -56,15 +57,15 @@ const HomeworkDetailModal = ({
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays < 0) {
-      return { status: 'Overdue', color: 'text-red-600', bgColor: 'bg-red-50', icon: ExclamationTriangleIcon };
+      return { status: "Overdue", color: "text-red-600", bgColor: "bg-red-50", icon: ExclamationTriangleIcon };
     } else if (diffDays === 0) {
-      return { status: 'Due Today', color: 'text-orange-600', bgColor: 'bg-orange-50', icon: ExclamationTriangleIcon };
+      return { status: "Due Today", color: "text-orange-600", bgColor: "bg-orange-50", icon: ExclamationTriangleIcon };
     } else if (diffDays === 1) {
-      return { status: 'Due Tomorrow', color: 'text-yellow-600', bgColor: 'bg-yellow-50', icon: ClockIcon };
+      return { status: "Due Tomorrow", color: "text-yellow-600", bgColor: "bg-yellow-50", icon: ClockIcon };
     } else if (diffDays <= 3) {
-      return { status: `Due in ${diffDays} days`, color: 'text-blue-600', bgColor: 'bg-blue-50', icon: ClockIcon };
+      return { status: `Due in ${diffDays} days`, color: "text-blue-600", bgColor: "bg-blue-50", icon: ClockIcon };
     } else {
-      return { status: 'Assigned', color: 'text-gray-600', bgColor: 'bg-gray-50', icon: CalendarIcon };
+      return { status: "Assigned", color: "text-gray-600", bgColor: "bg-gray-50", icon: CalendarIcon };
     }
   };
 
@@ -72,44 +73,43 @@ const HomeworkDetailModal = ({
   const DueIcon = dueStatus.icon;
 
   const formatDate = (dateString) => {
-    if (!dateString) return 'Invalid Date';
-    
+    if (!dateString) return "Invalid Date";
+
     const date = new Date(dateString);
-    if (isNaN(date.getTime())) return 'Invalid Date';
-    
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    if (isNaN(date.getTime())) return "Invalid Date";
+
+    return date.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
 
   const formatTime = (dateString) => {
-    if (!dateString) return 'Invalid Time';
-    
+    if (!dateString) return "Invalid Time";
+
     const date = new Date(dateString);
-    if (isNaN(date.getTime())) return 'Invalid Time';
-    
-    return date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
+    if (isNaN(date.getTime())) return "Invalid Time";
+
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   const formatDateTime = (dateString) => {
-    if (!dateString) return 'Invalid Date at Invalid Time';
-    
+    if (!dateString) return "Invalid Date at Invalid Time";
+
     const date = new Date(dateString);
-    if (isNaN(date.getTime())) return 'Invalid Date at Invalid Time';
-    
+    if (isNaN(date.getTime())) return "Invalid Date at Invalid Time";
+
     return `${formatDate(dateString)} at ${formatTime(dateString)}`;
   };
 
-
-
-  const studentProgress = homework.studentProgress?.find(p => p.studentId === localStorage.getItem('userId')) || 
-    { status: 'assigned' };
+  const studentProgress = homework.studentProgress?.find((p) => p.studentId === localStorage.getItem("userId")) || {
+    status: "assigned",
+  };
 
   return (
     <AnimatePresence>
@@ -136,10 +136,7 @@ const HomeworkDetailModal = ({
               <div className="sticky top-0 bg-white rounded-t-2xl border-b border-gray-200 p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
-                    <div 
-                      className="w-4 h-4 rounded-full"
-                      style={{ backgroundColor: homework.color || '#3B82F6' }}
-                    />
+                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: homework.color || "#3B82F6" }} />
                     <div>
                       <h3 className="text-xl font-bold text-gray-900">{homework.title}</h3>
                       <div className="flex items-center space-x-4 mt-1">
@@ -167,9 +164,7 @@ const HomeworkDetailModal = ({
                       <DueIcon className={`w-5 h-5 ${dueStatus.color}`} />
                       <span className={`font-medium ${dueStatus.color}`}>{dueStatus.status}</span>
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {formatDateTime(homework.dueDate)}
-                    </p>
+                    <p className="text-sm text-gray-600 mt-1">{formatDateTime(homework.dueDate)}</p>
                   </div>
 
                   {/* Student Progress Status - Removed as requested */}
@@ -213,9 +208,7 @@ const HomeworkDetailModal = ({
                           className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                         >
                           <LinkIcon className="w-4 h-4 text-blue-600" />
-                          <span className="text-blue-600 hover:text-blue-800 text-sm">
-                            {resource}
-                          </span>
+                          <span className="text-blue-600 hover:text-blue-800 text-sm">{resource}</span>
                         </a>
                       ))}
                     </div>
@@ -231,13 +224,10 @@ const HomeworkDetailModal = ({
                       <div>
                         <p className="text-sm text-gray-600">Assigned by</p>
                         <p className="font-medium text-gray-900">
-                          {homework.teacherId?.name || 
-                           (homework.teacherId?.firstName && homework.teacherId?.lastName ? 
-                             `${homework.teacherId.firstName} ${homework.teacherId.lastName}` : 
-                             homework.teacherId?.firstName || 
-                             homework.teacherId?.lastName || 
-                             'Teacher'
-                           )}
+                          {homework.teacherId?.name ||
+                            (homework.teacherId?.firstName && homework.teacherId?.lastName
+                              ? `${homework.teacherId.firstName} ${homework.teacherId.lastName}`
+                              : homework.teacherId?.firstName || homework.teacherId?.lastName || "Teacher")}
                         </p>
                       </div>
                     </div>
@@ -259,12 +249,12 @@ const HomeworkDetailModal = ({
                       <UserGroupIcon className="w-5 h-5 text-gray-500" />
                       <div>
                         <p className="text-sm text-gray-600">Class</p>
-                                                        <p className="font-medium text-gray-900">
-                                  {homework.classId?.name}
-                                  {homework.classId?.grade && homework.classId?.division && 
-                                    ` - Grade ${homework.classId.grade} ${homework.classId.division}`
-                                  }
-                                </p>
+                        <p className="font-medium text-gray-900">
+                          {homework.classId?.name}
+                          {homework.classId?.grade &&
+                            homework.classId?.division &&
+                            ` - Grade ${homework.classId.grade} ${homework.classId.division}`}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -274,17 +264,33 @@ const HomeworkDetailModal = ({
 
                 {/* Teacher Actions */}
                 {isTeacher && (
-                  <div className="flex space-x-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <button
-                      onClick={() => onEdit(homework)}
-                      className="flex-1 flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
+                      onClick={() => {
+                        onClose();
+                        onComplete && onComplete(homework);
+                      }}
+                      className="flex items-center justify-center px-4 py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors"
+                    >
+                      <CheckCircleIcon className="w-4 h-4 mr-2" />
+                      Mark as Completed
+                    </button>
+                    <button
+                      onClick={() => {
+                        onClose();
+                        onEdit(homework);
+                      }}
+                      className="flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
                     >
                       <BookOpenIcon className="w-4 h-4 mr-2" />
                       Edit Homework
                     </button>
                     <button
-                      onClick={() => onDelete(homework._id)}
-                      className="flex-1 flex items-center justify-center px-4 py-3 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors"
+                      onClick={() => {
+                        onClose();
+                        onDelete(homework._id);
+                      }}
+                      className="flex items-center justify-center px-4 py-3 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors"
                     >
                       <ExclamationTriangleIcon className="w-4 h-4 mr-2" />
                       Delete Homework
@@ -300,4 +306,4 @@ const HomeworkDetailModal = ({
   );
 };
 
-export default HomeworkDetailModal; 
+export default HomeworkDetailModal;

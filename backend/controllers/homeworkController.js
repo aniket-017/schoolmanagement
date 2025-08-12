@@ -8,16 +8,7 @@ const Subject = require("../models/Subject");
 // @access  Private (Teacher/Admin)
 const createHomework = async (req, res) => {
   try {
-    const {
-      title,
-      description,
-      subjectId,
-      classId,
-      dueDate,
-      instructions,
-      resources,
-      color,
-    } = req.body;
+    const { title, description, subjectId, classId, dueDate, instructions, resources, color } = req.body;
 
     // Verify teacher is authorized for this subject and class
     const teacher = await User.findById(req.user._id);
@@ -65,10 +56,17 @@ const createHomework = async (req, res) => {
 // @access  Private
 const getAllHomework = async (req, res) => {
   try {
-    
-    const { classId, subjectId, teacherId, status, page = 1, limit = 10 } = req.query;
+    const { classId, subjectId, teacherId, status, page = 1, limit = 10, includeInactive, isActive } = req.query;
 
-    let filter = { isActive: true };
+    // By default show active homework only. If includeInactive=true, remove isActive filter.
+    let filter = {};
+    if (includeInactive === "true") {
+      // no isActive constraint
+    } else if (typeof isActive !== "undefined") {
+      filter.isActive = isActive === "true";
+    } else {
+      filter.isActive = true;
+    }
     if (classId) filter.classId = classId;
     if (subjectId) filter.subjectId = subjectId;
     if (teacherId) filter.teacherId = teacherId;
@@ -81,7 +79,7 @@ const getAllHomework = async (req, res) => {
     // If user is a student, only show homework for their class
     if (req.user.role === "student") {
       let student;
-      if (req.user.constructor.modelName === 'Student') {
+      if (req.user.constructor.modelName === "Student") {
         student = req.user;
       } else {
         const Student = require("../models/Student");
@@ -90,7 +88,7 @@ const getAllHomework = async (req, res) => {
           student = await User.findById(req.user._id);
         }
       }
-      
+
       if (student && student.class) {
         filter.classId = student.class;
       }
@@ -154,7 +152,7 @@ const getHomeworkById = async (req, res) => {
     // If user is a student, check if homework is for their class
     if (req.user.role === "student") {
       let student;
-      if (req.user.constructor.modelName === 'Student') {
+      if (req.user.constructor.modelName === "Student") {
         student = req.user;
       } else {
         const Student = require("../models/Student");
@@ -163,7 +161,7 @@ const getHomeworkById = async (req, res) => {
           student = await User.findById(req.user._id);
         }
       }
-      
+
       if (student && student.class && student.class.toString() !== homework.classId._id.toString()) {
         return res.status(403).json({
           success: false,
@@ -283,7 +281,7 @@ const updateStudentProgress = async (req, res) => {
 
     // Check if student is in the correct class
     let student;
-    if (req.user.constructor.modelName === 'Student') {
+    if (req.user.constructor.modelName === "Student") {
       student = req.user;
     } else {
       const Student = require("../models/Student");
@@ -292,7 +290,7 @@ const updateStudentProgress = async (req, res) => {
         student = await User.findById(req.user._id);
       }
     }
-    
+
     if (!student || !student.class || student.class.toString() !== homework.classId.toString()) {
       return res.status(403).json({
         success: false,
@@ -301,9 +299,7 @@ const updateStudentProgress = async (req, res) => {
     }
 
     // Find existing progress or create new one
-    let progressIndex = homework.studentProgress.findIndex(
-      (p) => p.studentId.toString() === req.user._id.toString()
-    );
+    let progressIndex = homework.studentProgress.findIndex((p) => p.studentId.toString() === req.user._id.toString());
 
     if (progressIndex === -1) {
       // Create new progress entry
@@ -361,7 +357,7 @@ const getHomeworkCalendar = async (req, res) => {
     // If user is a student, only show homework for their class
     if (req.user.role === "student") {
       let student;
-      if (req.user.constructor.modelName === 'Student') {
+      if (req.user.constructor.modelName === "Student") {
         student = req.user;
       } else {
         const Student = require("../models/Student");
@@ -370,7 +366,7 @@ const getHomeworkCalendar = async (req, res) => {
           student = await User.findById(req.user._id);
         }
       }
-      
+
       if (student && student.class) {
         filter.classId = student.class;
       }
@@ -393,7 +389,7 @@ const getHomeworkCalendar = async (req, res) => {
     // Group homework by date for calendar view
     const calendarData = {};
     homework.forEach((hw) => {
-      const dateKey = hw.dueDate.toISOString().split('T')[0];
+      const dateKey = hw.dueDate.toISOString().split("T")[0];
       if (!calendarData[dateKey]) {
         calendarData[dateKey] = [];
       }
@@ -433,7 +429,7 @@ const getHomeworkStats = async (req, res) => {
     // If user is a student, only show homework for their class
     if (req.user.role === "student") {
       let student;
-      if (req.user.constructor.modelName === 'Student') {
+      if (req.user.constructor.modelName === "Student") {
         student = req.user;
       } else {
         const Student = require("../models/Student");
@@ -442,7 +438,7 @@ const getHomeworkStats = async (req, res) => {
           student = await User.findById(req.user._id);
         }
       }
-      
+
       if (student && student.class) {
         filter.classId = student.class;
       }
@@ -469,10 +465,7 @@ const getHomeworkStats = async (req, res) => {
             $sum: {
               $cond: [
                 {
-                  $and: [
-                    { $gte: ["$dueDate", now] },
-                    { $lt: ["$dueDate", tomorrow] },
-                  ],
+                  $and: [{ $gte: ["$dueDate", now] }, { $lt: ["$dueDate", tomorrow] }],
                 },
                 1,
                 0,
@@ -497,10 +490,7 @@ const getHomeworkStats = async (req, res) => {
             $sum: {
               $cond: [
                 {
-                  $and: [
-                    { $gte: ["$dueDate", tomorrow] },
-                    { $lte: ["$dueDate", nextWeek] },
-                  ],
+                  $and: [{ $gte: ["$dueDate", tomorrow] }, { $lte: ["$dueDate", nextWeek] }],
                 },
                 1,
                 0,
@@ -541,4 +531,4 @@ module.exports = {
   updateStudentProgress,
   getHomeworkCalendar,
   getHomeworkStats,
-}; 
+};
