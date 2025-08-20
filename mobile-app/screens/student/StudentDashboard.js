@@ -21,10 +21,13 @@ export default function StudentDashboard({ navigation }) {
   const [announcementsLoading, setAnnouncementsLoading] = useState(true);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
+  const [homework, setHomework] = useState([]);
+  const [homeworkLoading, setHomeworkLoading] = useState(true);
 
   useEffect(() => {
     initializeDashboard();
     fetchRecentAnnouncements();
+    fetchRecentHomework();
   }, []);
 
   const initializeDashboard = async () => {
@@ -68,6 +71,23 @@ export default function StudentDashboard({ navigation }) {
     }
   };
 
+  const fetchRecentHomework = async () => {
+    try {
+      setHomeworkLoading(true);
+      const response = await apiService.homework.getAll({ limit: 5 });
+      if (response.success && Array.isArray(response.data)) {
+        setHomework(response.data);
+      } else {
+        setHomework([]);
+      }
+    } catch (error) {
+      console.error("Error fetching recent homework:", error);
+      setHomework([]);
+    } finally {
+      setHomeworkLoading(false);
+    }
+  };
+
   const loadTimetable = async () => {
     try {
       setLoading(true);
@@ -101,6 +121,7 @@ export default function StudentDashboard({ navigation }) {
     setRefreshing(true);
     initializeDashboard();
     fetchRecentAnnouncements();
+    fetchRecentHomework();
   };
 
   const loadTodayAttendance = async () => {
@@ -178,6 +199,38 @@ export default function StudentDashboard({ navigation }) {
         return "calendar";
       default:
         return "help-circle";
+    }
+  };
+
+  const getHomeworkStatusColor = (homework) => {
+    const now = new Date();
+    const dueDate = new Date(homework.dueDate);
+    const studentProgress = homework.studentProgress?.find((p) => p.studentId === user?.id || p.studentId === user?._id);
+    
+    if (studentProgress?.status === "completed") {
+      return theme.colors.success;
+    } else if (dueDate < now) {
+      return theme.colors.error;
+    } else if (dueDate.toDateString() === now.toDateString()) {
+      return theme.colors.warning;
+    } else {
+      return theme.colors.info;
+    }
+  };
+
+  const getHomeworkStatusText = (homework) => {
+    const now = new Date();
+    const dueDate = new Date(homework.dueDate);
+    const studentProgress = homework.studentProgress?.find((p) => p.studentId === user?.id || p.studentId === user?._id);
+    
+    if (studentProgress?.status === "completed") {
+      return "Completed";
+    } else if (dueDate < now) {
+      return "Overdue";
+    } else if (dueDate.toDateString() === now.toDateString()) {
+      return "Due Today";
+    } else {
+      return "Pending";
     }
   };
 
@@ -402,6 +455,69 @@ export default function StudentDashboard({ navigation }) {
           </View>
         </Modal>
 
+        {/* Recent Homework */}
+        <Animatable.View animation="fadeInUp" delay={400}>
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Recent Homework</Text>
+              <TouchableOpacity style={styles.viewAllButton} onPress={() => navigation.navigate("StudentHomework")}>
+                <Text style={styles.viewAllText}>View All</Text>
+              </TouchableOpacity>
+            </View>
+            <Card style={styles.infoCard}>
+              <Card.Content>
+                {homeworkLoading ? (
+                  <View style={styles.loadingContainer}>
+                    <Ionicons name="book-outline" size={32} color={theme.colors.textSecondary} />
+                    <Text style={styles.loadingText}>Loading homework...</Text>
+                  </View>
+                ) : homework && homework.length > 0 ? (
+                  homework.slice(0, 3).map((hw, index) => (
+                    <TouchableOpacity
+                      key={hw._id}
+                      onPress={() => navigation.navigate("StudentHomework")}
+                      activeOpacity={0.8}
+                      style={[
+                        styles.homeworkItem,
+                        index === Math.min(homework.length - 1, 2) && styles.lastItem,
+                      ]}
+                    >
+                      <View style={styles.homeworkHeader}>
+                        <Text style={styles.homeworkTitle}>{hw.title}</Text>
+                        <View style={[
+                          styles.homeworkStatus,
+                          { backgroundColor: getHomeworkStatusColor(hw) }
+                        ]}>
+                          <Text style={styles.homeworkStatusText}>
+                            {getHomeworkStatusText(hw)}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.homeworkSubject}>{hw.subjectId?.name || "Subject"}</Text>
+                      <View style={styles.homeworkMeta}>
+                        <Text style={styles.homeworkDueDate}>
+                          Due: {hw.dueDate ? new Date(hw.dueDate).toLocaleDateString() : "No due date"}
+                        </Text>
+                        <Text style={styles.homeworkTeacher}>
+                          {hw.teacherId?.name || "Teacher"}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))
+                ) : (
+                  <View style={styles.emptyContainer}>
+                    <Ionicons name="book-outline" size={32} color={theme.colors.textSecondary} />
+                    <Text style={styles.emptyText}>No homework assigned</Text>
+                    <Text style={[styles.emptyText, { fontSize: 12, marginTop: 8 }]}>
+                      You have no homework assignments at the moment
+                    </Text>
+                  </View>
+                )}
+              </Card.Content>
+            </Card>
+          </View>
+        </Animatable.View>
+
         {/* Quick Actions */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
@@ -438,6 +554,13 @@ export default function StudentDashboard({ navigation }) {
               <View style={styles.actionInner}>
                 <Ionicons name="person" size={32} color={theme.colors.primary} />
                 <Text style={styles.actionText}>Profile</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate("StudentHomework")}>
+              <View style={styles.actionInner}>
+                <Ionicons name="book" size={32} color={theme.colors.primary} />
+                <Text style={styles.actionText}>Homework</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -772,6 +895,63 @@ const styles = StyleSheet.create({
   },
   announcementSource: {
     fontSize: 9,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  // Homework styles
+  homeworkItem: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  homeworkHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  homeworkTitle: {
+    fontWeight: 'bold',
+    fontSize: 14,
+    color: '#212121',
+    flex: 1,
+    marginRight: 8,
+  },
+  homeworkStatus: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  homeworkStatusText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: 'white',
+  },
+  homeworkSubject: {
+    fontSize: 12,
+    color: '#555',
+    marginBottom: 6,
+  },
+  homeworkMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  homeworkDueDate: {
+    fontSize: 10,
+    color: '#888',
+    fontWeight: '500',
+  },
+  homeworkTeacher: {
+    fontSize: 10,
     color: '#666',
     fontStyle: 'italic',
   },

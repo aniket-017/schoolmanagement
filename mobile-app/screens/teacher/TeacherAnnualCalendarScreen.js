@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions, RefreshControl } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import apiService from "../../services/apiService";
 import theme from "../../utils/theme";
@@ -10,6 +10,42 @@ const monthNames = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"
 ];
+
+// Helper function to get event type color
+const getEventTypeColor = (eventType) => {
+  switch (eventType?.toLowerCase()) {
+    case "exam":
+      return "#ef4444"; // red
+    case "holiday":
+      return "#3b82f6"; // blue
+    case "event":
+      return "#10b981"; // green
+    case "meeting":
+      return "#8b5cf6"; // purple
+    case "deadline":
+      return "#f59e0b"; // orange
+    default:
+      return "#6b7280"; // gray
+  }
+};
+
+// Helper function to get event type icon
+const getEventTypeIcon = (eventType) => {
+  switch (eventType?.toLowerCase()) {
+    case "exam":
+      return "warning";
+    case "holiday":
+      return "calendar";
+    case "event":
+      return "information-circle";
+    case "meeting":
+      return "school";
+    case "deadline":
+      return "time";
+    default:
+      return "information-circle";
+  }
+};
 
 function getMonthDays(year, month) {
   const firstDay = new Date(year, month, 1);
@@ -27,6 +63,7 @@ export default function TeacherAnnualCalendarScreen() {
   const [calendarYear, setCalendarYear] = useState(today.getFullYear());
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [showDayModal, setShowDayModal] = useState(false);
 
@@ -34,13 +71,24 @@ export default function TeacherAnnualCalendarScreen() {
     fetchEvents();
   }, []);
 
+  // Refresh events when month changes
+  useEffect(() => {
+    fetchEvents();
+  }, [calendarMonth, calendarYear]);
+
   const fetchEvents = async () => {
     setLoading(true);
     try {
-      const data = await apiService.annualCalendar.getEvents();
-      setEvents(data);
+      const response = await apiService.annualCalendar.getTeacherCalendar();
+      if (response.success) {
+        setEvents(response.data);
+      } else {
+        console.error("Failed to load calendar:", response.message);
+        setEvents([]);
+      }
     } catch (e) {
-      // handle error
+      console.error("Error loading calendar:", e);
+      setEvents([]);
     } finally {
       setLoading(false);
     }
@@ -65,8 +113,19 @@ export default function TeacherAnnualCalendarScreen() {
     setSelectedDate(null);
   };
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchEvents();
+    setRefreshing(false);
+  };
+
   return (
-    <View style={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
@@ -107,7 +166,7 @@ export default function TeacherAnnualCalendarScreen() {
           <ActivityIndicator size="large" color="#fff" />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.calendarGrid}>
+        <View style={styles.calendarGrid}>
           <View style={styles.gridRow}>
             {Array(firstDayOfWeek)
               .fill(null)
@@ -133,17 +192,28 @@ export default function TeacherAnnualCalendarScreen() {
                   activeOpacity={0.7}
                 >
                   <Text style={styles.dayNumber}>{date.getDate()}</Text>
-                  {dayEvents.length > 0 && (
-                    <View style={styles.eventBadge}>
-                      <Text style={styles.eventBadgeText}>{dayEvents.length}</Text>
-                    </View>
+                  {/* Event Dots */}
+                  <View style={styles.eventDotsContainer}>
+                    {dayEvents.slice(0, 3).map((event, i) => (
+                      <View
+                        key={i}
+                        style={[
+                          styles.eventDot,
+                          { backgroundColor: getEventTypeColor(event.eventType) }
+                        ]}
+                      />
+                    ))}
+                  </View>
+                  {dayEvents.length > 3 && (
+                    <Text style={styles.moreEventsText}>+{dayEvents.length - 3}</Text>
                   )}
                 </TouchableOpacity>
               );
             })}
           </View>
-        </ScrollView>
+        </View>
       )}
+      
       {/* Day Modal */}
       {showDayModal && selectedDate && (
         <View style={styles.modalOverlay}>
@@ -165,8 +235,29 @@ export default function TeacherAnnualCalendarScreen() {
               ) : (
                 eventsByDate[selectedDate.toISOString().slice(0, 10)].map((ev) => (
                   <View key={ev._id} style={styles.eventItem}>
-                    <Text style={styles.eventTitle}>{ev.title}</Text>
+                    <View style={styles.eventHeader}>
+                      <View style={styles.eventIconContainer}>
+                        <Ionicons 
+                          name={getEventTypeIcon(ev.eventType)} 
+                          size={20} 
+                          color={getEventTypeColor(ev.eventType)} 
+                        />
+                      </View>
+                      <View style={styles.eventInfo}>
+                        <Text style={styles.eventTitle}>{ev.title}</Text>
+                        <Text style={styles.eventType}>{ev.eventType || 'Event'}</Text>
+                      </View>
+                      {ev.time && (
+                        <Text style={styles.eventTime}>{ev.time}</Text>
+                      )}
+                    </View>
                     <Text style={styles.eventDesc}>{ev.description}</Text>
+                    {ev.location && (
+                      <View style={styles.eventLocation}>
+                        <Ionicons name="location" size={16} color="#64748b" />
+                        <Text style={styles.locationText}>{ev.location}</Text>
+                      </View>
+                    )}
                   </View>
                 ))
               )}
@@ -174,7 +265,7 @@ export default function TeacherAnnualCalendarScreen() {
           </View>
         </View>
       )}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -182,7 +273,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8fafc",
-    paddingTop: 32,
+    paddingTop: 16,
   },
   header: {
     flexDirection: "row",
@@ -395,16 +486,74 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  eventHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  eventIconContainer: {
+    marginRight: 12,
+    backgroundColor: "#f59e0b",
+    borderRadius: 10,
+    padding: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  eventInfo: {
+    flex: 1,
+  },
   eventTitle: {
     color: "#92400e",
     fontWeight: "800",
     fontSize: 16,
-    marginBottom: 6,
+    marginBottom: 2,
     letterSpacing: -0.3,
+  },
+  eventType: {
+    color: "#64748b",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  eventTime: {
+    color: "#64748b",
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 2,
   },
   eventDesc: {
     color: "#a16207",
     fontSize: 14,
     lineHeight: 20,
+  },
+  eventLocation: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  locationText: {
+    color: "#64748b",
+    fontSize: 13,
+    marginLeft: 8,
+  },
+  eventDotsContainer: {
+    flexDirection: "row",
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  eventDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginHorizontal: 2,
+  },
+  moreEventsText: {
+    color: "#64748b",
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 4,
   },
 }); 

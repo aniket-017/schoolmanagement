@@ -369,6 +369,96 @@ export const apiService = {
       const response = await api.get("/annual-calendar");
       return response.data;
     },
+    getTeacherCalendar: async () => {
+      const response = await api.get("/annual-calendar/teacher");
+      return response.data;
+    },
+    getStudentCalendar: async () => {
+      const response = await api.get("/annual-calendar");
+      return response.data;
+    },
+  },
+
+  // Subjects APIs
+  subjects: {
+    getAll: async () => {
+      const response = await api.get("/subjects");
+      return response.data;
+    },
+
+    getTeacherAssignedSubjects: async () => {
+      const response = await api.get("/subjects/teacher/assigned");
+      return response.data;
+    },
+
+    getTeacherTimetableSubjects: async () => {
+      const response = await api.get("/subjects/teacher/timetable");
+      return response.data;
+    },
+  },
+
+  // Classes APIs
+  classes: {
+    getAll: async () => {
+      const response = await api.get("/classes");
+      return response.data;
+    },
+
+    getTeacherAssignedClasses: async () => {
+      const response = await api.get("/classes/teacher/assigned");
+      return response.data;
+    },
+
+    getTeacherTimetableClasses: async () => {
+      const response = await api.get("/classes/teacher/timetable");
+      return response.data;
+    },
+  },
+
+  // Homework APIs
+  homework: {
+    getAll: async (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await api.get(`/homework?${queryString}`);
+      return response.data;
+    },
+
+    getById: async (id) => {
+      const response = await api.get(`/homework/${id}`);
+      return response.data;
+    },
+
+    create: async (data) => {
+      const response = await api.post("/homework", data);
+      return response.data;
+    },
+
+    update: async (id, data) => {
+      const response = await api.put(`/homework/${id}`, data);
+      return response.data;
+    },
+
+    delete: async (id) => {
+      const response = await api.delete(`/homework/${id}`);
+      return response.data;
+    },
+
+    getCalendar: async (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await api.get(`/homework/calendar?${queryString}`);
+      return response.data;
+    },
+
+    getStats: async (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await api.get(`/homework/stats?${queryString}`);
+      return response.data;
+    },
+
+    updateProgress: async (id, data) => {
+      const response = await api.put(`/homework/${id}/progress`, data);
+      return response.data;
+    },
   },
 
   // Common utility functions

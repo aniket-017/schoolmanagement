@@ -11,6 +11,7 @@ import TeacherTimetableScreen from "../screens/teacher/TeacherTimetableScreen";
 import AnnouncementsScreen from "../screens/teacher/AnnouncementsScreen";
 import TeacherAnnouncementsPage from "../screens/teacher/TeacherAnnouncementsPage";
 import TeacherAnnualCalendarScreen from "../screens/teacher/TeacherAnnualCalendarScreen";
+import TeacherHomework from "../screens/teacher/TeacherHomework";
 
 const Stack = createStackNavigator();
 
@@ -43,6 +44,7 @@ export default function TeacherNavigator({ navigation, route }) {
       <Stack.Screen name="TeacherAnnouncements" component={AnnouncementsScreen} options={{ title: "Announcements" }} />
       <Stack.Screen name="TeacherAnnouncementsPage" component={TeacherAnnouncementsPage} options={{ title: "All Announcements" }} />
       <Stack.Screen name="TeacherAnnualCalendar" component={TeacherAnnualCalendarScreen} options={{ title: "Annual Calendar" }} />
+      <Stack.Screen name="TeacherHomework" component={TeacherHomework} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }

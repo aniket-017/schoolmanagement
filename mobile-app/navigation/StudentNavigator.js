@@ -8,6 +8,7 @@ import TimetableScreen from "../screens/student/TimetableScreen";
 import AnnouncementsScreen from "../screens/student/AnnouncementsScreen";
 import ProfileScreen from "../screens/student/ProfileScreen";
 import StudentAnnualCalendarScreen from "../screens/student/StudentAnnualCalendarScreen";
+import StudentHomeworkScreen from "../screens/student/StudentHomeworkScreen";
 
 const Stack = createStackNavigator();
 
@@ -49,6 +50,7 @@ export default function StudentNavigator({ navigation, route }) {
       <Stack.Screen name="StudentAnnouncements" component={AnnouncementsScreen} options={{ title: "Announcements" }} />
       <Stack.Screen name="StudentProfile" component={ProfileScreen} options={{ headerShown: false }} />
       <Stack.Screen name="StudentAnnualCalendar" component={StudentAnnualCalendarScreen} options={{ title: "Annual Calendar" }} />
+      <Stack.Screen name="StudentHomework" component={StudentHomeworkScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }
