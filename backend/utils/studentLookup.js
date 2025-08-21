@@ -27,50 +27,21 @@ const findStudentById = async (studentId) => {
       }
     }
 
-    // For students that only exist in Student model, find or create corresponding User record
+    // For students that only exist in Student model, we don't create User records
+    // Students are managed separately in the Student database
     let userRecord = null;
 
     if (isStudentModel) {
-      // Try to find corresponding User record by studentId or email
-      if (student.studentId) {
-        userRecord = await User.findOne({ studentId: student.studentId });
-      }
-
-      if (!userRecord && student.email) {
-        userRecord = await User.findOne({ email: student.email });
-      }
-
-      if (!userRecord && student.rollNumber) {
-        userRecord = await User.findOne({ studentId: student.rollNumber });
-      }
-
-      // If no User record exists, create one
-      if (!userRecord) {
-        try {
-          userRecord = await User.create({
-            name: student.name || `${student.firstName} ${student.lastName}`.trim(),
-            email: student.email || `student.${student.studentId || student.rollNumber}@school.com`,
-            password: "tempPassword123", // This should be changed by the student
-            role: "student",
-            class: student.class,
-            studentId: student.studentId || student.rollNumber,
-            phone: student.mobileNumber,
-          });
-          console.log(
-            `Created new User record for student: ${student.name || student.firstName} (User ID: ${userRecord._id})`
-          );
-        } catch (error) {
-          console.error("Error creating User record for student:", error);
-          throw new Error("Error creating user record for student");
-        }
-      }
+      // Students exist only in Student model, no User record needed
+      // Set userRecord to the student object itself for consistency
+      userRecord = student;
     }
 
     return {
       found: true,
       student,
       isStudentModel,
-      userRecord: isStudentModel ? userRecord : student,
+      userRecord: userRecord,
     };
   } catch (error) {
     console.error("Error in findStudentById:", error);

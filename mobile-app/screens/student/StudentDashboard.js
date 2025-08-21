@@ -518,6 +518,39 @@ export default function StudentDashboard({ navigation }) {
           </View>
         </Animatable.View>
 
+        {/* Recent Fees */}
+        <Animatable.View animation="fadeInUp" delay={500}>
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Fees Information</Text>
+              <TouchableOpacity style={styles.viewDetailsButton} onPress={() => navigation.navigate("FeeOverview")}>
+                <Text style={styles.viewDetailsText}>View Details</Text>
+              </TouchableOpacity>
+            </View>
+            <Card style={styles.infoCard}>
+              <Card.Content>
+                <TouchableOpacity 
+                  style={styles.feesOverviewContainer}
+                  onPress={() => navigation.navigate("FeeOverview")}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.feesOverviewTitle}>Fee Overview</Text>
+                  <View style={styles.feesSummaryRow}>
+                    <View style={styles.feesSummaryItem}>
+                      <View style={styles.feesSummaryIcon}>
+                        <Text style={styles.feesSummaryIconText}>₹</Text>
+                      </View>
+                      <Text style={styles.feesSummaryText}>
+                        Total: ₹15,000 | Paid: ₹5,000 | Remaining: ₹10,000
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              </Card.Content>
+            </Card>
+          </View>
+        </Animatable.View>
+
         {/* Quick Actions */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
@@ -526,13 +559,6 @@ export default function StudentDashboard({ navigation }) {
               <View style={styles.actionInner}>
                 <Ionicons name="calendar" size={32} color={theme.colors.primary} />
                 <Text style={styles.actionText}>Attendance</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate("StudentClasses")}>
-              <View style={styles.actionInner}>
-                <Ionicons name="people" size={32} color={theme.colors.primary} />
-                <Text style={styles.actionText}>Classes</Text>
               </View>
             </TouchableOpacity>
 
@@ -547,6 +573,13 @@ export default function StudentDashboard({ navigation }) {
               <View style={styles.actionInner}>
                 <Ionicons name="time" size={32} color={theme.colors.primary} />
                 <Text style={styles.actionText}>Timetable</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate("FeeOverview")}>
+              <View style={styles.actionInner}>
+                <Ionicons name="card" size={32} color={theme.colors.primary} />
+                <Text style={styles.actionText}>Fees</Text>
               </View>
             </TouchableOpacity>
 
@@ -954,5 +987,66 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#666',
     fontStyle: 'italic',
+  },
+  // Fees styles
+  feesSummaryContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: theme.spacing.md,
+  },
+  feesOverviewContainer: {
+    padding: theme.spacing.md,
+  },
+  feesOverviewTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#212121',
+    marginBottom: 12,
+  },
+  feesSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  feesSummaryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e0e0e0',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  feesSummaryIcon: {
+    marginRight: 5,
+  },
+  feesSummaryIconText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  feesSummaryText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  feesDetailsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  feesDetailText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  viewDetailsButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#f59e0b',
+  },
+  viewDetailsText: {
+    fontSize: 12,
+    color: '#ffffff',
+    fontWeight: '600',
   },
 });

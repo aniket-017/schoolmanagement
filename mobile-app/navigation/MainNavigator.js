@@ -118,11 +118,11 @@ export default function MainNavigator() {
           }}
         />
         <Tab.Screen
-          name="StudentGradesTab"
+          name="StudentFeesTab"
           component={StudentNavigator}
           options={{
-            title: "Grades",
-            tabBarIcon: ({ focused, color }) => <TabIcon name="trophy" focused={focused} color={color} />,
+            title: "Fees",
+            tabBarIcon: ({ focused, color }) => <TabIcon name="card" focused={focused} color={color} />,
           }}
         />
         <Tab.Screen

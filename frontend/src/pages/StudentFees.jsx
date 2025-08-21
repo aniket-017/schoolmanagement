@@ -91,6 +91,14 @@ const StudentFees = () => {
       }
     } catch (error) {
       console.error("Error loading payment history:", error);
+      // Show user-friendly error message
+      if (error.message.includes("500")) {
+        console.error("Server error - backend may be down or database connection issue");
+      } else if (error.message.includes("404")) {
+        console.error("Student not found");
+      } else if (error.message.includes("403")) {
+        console.error("Access denied");
+      }
     } finally {
       setLoadingHistory(false);
     }

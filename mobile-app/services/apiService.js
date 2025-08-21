@@ -263,6 +263,22 @@ export const apiService = {
     },
   },
 
+  // Messages Services (for fee reminders and other messages)
+  messages: {
+    getUserMessages: async (params = {}) => {
+      const response = await api.get("/messages", { params });
+      return response.data;
+    },
+    markAsRead: async (messageId) => {
+      const response = await api.put(`/messages/${messageId}/read`);
+      return response.data;
+    },
+    getUnreadCount: async () => {
+      const response = await api.get("/messages/unread-count");
+      return response.data;
+    },
+  },
+
   // Announcement Services
   announcements: {
     getAnnouncements: async (params = {}) => {
@@ -457,6 +473,25 @@ export const apiService = {
 
     updateProgress: async (id, data) => {
       const response = await api.put(`/homework/${id}/progress`, data);
+      return response.data;
+    },
+  },
+
+  // Fees APIs
+  fees: {
+    getStudentFeeInfo: async (studentId) => {
+      const response = await api.get(`/fees/student/${studentId}/info`);
+      return response.data;
+    },
+
+    getStudentPaymentHistory: async (studentId, params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await api.get(`/fees/student/${studentId}/payment-history?${queryString}`);
+      return response.data;
+    },
+
+    getStudentFees: async (studentId) => {
+      const response = await api.get(`/fees/student/${studentId}`);
       return response.data;
     },
   },

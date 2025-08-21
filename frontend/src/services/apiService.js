@@ -22,9 +22,17 @@ class ApiService {
 
   // Helper method to handle API responses
   async handleResponse(response) {
-    const data = await response.json();
+    let data;
+    try {
+      data = await response.json();
+    } catch (error) {
+      // If response is not JSON, get text instead
+      const textData = await response.text();
+      throw new Error(`Server error (${response.status}): ${textData || 'Invalid response format'}`);
+    }
+    
     if (!response.ok) {
-      throw new Error(data.message || "Something went wrong");
+      throw new Error(data.message || data.error || `Server error (${response.status})`);
     }
     return data;
   }
