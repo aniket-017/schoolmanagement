@@ -157,6 +157,18 @@ export const apiService = {
       });
       return response.data;
     },
+    getClassAttendanceSummary: async (classId, queryParams) => {
+      try {
+        const response = await api.get(`/attendance/class-summary/${classId}?${queryParams}`);
+        return response.data;
+      } catch (error) {
+        // Check if this is a 500 error but with valid data
+        if (error.response?.status === 500 && error.response?.data?.success) {
+          return error.response.data;
+        }
+        throw error;
+      }
+    },
   },
 
   // Assignment Services
@@ -198,14 +210,10 @@ export const apiService = {
       return response.data;
     },
     getTeacherTimetable: async (teacherId) => {
-      console.log("API Service: Making request to /timetables/teacher/", teacherId);
       try {
         const response = await api.get(`/timetables/teacher/${teacherId}`);
-        console.log("API Service: Response received:", response.data);
         return response.data;
       } catch (error) {
-        console.error("API Service: Error in getTeacherTimetable:", error);
-        console.error("API Service: Error response:", error.response?.data);
         throw error;
       }
     },
@@ -337,6 +345,14 @@ export const apiService = {
       const response = await api.get(`/classes/${classId}/students`);
       return response.data;
     },
+    getStudentCalendar: async (studentId, params = {}) => {
+      const response = await api.get(`/students/${studentId}/calendar`, { params });
+      return response.data;
+    },
+    getClassStudentCalendar: async (classId, params = {}) => {
+      const response = await api.get(`/classes/${classId}/student-calendar`, { params });
+      return response.data;
+    },
   },
 
   // Library Services
@@ -427,6 +443,26 @@ export const apiService = {
 
     getTeacherTimetableClasses: async () => {
       const response = await api.get("/classes/teacher/timetable");
+      return response.data;
+    },
+    
+    getClassById: async (id) => {
+      const response = await api.get(`/classes/${id}`);
+      return response.data;
+    },
+    
+    getClassStudents: async (classId) => {
+      const response = await api.get(`/classes/${classId}/students`);
+      return response.data;
+    },
+    
+    getStudentCalendar: async (studentId, params = {}) => {
+      const response = await api.get(`/students/${studentId}/calendar`, { params });
+      return response.data;
+    },
+    
+    getClassStudentCalendar: async (classId, params = {}) => {
+      const response = await api.get(`/classes/${classId}/student-calendar`, { params });
       return response.data;
     },
   },

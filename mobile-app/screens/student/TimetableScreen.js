@@ -30,7 +30,6 @@ export default function TimetableScreen() {
       // Then load the timetable
       await loadTimetable();
     } catch (error) {
-      console.error("Error initializing timetable:", error);
       setError("Failed to initialize timetable");
       setLoading(false);
     }
@@ -56,7 +55,6 @@ export default function TimetableScreen() {
         setError(response.message || "Failed to load timetable");
       }
     } catch (error) {
-      console.error("Error loading timetable:", error);
       setError("Network error. Please check your connection and try again.");
     } finally {
       setLoading(false);

@@ -8,6 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
+import EnhancedAttendanceView from "../../components/EnhancedAttendanceView";
 import { apiService } from "../../services/apiService";
 import theme from "../../utils/theme";
 import { useAuth } from "../../context/AuthContext";
@@ -29,6 +30,7 @@ export default function AttendanceManagement({ navigation }) {
     leave: 0,
     unmarked: 0,
   });
+  const [viewType, setViewType] = useState("daily"); // daily, enhanced
 
   // Load teacher's classes on component mount
   useEffect(() => {
@@ -60,12 +62,9 @@ export default function AttendanceManagement({ navigation }) {
   const loadClassStudents = async () => {
     try {
       setLoading(true);
-      // console.log("Loading students for class:", selectedClass);
       const response = await apiService.attendance.getClassStudents(selectedClass);
-      // console.log("Students response:", JSON.stringify(response, null, 2));
 
       if (response.success && response.data && response.data.students) {
-        console.log("Found", response.data.students.length, "students");
         setStudents(response.data.students);
         // Initialize attendance data
         const initialAttendance = {};
@@ -274,134 +273,205 @@ export default function AttendanceManagement({ navigation }) {
           <Text style={styles.subtitle}>Mark daily attendance for your classes</Text>
         </Card>
 
-        {/* Date Picker */}
-        <Card style={styles.dateCard}>
-          <Text style={styles.sectionTitle}>Select Date</Text>
-          <TouchableOpacity style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
-            <Ionicons name="calendar" size={24} color={theme.colors.primary} />
-            <Text style={styles.dateText}>{formatDate(selectedDate)}</Text>
-            <Ionicons name="chevron-down" size={20} color={theme.colors.textSecondary} />
-          </TouchableOpacity>
-        </Card>
-
-        {/* Class Selection */}
-        <Card style={styles.classCard}>
-          <Text style={styles.sectionTitle}>Select Class</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={selectedClass}
-              onValueChange={handleClassChange}
-              style={styles.picker}
-              enabled={!loading}
+        {/* View Type Toggle */}
+        <Card style={styles.viewToggleCard}>
+          <Text style={styles.sectionTitle}>View Type</Text>
+          <View style={styles.viewToggleContainer}>
+            <TouchableOpacity
+              style={[
+                styles.viewToggleButton,
+                viewType === "daily" && styles.viewToggleButtonActive,
+              ]}
+              onPress={() => setViewType("daily")}
             >
-              <Picker.Item label="Select a class..." value={null} />
-              {classes.map((classItem) => (
-                <Picker.Item key={classItem._id} label={classItem.fullName} value={classItem._id} />
-              ))}
-            </Picker>
+              <Ionicons 
+                name="calendar" 
+                size={20} 
+                color={viewType === "daily" ? theme.colors.textLight : theme.colors.textSecondary} 
+              />
+              <Text
+                style={[
+                  styles.viewToggleButtonText,
+                  viewType === "daily" && styles.viewToggleButtonTextActive,
+                ]}
+              >
+                Daily View
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.viewToggleButton,
+                viewType === "enhanced" && styles.viewToggleButtonActive,
+              ]}
+              onPress={() => setViewType("enhanced")}
+            >
+              <Ionicons 
+                name="analytics" 
+                size={20} 
+                color={viewType === "enhanced" ? theme.colors.textLight : theme.colors.textSecondary} 
+              />
+              <Text
+                style={[
+                  styles.viewToggleButtonText,
+                  viewType === "enhanced" && styles.viewToggleButtonTextActive,
+                ]}
+              >
+                Enhanced View
+              </Text>
+            </TouchableOpacity>
           </View>
         </Card>
 
-        {/* Students List */}
-        {students.length > 0 && (
-          <Card style={styles.studentsCard}>
-            <Text style={styles.sectionTitle}>Mark Attendance</Text>
-            <Text style={styles.studentCount}>
-              {students.length} student{students.length !== 1 ? "s" : ""} in class
-            </Text>
+        {/* Daily View Content */}
+        {viewType === "daily" && (
+          <>
+            {/* Date Picker */}
+            <Card style={styles.dateCard}>
+              <Text style={styles.sectionTitle}>Select Date</Text>
+              <TouchableOpacity style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
+                <Ionicons name="calendar" size={24} color={theme.colors.primary} />
+                <Text style={styles.dateText}>{formatDate(selectedDate)}</Text>
+                <Ionicons name="chevron-down" size={20} color={theme.colors.textSecondary} />
+              </TouchableOpacity>
+            </Card>
 
-            {students.map((student, index) => (
-              <Animatable.View key={student._id} animation="fadeInUp" delay={index * 50} style={styles.studentRow}>
-                <View style={styles.studentInfo}>
-                  <Text style={styles.rollNumber}>{student.rollNumber}</Text>
-                  <Text style={styles.studentName}>{student.name}</Text>
+            {/* Class Selection */}
+            <Card style={styles.classCard}>
+              <Text style={styles.sectionTitle}>Select Class</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={selectedClass}
+                  onValueChange={handleClassChange}
+                  style={styles.picker}
+                  enabled={!loading}
+                >
+                  <Picker.Item label="Select a class..." value={null} />
+                  {classes.map((classItem) => (
+                    <Picker.Item key={classItem._id} label={classItem.fullName} value={classItem._id} />
+                  ))}
+                </Picker>
+              </View>
+            </Card>
+
+            {/* Students List */}
+            {students.length > 0 && (
+              <Card style={styles.studentsCard}>
+                <Text style={styles.sectionTitle}>Mark Attendance</Text>
+                <Text style={styles.studentCount}>
+                  {students.length} student{students.length !== 1 ? "s" : ""} in class
+                </Text>
+
+                {students.map((student, index) => (
+                  <Animatable.View key={student._id} animation="fadeInUp" delay={index * 50} style={styles.studentRow}>
+                    <View style={styles.studentInfo}>
+                      <Text style={styles.rollNumber}>{student.rollNumber}</Text>
+                      <Text style={styles.studentName}>{student.name}</Text>
+                    </View>
+                    <View style={styles.attendanceButtons}>
+                      <TouchableOpacity
+                        style={[
+                          styles.attendanceButton,
+                          styles.presentButton,
+                          attendanceData[student._id] === "present" && styles.selectedButton,
+                        ]}
+                        onPress={() => markAttendance(student._id, "present")}
+                      >
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={20}
+                          color={attendanceData[student._id] === "present" ? theme.colors.textLight : theme.colors.success}
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.attendanceButton,
+                          styles.absentButton,
+                          attendanceData[student._id] === "absent" && styles.selectedButton,
+                        ]}
+                        onPress={() => markAttendance(student._id, "absent")}
+                      >
+                        <Ionicons
+                          name="close-circle"
+                          size={20}
+                          color={attendanceData[student._id] === "absent" ? theme.colors.textLight : theme.colors.error}
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.attendanceButton,
+                          styles.leaveButton,
+                          attendanceData[student._id] === "leave" && styles.selectedButton,
+                        ]}
+                        onPress={() => markAttendance(student._id, "leave")}
+                      >
+                        <Ionicons
+                          name="time"
+                          size={20}
+                          color={attendanceData[student._id] === "leave" ? theme.colors.textLight : theme.colors.warning}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </Animatable.View>
+                ))}
+              </Card>
+            )}
+
+            {/* Summary */}
+            {students.length > 0 && (
+              <Card style={styles.summaryCard}>
+                <Text style={styles.sectionTitle}>Summary</Text>
+                <View style={styles.summaryGrid}>
+                  <View style={styles.summaryItem}>
+                    <Text style={[styles.summaryNumber, { color: theme.colors.success }]}>{summary.present}</Text>
+                    <Text style={styles.summaryLabel}>Present</Text>
+                  </View>
+                  <View style={styles.summaryItem}>
+                    <Text style={[styles.summaryNumber, { color: theme.colors.error }]}>{summary.absent}</Text>
+                    <Text style={styles.summaryLabel}>Absent</Text>
+                  </View>
+                  <View style={styles.summaryItem}>
+                    <Text style={[styles.summaryNumber, { color: theme.colors.warning }]}>{summary.leave}</Text>
+                    <Text style={styles.summaryLabel}>Leave</Text>
+                  </View>
+                  <View style={styles.summaryItem}>
+                    <Text style={[styles.summaryNumber, { color: theme.colors.textSecondary }]}>{summary.unmarked}</Text>
+                    <Text style={styles.summaryLabel}>Unmarked</Text>
+                  </View>
                 </View>
-                <View style={styles.attendanceButtons}>
-                  <TouchableOpacity
-                    style={[
-                      styles.attendanceButton,
-                      styles.presentButton,
-                      attendanceData[student._id] === "present" && styles.selectedButton,
-                    ]}
-                    onPress={() => markAttendance(student._id, "present")}
-                  >
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={20}
-                      color={attendanceData[student._id] === "present" ? theme.colors.textLight : theme.colors.success}
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.attendanceButton,
-                      styles.absentButton,
-                      attendanceData[student._id] === "absent" && styles.selectedButton,
-                    ]}
-                    onPress={() => markAttendance(student._id, "absent")}
-                  >
-                    <Ionicons
-                      name="close-circle"
-                      size={20}
-                      color={attendanceData[student._id] === "absent" ? theme.colors.textLight : theme.colors.error}
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.attendanceButton,
-                      styles.leaveButton,
-                      attendanceData[student._id] === "leave" && styles.selectedButton,
-                    ]}
-                    onPress={() => markAttendance(student._id, "leave")}
-                  >
-                    <Ionicons
-                      name="time"
-                      size={20}
-                      color={attendanceData[student._id] === "leave" ? theme.colors.textLight : theme.colors.warning}
-                    />
-                  </TouchableOpacity>
-                </View>
-              </Animatable.View>
-            ))}
-          </Card>
+              </Card>
+            )}
+
+            {/* Save Button */}
+            {students.length > 0 && (
+              <Card style={styles.saveCard}>
+                <Button
+                  title="Save Attendance"
+                  onPress={saveAttendance}
+                  loading={saving}
+                  fullWidth
+                  icon="save"
+                  variant="primary"
+                />
+              </Card>
+            )}
+          </>
         )}
 
-        {/* Summary */}
-        {students.length > 0 && (
-          <Card style={styles.summaryCard}>
-            <Text style={styles.sectionTitle}>Summary</Text>
-            <View style={styles.summaryGrid}>
-              <View style={styles.summaryItem}>
-                <Text style={[styles.summaryNumber, { color: theme.colors.success }]}>{summary.present}</Text>
-                <Text style={styles.summaryLabel}>Present</Text>
-              </View>
-              <View style={styles.summaryItem}>
-                <Text style={[styles.summaryNumber, { color: theme.colors.error }]}>{summary.absent}</Text>
-                <Text style={styles.summaryLabel}>Absent</Text>
-              </View>
-              <View style={styles.summaryItem}>
-                <Text style={[styles.summaryNumber, { color: theme.colors.warning }]}>{summary.leave}</Text>
-                <Text style={styles.summaryLabel}>Leave</Text>
-              </View>
-              <View style={styles.summaryItem}>
-                <Text style={[styles.summaryNumber, { color: theme.colors.textSecondary }]}>{summary.unmarked}</Text>
-                <Text style={styles.summaryLabel}>Unmarked</Text>
-              </View>
-            </View>
-          </Card>
-        )}
-
-        {/* Save Button */}
-        {students.length > 0 && (
-          <Card style={styles.saveCard}>
-            <Button
-              title="Save Attendance"
-              onPress={saveAttendance}
-              loading={saving}
-              fullWidth
-              icon="save"
-              variant="primary"
-            />
-          </Card>
+        {/* Enhanced View Content */}
+        {viewType === "enhanced" && (
+          <>
+            {!selectedClass ? (
+              <Card style={styles.noDataCard}>
+                <Ionicons name="alert-circle" size={48} color={theme.colors.warning} />
+                <Text style={styles.noDataText}>Please select a class first to view attendance data.</Text>
+              </Card>
+            ) : (
+              <EnhancedAttendanceView 
+                classId={selectedClass} 
+                className={classes.find(c => c._id === selectedClass)?.fullName || ""}
+              />
+            )}
+          </>
         )}
 
         {/* Spacer */}
@@ -438,6 +508,36 @@ const styles = StyleSheet.create({
   refreshIcon: {
     marginLeft: theme.spacing.md,
     padding: 4,
+  },
+  viewToggleCard: {
+    marginBottom: theme.spacing.md,
+  },
+  viewToggleContainer: {
+    flexDirection: "row",
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
+    padding: 4,
+  },
+  viewToggleButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.borderRadius.sm,
+    gap: theme.spacing.xs,
+  },
+  viewToggleButtonActive: {
+    backgroundColor: theme.colors.primary,
+  },
+  viewToggleButtonText: {
+    ...theme.typography.body2,
+    color: theme.colors.textSecondary,
+    fontWeight: "500",
+  },
+  viewToggleButtonTextActive: {
+    color: theme.colors.textLight,
   },
   title: {
     ...theme.typography.h3,
@@ -570,5 +670,15 @@ const styles = StyleSheet.create({
   },
   spacer: {
     height: 80,
+  },
+  noDataCard: {
+    alignItems: "center",
+    padding: theme.spacing.xl,
+  },
+  noDataText: {
+    ...theme.typography.body2,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.md,
+    textAlign: "center",
   },
 });

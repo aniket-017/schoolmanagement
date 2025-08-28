@@ -29,28 +29,20 @@ export default function TeacherDashboard({ navigation }) {
   const loadTimetable = async () => {
     try {
       setLoading(true);
-      console.log("Loading timetable for user:", user);
 
       const userId = user?.id || user?._id;
       if (!userId) {
-        console.log("No user ID found, setting timetable to null");
         setTimetable(null);
         return;
       }
 
-      console.log("Making API call to get teacher timetable for ID:", userId);
       const response = await apiService.timetable.getTeacherTimetable(userId);
-      console.log("Teacher timetable API response:", response);
 
       if (response.success) {
-        console.log("Setting timetable data:", response.data);
         setTimetable(response.data);
-      } else {
-        console.error("Failed to load teacher timetable:", response.message);
       }
     } catch (error) {
-      console.error("Error loading teacher timetable:", error);
-      console.error("Error details:", error.response?.data || error.message);
+      // Error handling without logging
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -82,17 +74,11 @@ export default function TeacherDashboard({ navigation }) {
   };
 
   const getTodaySchedule = () => {
-    console.log("getTodaySchedule called with timetable:", timetable);
-
     if (!timetable?.weeklyTimetable) {
-      console.log("No weeklyTimetable found, returning empty array");
       return [];
     }
 
     const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
-    console.log("Today is:", today);
-    console.log("Available days in timetable:", Object.keys(timetable.weeklyTimetable));
-    console.log("Today's schedule:", timetable.weeklyTimetable[today]);
 
     return timetable.weeklyTimetable[today] || [];
   };

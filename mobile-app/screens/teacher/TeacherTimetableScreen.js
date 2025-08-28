@@ -25,28 +25,20 @@ export default function TeacherTimetableScreen() {
   const loadTimetable = async () => {
     try {
       setLoading(true);
-      console.log("TeacherTimetableScreen: Loading timetable for user:", user);
 
       const userId = user?.id || user?._id;
       if (!userId) {
-        console.log("TeacherTimetableScreen: No user ID found, setting timetable to null");
         setTimetable(null);
         return;
       }
 
-      console.log("TeacherTimetableScreen: Making API call to get teacher timetable for ID:", userId);
       const response = await apiService.timetable.getTeacherTimetable(userId);
-      console.log("TeacherTimetableScreen: API response:", response);
 
       if (response.success) {
-        console.log("TeacherTimetableScreen: Setting timetable data:", response.data);
         setTimetable(response.data);
       } else {
-        console.error("TeacherTimetableScreen: Failed to load teacher timetable:", response.message);
-
         // For testing purposes, set some mock data if API fails
         if (__DEV__) {
-          console.log("TeacherTimetableScreen: Setting mock data for testing");
           setTimetable({
             teacherId: userId,
             weeklyTimetable: {
@@ -93,12 +85,8 @@ export default function TeacherTimetableScreen() {
         }
       }
     } catch (error) {
-      console.error("TeacherTimetableScreen: Error loading teacher timetable:", error);
-      console.error("TeacherTimetableScreen: Error details:", error.response?.data || error.message);
-
       // For testing purposes, set some mock data if API fails
       if (__DEV__) {
-        console.log("TeacherTimetableScreen: Setting mock data due to error");
         setTimetable({
           teacherId: userId,
           weeklyTimetable: {
@@ -187,12 +175,7 @@ export default function TeacherTimetableScreen() {
   );
 
   const renderDaySchedule = () => {
-    console.log("TeacherTimetableScreen: renderDaySchedule called");
-    console.log("TeacherTimetableScreen: timetable:", timetable);
-    console.log("TeacherTimetableScreen: selectedDay:", selectedDay);
-
     if (!timetable?.weeklyTimetable) {
-      console.log("TeacherTimetableScreen: No weeklyTimetable found");
       return (
         <View style={styles.emptyContainer}>
           <Ionicons name="calendar-outline" size={64} color={theme.colors.textSecondary} />
@@ -205,10 +188,8 @@ export default function TeacherTimetableScreen() {
     }
 
     const dayPeriods = timetable.weeklyTimetable[selectedDay] || [];
-    console.log("TeacherTimetableScreen: dayPeriods for", selectedDay, ":", dayPeriods);
 
     if (dayPeriods.length === 0) {
-      console.log("TeacherTimetableScreen: No periods for selected day");
       return (
         <View style={styles.emptyContainer}>
           <Ionicons name="calendar-outline" size={64} color={theme.colors.textSecondary} />

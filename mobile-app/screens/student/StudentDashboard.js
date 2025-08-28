@@ -109,7 +109,6 @@ export default function StudentDashboard({ navigation }) {
         setTimetable(null);
       }
     } catch (error) {
-      console.error("Error loading student timetable:", error);
       setTimetable(null);
     } finally {
       setLoading(false);
