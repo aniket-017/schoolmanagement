@@ -47,6 +47,7 @@ import TimetableOutlineManager from "./pages/TimetableOutlineManager";
 import AnnualCalendarAdmin from "./pages/AnnualCalendarAdmin";
 import AnnualCalendarView from "./pages/AnnualCalendarView";
 import StudentDemo from "./pages/StudentDemo";
+import ExamManagement from "./pages/ExamManagement";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ChangePassword from "./components/ChangePassword";
 import TeacherAnnouncements from "./pages/TeacherAnnouncements";
@@ -385,6 +386,14 @@ function AppContent() {
           }
         />
         <Route
+          path="/admin/examinations"
+          element={
+            <ProtectedRoute>
+              <ExamManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/admin/annual-calendar"
           element={
             <ProtectedRoute>
@@ -397,6 +406,14 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <AnnualCalendarView />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/examinations"
+          element={
+            <ProtectedRoute>
+              <ExamManagement />
             </ProtectedRoute>
           }
         />
@@ -414,6 +431,7 @@ function AppContent() {
         <Route path="/users" element={<Navigate to="/admin/users" replace />} />
         <Route path="/teachers" element={<Navigate to="/admin/teachers" replace />} />
         <Route path="/classes" element={<Navigate to="/admin/classes" replace />} />
+        <Route path="/examinations" element={<Navigate to="/admin/examinations" replace />} />
         <Route path="/fees" element={<Navigate to="/admin/fees" replace />} />
         <Route path="/announcements" element={<Navigate to="/admin/announcements" replace />} />
         <Route path="/timetable-outlines" element={<Navigate to="/admin/timetable-outlines" replace />} />

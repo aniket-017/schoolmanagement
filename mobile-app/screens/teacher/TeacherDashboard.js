@@ -7,7 +7,7 @@ import * as Animatable from "react-native-animatable";
 import { useAuth } from "../../context/AuthContext";
 import apiService from "../../services/apiService";
 import theme from "../../utils/theme";
-import Card from "../../components/ui/Card";
+import { Card } from "react-native-paper";
 
 export default function TeacherDashboard({ navigation }) {
   const { user } = useAuth();
@@ -21,10 +21,22 @@ export default function TeacherDashboard({ navigation }) {
   const [annLoading, setAnnLoading] = useState(true);
   const [annError, setAnnError] = useState(null);
 
+  // Add exam states
+  const [upcomingExams, setUpcomingExams] = useState([]);
+  const [examsLoading, setExamsLoading] = useState(true);
+  const [teacherClasses, setTeacherClasses] = useState([]);
+
   useEffect(() => {
     loadTimetable();
     loadAnnouncements();
+    loadTeacherClasses();
   }, []);
+
+  useEffect(() => {
+    if (teacherClasses.length > 0) {
+      fetchUpcomingExams();
+    }
+  }, [teacherClasses]);
 
   const loadTimetable = async () => {
     try {
@@ -71,6 +83,59 @@ export default function TeacherDashboard({ navigation }) {
     setRefreshing(true);
     loadTimetable();
     loadAnnouncements();
+    loadTeacherClasses();
+    // fetchUpcomingExams will be called automatically when teacherClasses updates
+  };
+
+  const loadTeacherClasses = async () => {
+    try {
+      const response = await apiService.classes.getTeacherAssignedClasses();
+      if (response && response.success && Array.isArray(response.data)) {
+        setTeacherClasses(response.data);
+      }
+    } catch (error) {
+      console.error("Error loading teacher classes:", error);
+    }
+  };
+
+  const fetchUpcomingExams = async () => {
+    try {
+      setExamsLoading(true);
+      
+      // Get exams for all teacher's classes
+      const allExams = [];
+      for (const classItem of teacherClasses) {
+        try {
+          const response = await apiService.examinations.getExaminationsByClass(classItem._id, {
+            upcoming: "true",
+            limit: 10,
+          });
+          
+          if (response && response.success && Array.isArray(response.data)) {
+            // Add class info to each exam
+            const examsWithClass = response.data.map(exam => ({
+              ...exam,
+              classInfo: classItem
+            }));
+            allExams.push(...examsWithClass);
+          }
+        } catch (error) {
+          console.error(`Error loading exams for class ${classItem._id}:`, error);
+        }
+      }
+      
+      // Sort by exam date and take the first 5
+      const sortedExams = allExams
+        .sort((a, b) => new Date(a.examDate) - new Date(b.examDate))
+        .slice(0, 5);
+      
+      setUpcomingExams(sortedExams);
+    } catch (error) {
+      console.error("Error fetching upcoming exams:", error);
+      setUpcomingExams([]);
+    } finally {
+      setExamsLoading(false);
+    }
   };
 
   const getTodaySchedule = () => {
@@ -100,6 +165,73 @@ export default function TeacherDashboard({ navigation }) {
     user?.name ||
     [user?.firstName, user?.middleName, user?.lastName].filter(Boolean).join(" ") ||
     user?.email;
+
+  const getExamStatusColor = (exam) => {
+    const now = new Date();
+    const examDate = new Date(exam.examDate);
+    
+    switch (exam.status) {
+      case "completed":
+        return theme.colors.success;
+      case "cancelled":
+        return theme.colors.error;
+      case "ongoing":
+        return theme.colors.warning;
+      case "scheduled":
+        if (examDate < now) {
+          return theme.colors.error;
+        } else if (examDate.toDateString() === now.toDateString()) {
+          return theme.colors.warning;
+        } else {
+          return theme.colors.info;
+        }
+      default:
+        return theme.colors.grey;
+    }
+  };
+
+  const getExamStatusText = (exam) => {
+    const now = new Date();
+    const examDate = new Date(exam.examDate);
+    
+    switch (exam.status) {
+      case "completed":
+        return "Completed";
+      case "cancelled":
+        return "Cancelled";
+      case "ongoing":
+        return "Ongoing";
+      case "scheduled":
+        if (examDate < now) {
+          return "Overdue";
+        } else if (examDate.toDateString() === now.toDateString()) {
+          return "Today";
+        } else {
+          return "Upcoming";
+        }
+      default:
+        return "Unknown";
+    }
+  };
+
+  const getExamTypeColor = (type) => {
+    const colors = {
+      unit_test: theme.colors.primary,
+      midterm: theme.colors.warning,
+      final: theme.colors.error,
+      practical: theme.colors.success,
+      project: theme.colors.info,
+      assignment: theme.colors.secondary,
+    };
+    return colors[type] || theme.colors.primary;
+  };
+
+  const formatExamType = (type) => {
+    if (!type || typeof type !== 'string') {
+      return 'Unknown';
+    }
+    return type.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+  };
 
   return (
     <View style={styles.container}>
@@ -246,6 +378,82 @@ export default function TeacherDashboard({ navigation }) {
           </View>
         </TouchableOpacity>
 
+        {/* Upcoming Exams */}
+        <Animatable.View animation="fadeInUp" delay={400}>
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Upcoming Exams</Text>
+              <TouchableOpacity style={styles.viewAllButton} onPress={() => navigation.navigate("TeacherExams")}>
+                <Text style={styles.viewAllText}>View All</Text>
+              </TouchableOpacity>
+            </View>
+            <Card style={styles.infoCard}>
+              <Card.Content>
+                {examsLoading ? (
+                  <View style={styles.loadingContainer}>
+                    <Ionicons name="school-outline" size={32} color={theme.colors.textSecondary} />
+                    <Text style={styles.loadingText}>Loading exams...</Text>
+                  </View>
+                ) : upcomingExams && upcomingExams.length > 0 ? (
+                  upcomingExams.slice(0, 3).map((exam, index) => (
+                    <TouchableOpacity
+                      key={exam._id}
+                      onPress={() => navigation.navigate("TeacherExams")}
+                      activeOpacity={0.8}
+                      style={[
+                        styles.examItem,
+                        index === Math.min(upcomingExams.length - 1, 2) && styles.lastItem,
+                      ]}
+                    >
+                      <View style={styles.examHeader}>
+                        <Text style={styles.examTitle}>{exam.name}</Text>
+                        <View style={[
+                          styles.examStatus,
+                          { backgroundColor: getExamStatusColor(exam) }
+                        ]}>
+                          <Text style={styles.examStatusText}>
+                            {getExamStatusText(exam)}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.examSubject}>{exam.subjectId?.name || "Subject"}</Text>
+                      <View style={styles.examMeta}>
+                        <Text style={styles.examDate}>
+                          {exam.examDate ? new Date(exam.examDate).toLocaleDateString() : "No date"}
+                        </Text>
+                        <Text style={styles.examTime}>
+                          {exam.startTime} - {exam.endTime}
+                        </Text>
+                      </View>
+                      <View style={styles.examClassInfo}>
+                        <Text style={styles.examClass}>
+                          {exam.classInfo?.name || "Class"} {exam.classInfo?.division && `(${exam.classInfo.division})`}
+                        </Text>
+                        <View style={[
+                          styles.examTypeBadge,
+                          { backgroundColor: getExamTypeColor(exam.type) }
+                        ]}>
+                          <Text style={styles.examTypeText}>
+                            {formatExamType(exam.type)}
+                          </Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  ))
+                ) : (
+                  <View style={styles.emptyContainer}>
+                    <Ionicons name="school-outline" size={32} color={theme.colors.textSecondary} />
+                    <Text style={styles.emptyText}>No upcoming exams</Text>
+                    <Text style={[styles.emptyText, { fontSize: 12, marginTop: 8 }]}>
+                      Your upcoming examinations will appear here
+                    </Text>
+                  </View>
+                )}
+              </Card.Content>
+            </Card>
+          </View>
+        </Animatable.View>
+
         {/* Debug Info (Development Only) */}
         {/* {__DEV__ && (
           <View style={styles.section}>
@@ -304,6 +512,20 @@ export default function TeacherDashboard({ navigation }) {
               <View style={styles.actionInner}>
                 <Ionicons name="time" size={32} color={theme.colors.primary} />
                 <Text style={styles.actionText}>Timetable</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate("TeacherExams")}>
+              <View style={styles.actionInner}>
+                <Ionicons name="school" size={32} color={theme.colors.primary} />
+                <Text style={styles.actionText}>Exams</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate("TeacherGrades")}>
+              <View style={styles.actionInner}>
+                <Ionicons name="analytics" size={32} color={theme.colors.primary} />
+                <Text style={styles.actionText}>Grades</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -523,5 +745,84 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     marginBottom: theme.spacing.xs,
     fontFamily: "monospace",
+  },
+  // Exam styles
+  examItem: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  examHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  examTitle: {
+    fontWeight: 'bold',
+    fontSize: 14,
+    color: '#212121',
+    flex: 1,
+    marginRight: 8,
+  },
+  examStatus: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  examStatusText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: 'white',
+  },
+  examSubject: {
+    fontSize: 12,
+    color: '#555',
+    marginBottom: 6,
+  },
+  examMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  examDate: {
+    fontSize: 10,
+    color: '#888',
+    fontWeight: '500',
+  },
+  examTime: {
+    fontSize: 10,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  examClassInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  examClass: {
+    fontSize: 10,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  examTypeBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  examTypeText: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: 'white',
+    textTransform: 'uppercase',
   },
 });

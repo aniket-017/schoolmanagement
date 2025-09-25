@@ -23,11 +23,14 @@ export default function StudentDashboard({ navigation }) {
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
   const [homework, setHomework] = useState([]);
   const [homeworkLoading, setHomeworkLoading] = useState(true);
+  const [upcomingExams, setUpcomingExams] = useState([]);
+  const [examsLoading, setExamsLoading] = useState(true);
 
   useEffect(() => {
     initializeDashboard();
     fetchRecentAnnouncements();
     fetchRecentHomework();
+    fetchUpcomingExams();
   }, []);
 
   const initializeDashboard = async () => {
@@ -88,6 +91,37 @@ export default function StudentDashboard({ navigation }) {
     }
   };
 
+  const fetchUpcomingExams = async () => {
+    try {
+      setExamsLoading(true);
+      
+      // More robust class ID extraction
+      const classId = user?.class?._id || user?.class || user?.classId;
+      
+      if (!classId) {
+        console.log("No class ID found for user in dashboard:", user);
+        setUpcomingExams([]);
+        return;
+      }
+
+      const response = await apiService.examinations.getExaminationsByClass(classId, {
+        upcoming: "true",
+        limit: 3,
+      });
+
+      if (response && response.success && Array.isArray(response.data)) {
+        setUpcomingExams(response.data);
+      } else {
+        setUpcomingExams([]);
+      }
+    } catch (error) {
+      console.error("Error fetching upcoming exams:", error);
+      setUpcomingExams([]);
+    } finally {
+      setExamsLoading(false);
+    }
+  };
+
   const loadTimetable = async () => {
     try {
       setLoading(true);
@@ -121,6 +155,7 @@ export default function StudentDashboard({ navigation }) {
     initializeDashboard();
     fetchRecentAnnouncements();
     fetchRecentHomework();
+    fetchUpcomingExams();
   };
 
   const loadTodayAttendance = async () => {
@@ -230,6 +265,54 @@ export default function StudentDashboard({ navigation }) {
       return "Due Today";
     } else {
       return "Pending";
+    }
+  };
+
+  const getExamStatusColor = (exam) => {
+    const now = new Date();
+    const examDate = new Date(exam.examDate);
+    
+    switch (exam.status) {
+      case "completed":
+        return theme.colors.success;
+      case "cancelled":
+        return theme.colors.error;
+      case "ongoing":
+        return theme.colors.warning;
+      case "scheduled":
+        if (examDate < now) {
+          return theme.colors.error;
+        } else if (examDate.toDateString() === now.toDateString()) {
+          return theme.colors.warning;
+        } else {
+          return theme.colors.info;
+        }
+      default:
+        return theme.colors.grey;
+    }
+  };
+
+  const getExamStatusText = (exam) => {
+    const now = new Date();
+    const examDate = new Date(exam.examDate);
+    
+    switch (exam.status) {
+      case "completed":
+        return "Completed";
+      case "cancelled":
+        return "Cancelled";
+      case "ongoing":
+        return "Ongoing";
+      case "scheduled":
+        if (examDate < now) {
+          return "Overdue";
+        } else if (examDate.toDateString() === now.toDateString()) {
+          return "Today";
+        } else {
+          return "Upcoming";
+        }
+      default:
+        return "Unknown";
     }
   };
 
@@ -517,8 +600,71 @@ export default function StudentDashboard({ navigation }) {
           </View>
         </Animatable.View>
 
-        {/* Recent Fees */}
+        {/* Upcoming Exams */}
         <Animatable.View animation="fadeInUp" delay={500}>
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Upcoming Exams</Text>
+              <TouchableOpacity style={styles.viewAllButton} onPress={() => navigation.navigate("StudentExams")}>
+                <Text style={styles.viewAllText}>View All</Text>
+              </TouchableOpacity>
+            </View>
+            <Card style={styles.infoCard}>
+              <Card.Content>
+                {examsLoading ? (
+                  <View style={styles.loadingContainer}>
+                    <Ionicons name="school-outline" size={32} color={theme.colors.textSecondary} />
+                    <Text style={styles.loadingText}>Loading exams...</Text>
+                  </View>
+                ) : upcomingExams && upcomingExams.length > 0 ? (
+                  upcomingExams.slice(0, 3).map((exam, index) => (
+                    <TouchableOpacity
+                      key={exam._id}
+                      onPress={() => navigation.navigate("StudentExams")}
+                      activeOpacity={0.8}
+                      style={[
+                        styles.examItem,
+                        index === Math.min(upcomingExams.length - 1, 2) && styles.lastItem,
+                      ]}
+                    >
+                      <View style={styles.examHeader}>
+                        <Text style={styles.examTitle}>{exam.name}</Text>
+                        <View style={[
+                          styles.examStatus,
+                          { backgroundColor: getExamStatusColor(exam) }
+                        ]}>
+                          <Text style={styles.examStatusText}>
+                            {getExamStatusText(exam)}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.examSubject}>{exam.subjectId?.name || "Subject"}</Text>
+                      <View style={styles.examMeta}>
+                        <Text style={styles.examDate}>
+                          {exam.examDate ? new Date(exam.examDate).toLocaleDateString() : "No date"}
+                        </Text>
+                        <Text style={styles.examTime}>
+                          {exam.startTime} - {exam.endTime}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))
+                ) : (
+                  <View style={styles.emptyContainer}>
+                    <Ionicons name="school-outline" size={32} color={theme.colors.textSecondary} />
+                    <Text style={styles.emptyText}>No upcoming exams</Text>
+                    <Text style={[styles.emptyText, { fontSize: 12, marginTop: 8 }]}>
+                      Your upcoming examinations will appear here
+                    </Text>
+                  </View>
+                )}
+              </Card.Content>
+            </Card>
+          </View>
+        </Animatable.View>
+
+        {/* Recent Fees */}
+        <Animatable.View animation="fadeInUp" delay={600}>
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Fees Information</Text>
@@ -593,6 +739,13 @@ export default function StudentDashboard({ navigation }) {
               <View style={styles.actionInner}>
                 <Ionicons name="book" size={32} color={theme.colors.primary} />
                 <Text style={styles.actionText}>Homework</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate("StudentExams")}>
+              <View style={styles.actionInner}>
+                <Ionicons name="school" size={32} color={theme.colors.primary} />
+                <Text style={styles.actionText}>Exams</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -983,6 +1136,63 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   homeworkTeacher: {
+    fontSize: 10,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  // Exam styles
+  examItem: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  examHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  examTitle: {
+    fontWeight: 'bold',
+    fontSize: 14,
+    color: '#212121',
+    flex: 1,
+    marginRight: 8,
+  },
+  examStatus: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  examStatusText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: 'white',
+  },
+  examSubject: {
+    fontSize: 12,
+    color: '#555',
+    marginBottom: 6,
+  },
+  examMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  examDate: {
+    fontSize: 10,
+    color: '#888',
+    fontWeight: '500',
+  },
+  examTime: {
     fontSize: 10,
     color: '#666',
     fontStyle: 'italic',

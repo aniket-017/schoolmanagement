@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   createExamination,
   getExaminations,
+  getExaminationsGrouped,
   getExaminationById,
   getExaminationsByClass,
   getExaminationsBySubject,
@@ -20,6 +21,9 @@ router.post("/", auth, createExamination);
 // Get all examinations with filters
 router.get("/", auth, getExaminations);
 
+// Get examinations grouped by name
+router.get("/grouped", auth, getExaminationsGrouped);
+
 // Get examination by ID
 router.get("/:id", auth, getExaminationById);
 
@@ -27,13 +31,41 @@ router.get("/:id", auth, getExaminationById);
 router.get("/:id/results", auth, getExaminationResults);
 
 // Get examinations by class
-router.get("/class/:class_id", auth, getExaminationsByClass);
+router.get("/class/:classId", auth, getExaminationsByClass);
 
 // Get examinations by subject
-router.get("/subject/:subject_id", auth, getExaminationsBySubject);
+router.get("/subject/:subjectId", auth, getExaminationsBySubject);
 
 // Get examination statistics
 router.get("/stats/overview", auth, getExaminationStats);
+
+// Debug endpoint to check exams
+router.get("/debug/all", auth, async (req, res) => {
+  try {
+    const Examination = require("../models/Examination");
+    const allExams = await Examination.find({}).limit(10);
+    const totalCount = await Examination.countDocuments({});
+    
+    res.json({
+      success: true,
+      totalCount,
+      sampleExams: allExams.map(exam => ({
+        _id: exam._id,
+        name: exam.name,
+        type: exam.type,
+        classId: exam.classId,
+        isActive: exam.isActive,
+        status: exam.status
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching debug info",
+      error: error.message
+    });
+  }
+});
 
 // Update examination
 router.put("/:id", auth, updateExamination);

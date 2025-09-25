@@ -233,6 +233,44 @@ export const apiService = {
       const response = await api.get(`/examinations/${examinationId}/results`);
       return response.data;
     },
+    getGrouped: async (params = {}) => {
+      const response = await api.get("/examinations/grouped", { params });
+      return response.data;
+    },
+    debugAll: async () => {
+      const response = await api.get("/examinations/debug/all");
+      return response.data;
+    },
+    // Teacher-specific exam services
+    createExamination: async (examData) => {
+      const response = await api.post("/examinations", examData);
+      return response.data;
+    },
+    updateExamination: async (examId, examData) => {
+      const response = await api.put(`/examinations/${examId}`, examData);
+      return response.data;
+    },
+    deleteExamination: async (examId) => {
+      const response = await api.delete(`/examinations/${examId}`);
+      return response.data;
+    },
+    updateExaminationStatus: async (examId, status) => {
+      const response = await api.put(`/examinations/${examId}/status`, { status });
+      return response.data;
+    },
+    getTeacherExaminations: async (params = {}) => {
+      // Get exams for all classes assigned to the teacher
+      const response = await api.get("/examinations", { params });
+      return response.data;
+    },
+    getExaminationsBySubject: async (subjectId, params = {}) => {
+      const response = await api.get(`/examinations/subject/${subjectId}`, { params });
+      return response.data;
+    },
+    getExaminationStats: async () => {
+      const response = await api.get("/examinations/stats/overview");
+      return response.data;
+    },
   },
 
   // Fee Services

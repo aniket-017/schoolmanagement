@@ -697,6 +697,73 @@ class ApiService {
       return this.handleResponse(response);
     },
   };
+
+  // Examinations APIs
+  examinations = {
+    getAll: async (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await fetch(`${this.baseURL}/examinations?${queryString}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getGrouped: async (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await fetch(`${this.baseURL}/examinations/grouped?${queryString}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getById: async (id) => {
+      const response = await fetch(`${this.baseURL}/examinations/${id}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    create: async (data) => {
+      const response = await fetch(`${this.baseURL}/examinations`, {
+        method: "POST",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(data),
+      });
+      return this.handleResponse(response);
+    },
+
+    update: async (id, data) => {
+      const response = await fetch(`${this.baseURL}/examinations/${id}`, {
+        method: "PUT",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(data),
+      });
+      return this.handleResponse(response);
+    },
+
+    delete: async (id) => {
+      const response = await fetch(`${this.baseURL}/examinations/${id}`, {
+        method: "DELETE",
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getByClass: async (classId, params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await fetch(`${this.baseURL}/examinations/class/${classId}?${queryString}`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+
+    getResults: async (examinationId) => {
+      const response = await fetch(`${this.baseURL}/examinations/${examinationId}/results`, {
+        headers: this.getAuthHeaders(),
+      });
+      return this.handleResponse(response);
+    },
+  };
 }
 
 export default new ApiService();

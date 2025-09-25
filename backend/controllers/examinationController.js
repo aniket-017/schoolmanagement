@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Examination = require("../models/Examination");
 const Class = require("../models/Class");
 const Subject = require("../models/Subject");
@@ -8,22 +9,27 @@ const Grade = require("../models/Grade");
 exports.createExamination = async (req, res) => {
   try {
     const {
-      title,
-      description,
-      exam_type,
-      class_id,
-      subject_id,
-      exam_date,
-      start_time,
-      end_time,
-      total_marks,
-      passing_marks,
-      room_number,
+      name,
+      type,
+      classId,
+      subjectId,
+      academicYear,
+      semester,
+      examDate,
+      startTime,
+      endTime,
+      duration,
+      venue,
+      totalMarks,
+      passingMarks,
       instructions,
+      syllabus,
+      allowedMaterials,
+      invigilators,
     } = req.body;
 
     // Validate required fields
-    if (!title || !exam_type || !class_id || !subject_id || !exam_date || !start_time || !end_time || !total_marks) {
+    if (!name || !type || !classId || !subjectId || !examDate || !startTime || !endTime || !duration || !totalMarks || !passingMarks) {
       return res.status(400).json({
         success: false,
         message: "All required fields must be provided",
@@ -32,9 +38,9 @@ exports.createExamination = async (req, res) => {
 
     // Check for scheduling conflicts
     const conflictingExam = await Examination.findOne({
-      class_id,
-      exam_date,
-      $or: [{ start_time: { $lt: end_time }, end_time: { $gt: start_time } }],
+      classId,
+      examDate,
+      $or: [{ startTime: { $lt: endTime }, endTime: { $gt: startTime } }],
     });
 
     if (conflictingExam) {
@@ -45,11 +51,11 @@ exports.createExamination = async (req, res) => {
     }
 
     // Check for room conflicts if room is specified
-    if (room_number) {
+    if (venue) {
       const roomConflict = await Examination.findOne({
-        room_number,
-        exam_date,
-        $or: [{ start_time: { $lt: end_time }, end_time: { $gt: start_time } }],
+        venue,
+        examDate,
+        $or: [{ startTime: { $lt: endTime }, endTime: { $gt: startTime } }],
       });
 
       if (roomConflict) {
@@ -61,22 +67,27 @@ exports.createExamination = async (req, res) => {
     }
 
     const examination = new Examination({
-      title,
-      description,
-      exam_type,
-      class_id,
-      subject_id,
-      exam_date,
-      start_time,
-      end_time,
-      total_marks,
-      passing_marks,
-      room_number,
+      name,
+      type,
+      classId,
+      subjectId,
+      academicYear: academicYear || "2024-25",
+      semester,
+      examDate,
+      startTime,
+      endTime,
+      duration,
+      venue,
+      totalMarks,
+      passingMarks,
       instructions,
+      syllabus,
+      allowedMaterials,
+      invigilators,
     });
 
     await examination.save();
-    await examination.populate(["class_id", "subject_id"]);
+    await examination.populate(["classId", "subjectId"]);
 
     res.status(201).json({
       success: true,
@@ -96,29 +107,29 @@ exports.createExamination = async (req, res) => {
 // Get all examinations with filters
 exports.getExaminations = async (req, res) => {
   try {
-    const { class_id, subject_id, exam_type, status, start_date, end_date, page = 1, limit = 10 } = req.query;
+    const { classId, subjectId, type, status, startDate, endDate, page = 1, limit = 10 } = req.query;
 
     const query = {};
 
     // Build query filters
-    if (class_id) query.class_id = class_id;
-    if (subject_id) query.subject_id = subject_id;
-    if (exam_type) query.exam_type = exam_type;
+    if (classId) query.classId = classId;
+    if (subjectId) query.subjectId = subjectId;
+    if (type) query.type = type;
     if (status) query.status = status;
 
     // Date range filter
-    if (start_date || end_date) {
-      query.exam_date = {};
-      if (start_date) query.exam_date.$gte = new Date(start_date);
-      if (end_date) query.exam_date.$lte = new Date(end_date);
+    if (startDate || endDate) {
+      query.examDate = {};
+      if (startDate) query.examDate.$gte = new Date(startDate);
+      if (endDate) query.examDate.$lte = new Date(endDate);
     }
 
     const skip = (page - 1) * limit;
 
     const examinations = await Examination.find(query)
-      .populate("class_id", "name section")
-      .populate("subject_id", "name code")
-      .sort({ exam_date: 1, start_time: 1 })
+      .populate("classId", "name division")
+      .populate("subjectId", "name code")
+      .sort({ examDate: 1, startTime: 1 })
       .skip(skip)
       .limit(parseInt(limit));
 
@@ -147,8 +158,8 @@ exports.getExaminations = async (req, res) => {
 exports.getExaminationById = async (req, res) => {
   try {
     const examination = await Examination.findById(req.params.id)
-      .populate("class_id", "name section")
-      .populate("subject_id", "name code");
+      .populate("classId", "name division")
+      .populate("subjectId", "name code");
 
     if (!examination) {
       return res.status(404).json({
@@ -174,22 +185,31 @@ exports.getExaminationById = async (req, res) => {
 // Get examinations by class
 exports.getExaminationsByClass = async (req, res) => {
   try {
-    const { class_id } = req.params;
+    const { classId } = req.params;
     const { status, upcoming } = req.query;
 
-    const query = { class_id };
+    console.log("getExaminationsByClass - classId:", classId, "upcoming:", upcoming);
+
+    const query = { 
+      classId: mongoose.Types.ObjectId.isValid(classId) ? new mongoose.Types.ObjectId(classId) : classId 
+    };
 
     // Filter by status if provided
     if (status) query.status = status;
 
     // Filter upcoming exams
     if (upcoming === "true") {
-      query.exam_date = { $gte: new Date() };
+      query.examDate = { $gte: new Date() };
     }
 
+    console.log("getExaminationsByClass - Final query:", query);
+
     const examinations = await Examination.find(query)
-      .populate("subject_id", "name code")
-      .sort({ exam_date: 1, start_time: 1 });
+      .populate("classId", "name division")
+      .populate("subjectId", "name code")
+      .sort({ examDate: 1, startTime: 1 });
+
+    console.log("getExaminationsByClass - Found exams:", examinations.length);
 
     res.json({
       success: true,
@@ -208,22 +228,22 @@ exports.getExaminationsByClass = async (req, res) => {
 // Get examinations by subject
 exports.getExaminationsBySubject = async (req, res) => {
   try {
-    const { subject_id } = req.params;
+    const { subjectId } = req.params;
     const { status, upcoming } = req.query;
 
-    const query = { subject_id };
+    const query = { subjectId };
 
     // Filter by status if provided
     if (status) query.status = status;
 
     // Filter upcoming exams
     if (upcoming === "true") {
-      query.exam_date = { $gte: new Date() };
+      query.examDate = { $gte: new Date() };
     }
 
     const examinations = await Examination.find(query)
-      .populate("class_id", "name section")
-      .sort({ exam_date: 1, start_time: 1 });
+      .populate("classId", "name division")
+      .sort({ examDate: 1, startTime: 1 });
 
     res.json({
       success: true,
@@ -246,7 +266,7 @@ exports.updateExamination = async (req, res) => {
     const updateData = req.body;
 
     // Check for scheduling conflicts if time-related fields are being updated
-    if (updateData.exam_date || updateData.start_time || updateData.end_time || updateData.class_id) {
+    if (updateData.examDate || updateData.startTime || updateData.endTime || updateData.classId) {
       const currentExam = await Examination.findById(id);
       if (!currentExam) {
         return res.status(404).json({
@@ -256,19 +276,19 @@ exports.updateExamination = async (req, res) => {
       }
 
       const checkData = {
-        class_id: updateData.class_id || currentExam.class_id,
-        exam_date: updateData.exam_date || currentExam.exam_date,
-        start_time: updateData.start_time || currentExam.start_time,
-        end_time: updateData.end_time || currentExam.end_time,
-        room_number: updateData.room_number || currentExam.room_number,
+        classId: updateData.classId || currentExam.classId,
+        examDate: updateData.examDate || currentExam.examDate,
+        startTime: updateData.startTime || currentExam.startTime,
+        endTime: updateData.endTime || currentExam.endTime,
+        venue: updateData.venue || currentExam.venue,
       };
 
       // Check for class conflicts
       const classConflict = await Examination.findOne({
         _id: { $ne: id },
-        class_id: checkData.class_id,
-        exam_date: checkData.exam_date,
-        $or: [{ start_time: { $lt: checkData.end_time }, end_time: { $gt: checkData.start_time } }],
+        classId: checkData.classId,
+        examDate: checkData.examDate,
+        $or: [{ startTime: { $lt: checkData.endTime }, endTime: { $gt: checkData.startTime } }],
       });
 
       if (classConflict) {
@@ -279,12 +299,12 @@ exports.updateExamination = async (req, res) => {
       }
 
       // Check for room conflicts if room is specified
-      if (checkData.room_number) {
+      if (checkData.venue) {
         const roomConflict = await Examination.findOne({
           _id: { $ne: id },
-          room_number: checkData.room_number,
-          exam_date: checkData.exam_date,
-          $or: [{ start_time: { $lt: checkData.end_time }, end_time: { $gt: checkData.start_time } }],
+          venue: checkData.venue,
+          examDate: checkData.examDate,
+          $or: [{ startTime: { $lt: checkData.endTime }, endTime: { $gt: checkData.startTime } }],
         });
 
         if (roomConflict) {
@@ -299,7 +319,7 @@ exports.updateExamination = async (req, res) => {
     const examination = await Examination.findByIdAndUpdate(id, updateData, {
       new: true,
       runValidators: true,
-    }).populate(["class_id", "subject_id"]);
+    }).populate(["classId", "subjectId"]);
 
     if (!examination) {
       return res.status(404).json({
@@ -336,7 +356,7 @@ exports.deleteExamination = async (req, res) => {
     }
 
     // Also delete related grades
-    await Grade.deleteMany({ examination_id: req.params.id });
+    await Grade.deleteMany({ examId: req.params.id });
 
     res.json({
       success: true,
@@ -369,7 +389,7 @@ exports.updateExaminationStatus = async (req, res) => {
       id,
       { status },
       { new: true, runValidators: true }
-    ).populate(["class_id", "subject_id"]);
+    ).populate(["classId", "subjectId"]);
 
     if (!examination) {
       return res.status(404).json({
@@ -393,6 +413,164 @@ exports.updateExaminationStatus = async (req, res) => {
   }
 };
 
+// Get examinations grouped by name
+exports.getExaminationsGrouped = async (req, res) => {
+  try {
+    const { classId, subjectId, type, status, startDate, endDate, page = 1, limit = 50 } = req.query;
+
+    console.log("getExaminationsGrouped - Query params:", { classId, subjectId, type, status, startDate, endDate, page, limit });
+
+    const query = {}; // Remove isActive filter temporarily to debug
+
+    // Build query filters
+    if (classId) {
+      // Convert string to ObjectId if needed
+      query.classId = mongoose.Types.ObjectId.isValid(classId) ? new mongoose.Types.ObjectId(classId) : classId;
+    }
+    if (subjectId) query.subjectId = subjectId;
+    if (type) query.type = type;
+    if (status) query.status = status;
+
+    console.log("getExaminationsGrouped - Final query:", query);
+
+    // Date range filter
+    if (startDate || endDate) {
+      query.examDate = {};
+      if (startDate) query.examDate.$gte = new Date(startDate);
+      if (endDate) query.examDate.$lte = new Date(endDate);
+    }
+
+    const skip = (page - 1) * limit;
+
+    // Group exams by name and aggregate the data
+    const groupedExams = await Examination.aggregate([
+      { $match: query },
+      {
+        $lookup: {
+          from: "classes",
+          localField: "classId",
+          foreignField: "_id",
+          as: "classInfo"
+        }
+      },
+      {
+        $lookup: {
+          from: "subjects",
+          localField: "subjectId",
+          foreignField: "_id",
+          as: "subjectInfo"
+        }
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "invigilators",
+          foreignField: "_id",
+          as: "invigilatorInfo"
+        }
+      },
+      {
+        $group: {
+          _id: "$name",
+          examName: { $first: "$name" },
+          examType: { $first: "$type" },
+          totalMarks: { $first: "$totalMarks" },
+          passingMarks: { $first: "$passingMarks" },
+          instructions: { $first: "$instructions" },
+          syllabus: { $first: "$syllabus" },
+          allowedMaterials: { $first: "$allowedMaterials" },
+          academicYear: { $first: "$academicYear" },
+          semester: { $first: "$semester" },
+          instances: {
+            $push: {
+              _id: "$_id",
+              classId: "$classId",
+              subjectId: "$subjectId",
+              examDate: "$examDate",
+              startTime: "$startTime",
+              endTime: "$endTime",
+              duration: "$duration",
+              venue: "$venue",
+              status: "$status",
+              invigilators: "$invigilators",
+              classInfo: { $arrayElemAt: ["$classInfo", 0] },
+              subjectInfo: { $arrayElemAt: ["$subjectInfo", 0] },
+              invigilatorInfo: "$invigilatorInfo",
+              createdAt: "$createdAt",
+              updatedAt: "$updatedAt"
+            }
+          },
+          instanceCount: { $sum: 1 },
+          earliestDate: { $min: "$examDate" },
+          latestDate: { $max: "$examDate" },
+          statuses: { $addToSet: "$status" }
+        }
+      },
+      {
+        $sort: { examName: 1, earliestDate: 1 }
+      },
+      { $skip: skip },
+      { $limit: parseInt(limit) }
+    ]);
+
+    const total = await Examination.aggregate([
+      { $match: query },
+      { $group: { _id: "$name" } },
+      { $count: "total" }
+    ]);
+
+    console.log("getExaminationsGrouped - Grouped exams count:", groupedExams.length);
+    console.log("getExaminationsGrouped - Total groups:", total[0]?.total || 0);
+    
+    // Debug: Check if there are any exams for this class at all
+    const totalExamsForClass = await Examination.countDocuments({ classId: classId });
+    console.log("getExaminationsGrouped - Total exams for class:", totalExamsForClass);
+    
+    // Debug: Check total exams in database
+    const totalExamsInDB = await Examination.countDocuments({});
+    console.log("getExaminationsGrouped - Total exams in database:", totalExamsInDB);
+    
+    // Debug: Get a sample exam to see the structure
+    const sampleExam = await Examination.findOne({ classId: classId });
+    console.log("getExaminationsGrouped - Sample exam:", sampleExam ? {
+      _id: sampleExam._id,
+      name: sampleExam.name,
+      type: sampleExam.type,
+      classId: sampleExam.classId,
+      isActive: sampleExam.isActive,
+      status: sampleExam.status
+    } : "No exams found");
+    
+    // Debug: Get any exam from database
+    const anyExam = await Examination.findOne({});
+    console.log("getExaminationsGrouped - Any exam in DB:", anyExam ? {
+      _id: anyExam._id,
+      name: anyExam.name,
+      type: anyExam.type,
+      classId: anyExam.classId,
+      isActive: anyExam.isActive,
+      status: anyExam.status
+    } : "No exams in database");
+
+    res.json({
+      success: true,
+      data: groupedExams,
+      pagination: {
+        current: parseInt(page),
+        total: Math.ceil((total[0]?.total || 0) / limit),
+        count: total[0]?.total || 0,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching grouped examinations:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching grouped examinations",
+      error: error.message,
+    });
+  }
+};
+
 // Get examination statistics
 exports.getExaminationStats = async (req, res) => {
   try {
@@ -400,10 +578,10 @@ exports.getExaminationStats = async (req, res) => {
 
     const examsByStatus = await Examination.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]);
 
-    const examsByType = await Examination.aggregate([{ $group: { _id: "$exam_type", count: { $sum: 1 } } }]);
+    const examsByType = await Examination.aggregate([{ $group: { _id: "$type", count: { $sum: 1 } } }]);
 
     const upcomingExams = await Examination.countDocuments({
-      exam_date: { $gte: new Date() },
+      examDate: { $gte: new Date() },
       status: "scheduled",
     });
 
@@ -437,8 +615,8 @@ exports.getExaminationResults = async (req, res) => {
     const { id } = req.params;
 
     const examination = await Examination.findById(id)
-      .populate("class_id", "name section")
-      .populate("subject_id", "name code");
+      .populate("classId", "name division")
+      .populate("subjectId", "name code");
 
     if (!examination) {
       return res.status(404).json({
@@ -447,9 +625,9 @@ exports.getExaminationResults = async (req, res) => {
       });
     }
 
-    const results = await Grade.find({ examination_id: id })
-      .populate("student_id", "name email roll_number")
-      .sort({ marks_obtained: -1 });
+    const results = await Grade.find({ examId: id })
+      .populate("studentId", "name email rollNumber")
+      .sort({ marksObtained: -1 });
 
     // Calculate statistics
     const totalStudents = results.length;

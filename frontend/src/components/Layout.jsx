@@ -51,6 +51,13 @@ const Layout = ({ children }) => {
       description: "Manage classes and subjects",
     },
     {
+      name: "Exam Management",
+      href: "/admin/examinations",
+      icon: BookOpen,
+      color: "orange",
+      description: "Create and manage exams",
+    },
+    {
       name: "Fee Management",
       href: "/fees",
       icon: Wallet,
@@ -96,6 +103,9 @@ const Layout = ({ children }) => {
       amber: isActive
         ? "bg-amber-50 text-amber-700 border-amber-200"
         : "text-gray-600 hover:bg-amber-50 hover:text-amber-700",
+      orange: isActive
+        ? "bg-orange-50 text-orange-700 border-orange-200"
+        : "text-gray-600 hover:bg-orange-50 hover:text-orange-700",
       purple: isActive
         ? "bg-purple-50 text-purple-700 border-purple-200"
         : "text-gray-600 hover:bg-purple-50 hover:text-purple-700",
@@ -117,6 +127,7 @@ const Layout = ({ children }) => {
       blue: isActive ? "bg-blue-100 text-blue-600" : "text-gray-500 group-hover:text-blue-600",
       emerald: isActive ? "bg-emerald-100 text-emerald-600" : "text-gray-500 group-hover:text-emerald-600",
       amber: isActive ? "bg-amber-100 text-amber-600" : "text-gray-500 group-hover:text-amber-600",
+      orange: isActive ? "bg-orange-100 text-orange-600" : "text-gray-500 group-hover:text-orange-600",
       purple: isActive ? "bg-purple-100 text-purple-600" : "text-gray-500 group-hover:text-purple-600",
       cyan: isActive ? "bg-cyan-100 text-cyan-600" : "text-gray-500 group-hover:text-cyan-600",
       rose: isActive ? "bg-rose-100 text-rose-600" : "text-gray-500 group-hover:text-rose-600",

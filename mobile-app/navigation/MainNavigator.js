@@ -1,8 +1,8 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
-import { View, Text, StyleSheet, Platform, TouchableOpacity } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { View, Text, StyleSheet, Platform } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../context/AuthContext";
 import StudentNavigator from "./StudentNavigator";
 import TeacherDashboard from "../screens/teacher/TeacherDashboard";
@@ -31,74 +31,24 @@ export default function MainNavigator() {
     </View>
   );
 
-  // Custom tab bar component to handle safe areas properly
-  const CustomTabBar = ({ state, descriptors, navigation }) => {
-    return (
-      <View
-        style={[
-          styles.tabBar,
-          {
-            paddingBottom: Math.max(insets.bottom, Platform.OS === "android" ? 12 : 20),
-            height: Platform.OS === "android" ? 60 + Math.max(insets.bottom, 12) : 50 + Math.max(insets.bottom, 20),
-          },
-        ]}
-      >
-        {state.routes.map((route, index) => {
-          const { options } = descriptors[route.key];
-          const label = options.tabBarLabel ?? options.title ?? route.name;
-          const isFocused = state.index === index;
-
-          const onPress = () => {
-            const event = navigation.emit({
-              type: "tabPress",
-              target: route.key,
-              canPreventDefault: true,
-            });
-
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name);
-            }
-          };
-
-          return (
-            <TouchableOpacity
-              key={route.key}
-              accessibilityRole="button"
-              accessibilityState={isFocused ? { selected: true } : {}}
-              accessibilityLabel={options.tabBarAccessibilityLabel}
-              testID={options.tabBarTestID}
-              onPress={onPress}
-              style={styles.tabBarItem}
-            >
-              {options.tabBarIcon({
-                focused: isFocused,
-                color: isFocused ? theme.colors.primary : theme.colors.textSecondary,
-                size: 24,
-              })}
-              <Text
-                style={[
-                  styles.tabBarLabel,
-                  {
-                    color: isFocused ? theme.colors.primary : theme.colors.textSecondary,
-                  },
-                ]}
-              >
-                {label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    );
-  };
 
   // Student Navigation
   if (user?.role === "student") {
     return (
       <Tab.Navigator
-        tabBar={(props) => <CustomTabBar {...props} />}
         screenOptions={{
           headerShown: false, // Set to false since StudentNavigator handles headers
+          tabBarStyle: [
+            styles.tabBar,
+            {
+              paddingBottom: Math.max(insets.bottom, Platform.OS === "android" ? 8 : 20),
+              height: Platform.OS === "android" ? 60 + Math.max(insets.bottom, 8) : 50 + Math.max(insets.bottom, 20),
+            }
+          ],
+          tabBarActiveTintColor: theme.colors.primary,
+          tabBarInactiveTintColor: theme.colors.textSecondary,
+          tabBarLabelStyle: styles.tabBarLabel,
+          tabBarItemStyle: styles.tabBarItem,
         }}
       >
         <Tab.Screen
@@ -245,14 +195,9 @@ export default function MainNavigator() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    flexDirection: "row",
     backgroundColor: theme.colors.surface,
     borderTopWidth: 1,
     borderTopColor: theme.colors.divider,
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
     elevation: 8,
     shadowColor: "#000",
     shadowOffset: {
@@ -261,6 +206,8 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 3,
+    paddingBottom: Platform.OS === "android" ? 8 : 20,
+    height: Platform.OS === "android" ? 65 : 85,
   },
   tabBarLabel: {
     fontSize: 12,
@@ -268,9 +215,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   tabBarItem: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
     paddingTop: 8,
   },
   tabIconContainer: {

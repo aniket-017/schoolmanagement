@@ -12,12 +12,23 @@ import AnnouncementsScreen from "../screens/teacher/AnnouncementsScreen";
 import TeacherAnnouncementsPage from "../screens/teacher/TeacherAnnouncementsPage";
 import TeacherAnnualCalendarScreen from "../screens/teacher/TeacherAnnualCalendarScreen";
 import TeacherHomework from "../screens/teacher/TeacherHomework";
+import TeacherExamsScreen from "../screens/teacher/TeacherExamsScreen";
 
 const Stack = createStackNavigator();
 
 export default function TeacherNavigator({ navigation, route }) {
-  // Get the initial route name from the tab navigator
-  const initialRouteName = route?.name?.replace("Tab", "") || "TeacherHome";
+  // Get the initial route name from the tab navigator with robust error handling
+  const initialRouteName = (() => {
+    try {
+      if (route?.name && typeof route.name === 'string' && route.name.includes('Tab')) {
+        return route.name.replace("Tab", "");
+      }
+      return "TeacherHome";
+    } catch (error) {
+      console.log("Error processing route name:", error);
+      return "TeacherHome";
+    }
+  })();
 
   return (
     <Stack.Navigator
@@ -45,6 +56,7 @@ export default function TeacherNavigator({ navigation, route }) {
       <Stack.Screen name="TeacherAnnouncementsPage" component={TeacherAnnouncementsPage} options={{ title: "All Announcements" }} />
       <Stack.Screen name="TeacherAnnualCalendar" component={TeacherAnnualCalendarScreen} options={{ title: "Annual Calendar" }} />
       <Stack.Screen name="TeacherHomework" component={TeacherHomework} options={{ headerShown: false }} />
+      <Stack.Screen name="TeacherExams" component={TeacherExamsScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }
