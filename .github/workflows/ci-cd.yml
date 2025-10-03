@@ -24,9 +24,9 @@ jobs:
           node-version: "20.x"
 
       # Step 3: Install backend dependencies (root)
-    #   - name: Install backend dependencies
-    #     run: npm install --force
-    #     working-directory: .
+      #   - name: Install backend dependencies
+      #     run: npm install --force
+      #     working-directory: .
 
       # # Step 4: Install frontend dependencies
       # - name: Install frontend dependencies
@@ -58,6 +58,11 @@ jobs:
              cp ~/schoolmanagement/backend/.env ~/.env.bak
            fi
 
+           if [ -f ~/schoolmanagement/mobile-app/config/environment.js ]; then
+             echo "📁 Backing up existing environment.js file"
+             cp ~/schoolmanagement/mobile-app/config/environment.js ~/environment.js.bak
+           fi
+
            if [ -d ~/schoolmanagement ]; then
              echo "📂 Pulling latest changes from Git"
              cd ~/schoolmanagement
@@ -72,6 +77,11 @@ jobs:
            if [ -f ~/.env.bak ]; then
              echo "♻️ Restoring .env from backup"
              mv ~/.env.bak ~/schoolmanagement/backend/.env
+           fi
+
+           if [ -f ~/environment.js.bak ]; then
+             echo "♻️ Restoring environment.js from backup"
+             mv ~/environment.js.bak ~/schoolmanagement/mobile-app/config/environment.js
            fi
 
            echo "📦 Installing backend dependencies"
