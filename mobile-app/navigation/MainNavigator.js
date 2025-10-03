@@ -91,9 +91,19 @@ export default function MainNavigator() {
   if (user?.role === "teacher") {
     return (
       <Tab.Navigator
-        tabBar={(props) => <CustomTabBar {...props} />}
         screenOptions={{
           headerShown: false, // Set to false since TeacherNavigator handles headers
+          tabBarStyle: [
+            styles.tabBar,
+            {
+              paddingBottom: Math.max(insets.bottom, Platform.OS === "android" ? 8 : 20),
+              height: Platform.OS === "android" ? 60 + Math.max(insets.bottom, 8) : 50 + Math.max(insets.bottom, 20),
+            }
+          ],
+          tabBarActiveTintColor: theme.colors.primary,
+          tabBarInactiveTintColor: theme.colors.textSecondary,
+          tabBarLabelStyle: styles.tabBarLabel,
+          tabBarItemStyle: styles.tabBarItem,
         }}
       >
         <Tab.Screen
